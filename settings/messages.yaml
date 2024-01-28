@@ -101,14 +101,13 @@ help_license:
 # /gacha shards
 # Show Shards amount held by a target user.
 # 
-# target_username : Target user, defaults to self
-# shards          : Number of Shards held by target user
+# target_user : Target user (mention), defaults to self
+# shards      : Number of Shards held by target user
 gacha_shards:
-  author      :
-    name      : >-
-      ${target_username}
   title: >-
     💠 ${shards}
+  description: >-
+    Shards owned by ${target_user}
   
 
 # /gacha roll
@@ -124,17 +123,17 @@ gacha_insufficient_funds:
 # /gacha roll
 # Message if user rolled a new card.
 # 
-# type         : Type of card
-# rarity_stars : Stars denoting rarity (backend-generated)
-# name         : Card name
+# type  : Type of card
+# stars : Stars denoting rarity (backend-generated)
+# name  : Card name
 gacha_get_new_card:
   author      :
     name      : >-
       ${type} Card!
   title: >-
-    ${rarity_stars} ${name}
+    ${name}
   description: >-
-    ✨ **New!**
+    ${stars} — ✨ **New!**
   image: >-
     ${image}
 
@@ -142,17 +141,17 @@ gacha_get_new_card:
 # /gacha roll
 # Message if user rolled a duplicate card.
 # 
-# type         : Type of card
-# rarity_stars : Stars denoting rarity (backend-generated)
-# name         : Card name
-# dupe_shards  : Shards obtained from dupe
+# type        : Type of card
+# stars       : Stars denoting rarity (backend-generated)
+# name        : Card name
+# dupe_shards : Shards obtained from dupe
 gacha_get_dupe_card:
   author      :
     name      : >-
       ${type} Card!
   title: >-
-    ${rarity_stars} ${name}
+    ${name}
   description: >-
-    💠 +**${dupe_shards}** Mitsuki Shards
+    ${stars} — 💠 +**${dupe_shards}** Mitsuki Shards
   image: >-
     ${image}
