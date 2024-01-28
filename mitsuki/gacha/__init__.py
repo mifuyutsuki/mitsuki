@@ -20,6 +20,8 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from . import userdata, gachaman
+from ..messages import generate as message
+from ..messages import username_from_user
 from ..common import userdata_engine
 
 
@@ -42,8 +44,8 @@ class MitsukiGacha(Extension):
 
 
   @gacha_cmd.subcommand(
-    sub_cmd_name="balance",
-    sub_cmd_description="View your or another user's Mitsuki Shards balance"
+    sub_cmd_name="shards",
+    sub_cmd_description="View your or another user's Mitsuki Shards"
   )
   @slash_option(
     name="user",
@@ -51,20 +53,17 @@ class MitsukiGacha(Extension):
     required=False,
     opt_type=OptionType.USER
   )
-  async def balance_cmd(self, ctx: SlashContext, user: Optional[BaseUser] = None):
+  async def shards_cmd(self, ctx: SlashContext, user: Optional[BaseUser] = None):
     target_user = user if user else ctx.user
     shards_get  = userdata.get_shards(target_user.id)
     shards      = shards_get if shards_get else 0
 
-    embed = ipy.Embed(
-      description=f"{target_user.mention} has **{shards}** Mitsuki Shards",
-      author=ipy.EmbedAuthor(
-        name=ctx.user.display_name,
-        icon_url=ctx.user.avatar_url
-      ),
-      color=0x237feb # yellow
+    data = dict(
+      target_user=target_user.mention,
+      shards=shards
     )
 
+    embed = message("gacha_shards", format=data, user=ctx.user)
     await ctx.send(embed=embed)
 
 
@@ -75,15 +74,7 @@ class MitsukiGacha(Extension):
   async def daily_cmd(self, ctx: SlashContext):
     # Under construction.
     
-    embed = ipy.Embed(
-      title="Under construction",
-      description="This command is under construction.",
-      author=ipy.EmbedAuthor(
-        name=ctx.user.display_name,
-        icon_url=ctx.user.avatar_url
-      ),
-      color=0xc2b41d # yellow
-    )
+    embed = message("under_construction", user=ctx.user)
     await ctx.send(embed=embed)
 
 
@@ -92,32 +83,23 @@ class MitsukiGacha(Extension):
     sub_cmd_description="Roll once using Mitsuki Shards"
   )
   async def roll_cmd(self, ctx: SlashContext):
-    user = ctx.user.id
-    cost = self.settings.cost
+    user_id = ctx.user.id
+    cost    = self.settings.cost
     
     # ---------------------------------------------------------------
     # Check if enough shards - return if insufficient
 
-    # TODO: Standard embed interface
-    is_enough_shards = userdata.is_enough_shards(user, cost)
-    if not is_enough_shards:
-      embed = ipy.Embed(
-        description=f"Not enough Mitsuki Shards to roll ({cost})",
-        author=ipy.EmbedAuthor(
-          name=ctx.user.display_name,
-          icon_url=ctx.user.avatar_url
-        ),
-        color=0xc31d1d # red
-      )
+    if not userdata.is_enough_shards(user_id, cost):
+      embed = message("gacha_insufficient_funds", format=dict(cost=cost))
       await ctx.send(embed=embed)
       return
   
     # ---------------------------------------------------------------
     # Roll
 
-    min_rarity  = userdata.check_user_pity(self.settings.pity, user)
+    min_rarity  = userdata.check_user_pity(self.settings.pity, user_id)
     rolled      = self.roll(min_rarity=min_rarity)
-    is_new_card = not userdata.user_has_card(user, rolled.id)
+    is_new_card = not userdata.user_has_card(user_id, rolled.id)
 
     dupe_shards = 0
     if not is_new_card:
@@ -131,39 +113,35 @@ class MitsukiGacha(Extension):
     else:
       stars = "⭐" * rolled.rarity
 
+    color = self.settings.colors.get(rolled.rarity)
+
+    data = dict(
+      type=rolled.type,
+      name=rolled.name,
+      stars=stars,
+      image=rolled.image,
+      dupe_shards=dupe_shards
+    )
+
     if is_new_card:
-      desc = (
-        f"**New!** {stars} {rolled.name}\n"
+      embed = message(
+        "gacha_get_new_card",
+        format=data, user=ctx.user, color=color
       )
     else:
-      desc = (
-        f"{stars} {rolled.name}\n"
-        f"**+{dupe_shards}** Mitsuki Shards"
+      embed = message(
+        "gacha_get_dupe_card",
+        format=data, user=ctx.user, color=color
       )
-
-    title = f"{rolled.type} Card!"
-    image = [rolled.image] if rolled.image else []
-    color = self.settings.colors.get(rolled.rarity)
-      
-    embed = ipy.Embed(
-      title=title,
-      description=desc,
-      images=image,
-      author=ipy.EmbedAuthor(
-        name=ctx.user.display_name,
-        icon_url=ctx.user.avatar_url
-      ),
-      color=color
-    )
 
     # ---------------------------------------------------------------
     # Update userdata
 
     with Session(userdata_engine) as session:
-      userdata.modify_shards(session, user, dupe_shards - cost)
-      userdata.give_card(session, user, rolled.id)
+      userdata.modify_shards(session, user_id, dupe_shards - cost)
+      userdata.give_card(session, user_id, rolled.id)
       userdata.update_user_pity(
-        session, self.settings.pity, user, rolled.rarity
+        session, self.settings.pity, user_id, rolled.rarity
       )
       
       try:
@@ -182,15 +160,7 @@ class MitsukiGacha(Extension):
   async def cards_cmd(self, ctx: SlashContext):
     # Under construction.
 
-    embed = ipy.Embed(
-      title="Under construction",
-      description="This command is under construction.",
-      author=ipy.EmbedAuthor(
-        name=ctx.user.display_name,
-        icon_url=ctx.user.avatar_url
-      ),
-      color=0xc2b41d # yellow
-    )
+    embed = message("under_construction", user=ctx.user)
     await ctx.send(embed=embed)
   
 
@@ -201,15 +171,7 @@ class MitsukiGacha(Extension):
   async def give_cmd(self, ctx: SlashContext):
     # Under construction.
 
-    embed = ipy.Embed(
-      title="Under construction",
-      description="This command is under construction.",
-      author=ipy.EmbedAuthor(
-        name=ctx.user.display_name,
-        icon_url=ctx.user.avatar_url
-      ),
-      color=0xc2b41d # yellow
-    )
+    embed = message("under_construction", user=ctx.user)
     await ctx.send(embed=embed)
   
 
@@ -259,6 +221,4 @@ class MitsukiGacha(Extension):
         raise
       else:
         session.commit()
-
-
   

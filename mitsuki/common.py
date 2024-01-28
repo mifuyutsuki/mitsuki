@@ -24,6 +24,7 @@ __all__ = (
   "userdata_engine",
   "BOT_TOKEN",
   "DEV_GUILD",
+  "MESSAGES_YAML",
 )
 _env = dotenv_values(".env")
 
@@ -42,10 +43,11 @@ def initialize():
   global userdata_engine
   UserdataBase.metadata.create_all(userdata_engine)
 
-  
+
 # Mandatory keys
 _userdata_path = _env["USERDATA_PATH"]
 BOT_TOKEN = _env["BOT_TOKEN"]
 DEV_GUILD = _env["DEV_GUILD"]
+MESSAGES_YAML = _env["MESSAGES_YAML"]
 
 userdata_engine = create_engine(f"sqlite+pysqlite:///{_userdata_path}")

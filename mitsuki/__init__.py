@@ -14,6 +14,7 @@ import interactions as ipy
 from interactions import Client, Intents, listen
 
 from .common import *
+from .messages import load as load_messages
 
 
 class Bot(Client):
@@ -46,6 +47,7 @@ class Bot(Client):
     print(f"User: {self.user.tag} ({self.user.id})")
 
 
+load_messages(MESSAGES_YAML)
 bot = Bot()
 bot.load_extension("mitsuki.core")
 bot.load_extension("mitsuki.gacha")

@@ -2,6 +2,7 @@ import interactions as ipy
 from yaml import safe_load
 from typing import Optional
 from string import Template
+from urllib.parse import urlparse
 
 
 class Messages(dict):
@@ -16,8 +17,14 @@ def load(source_file: str):
     messages = safe_load(f)
 
 
-def generate(message_name: str, format: Optional[dict] = None, **kwargs):
+def generate(
+  message_name: str,
+  format: Optional[dict] = None,
+  user: Optional[ipy.BaseUser] = None,
+  **kwargs
+):
   global messages
+  _format = format if format else {}
 
   # -----------------------------------------------------------------
   # Grab message data from yaml data and kwargs
@@ -41,8 +48,12 @@ def generate(message_name: str, format: Optional[dict] = None, **kwargs):
   # Get overrides
   message_data.update(**kwargs)
 
-  # Assign format fields e.g. ${username}
-  message_data = _assign_format(message_data, format)
+  # Get username, usericon
+  if user is not None:
+    _format.update(username=username_from_user(user), usericon=user.avatar_url)
+  
+  # Assign format fields e.g. ${shards}
+  message_data = _assign_format(message_data, _format)
   
   # -----------------------------------------------------------------
   # Handle keys
@@ -51,34 +62,45 @@ def generate(message_name: str, format: Optional[dict] = None, **kwargs):
   url         = message_data.get("url")
   description = message_data.get("description")
   color       = message_data.get("color")
+
+  url = url if _is_valid_url(url) else None
   
   _author_data = message_data.get("author")
   author = None
   if isinstance(_author_data, dict):
+    _url = _author_data.get("url")
+    _url = _url if _is_valid_url(_url) else None
+    _icon_url = _author_data.get("icon_url")
+    _icon_url = _icon_url if _is_valid_url(_icon_url) else None
+
     author = ipy.EmbedAuthor(
       name=_author_data.get("name"),
-      url=_author_data.get("url"),
-      icon_url=_author_data.get("icon_url")
+      url=_url,
+      icon_url=_icon_url
     )
 
   _thumbnail_data = message_data.get("thumbnail")
   thumbnail = None
   if isinstance(_thumbnail_data, str):
-    if len(_thumbnail_data) > 0:
+    if len(_thumbnail_data) > 0 and _is_valid_url(_thumbnail_data):
       thumbnail = ipy.EmbedAttachment(url=_thumbnail_data)
     
   _image_data = message_data.get("image")
-  image = None
+  image = ""
   if isinstance(_image_data, str):
-    if len(_image_data) > 0:
+    if len(_image_data) > 0 and _is_valid_url(_image_data):
       image = ipy.EmbedAttachment(url=_image_data)
+  images = [image] if image else []
   
   _footer_data = message_data.get("footer")
   footer = None
   if isinstance(_footer_data, dict):
+    _icon_url = _footer_data.get("icon_url")
+    _icon_url = _icon_url if _is_valid_url(_icon_url) else None
+
     footer = ipy.EmbedFooter(
       text=_footer_data.get("text"),
-      icon_url=_footer_data.get("icon_url")
+      icon_url=_icon_url
     )
   
   _fields_data = message_data.get("fields")
@@ -96,12 +118,19 @@ def generate(message_name: str, format: Optional[dict] = None, **kwargs):
     description=description,
     color=color,
     url=url,
-    images=[image],
+    images=images,
     fields=fields,
     author=author,
     thumbnail=thumbnail,
     footer=footer
   )
+
+
+def username_from_user(user: ipy.BaseUser):
+  if user.discriminator == "0":
+    return user.username
+  else:
+    return f"{user.username}#{user.discriminator}"
 
 
 def _assign_format(
@@ -110,6 +139,8 @@ def _assign_format(
   recursion_level: int = 0
 ):
   if format is None:
+    return data
+  if len(format) <= 0:
     return data
   
   formatted_data = data.copy()
@@ -123,3 +154,15 @@ def _assign_format(
     formatted_data[key] = formatted_value
   
   return formatted_data
+
+
+def _is_valid_url(url: Optional[str]):
+  # Good enough approach - robust alternative from Django is rather long
+  if not isinstance(url, str):
+    return False
+  
+  parsed = urlparse(url)
+  return (
+    parsed.scheme in ("http", "https", "ftp", "ftps") and
+    len(parsed.netloc) > 0
+  )
