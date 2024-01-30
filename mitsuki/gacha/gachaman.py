@@ -40,8 +40,13 @@ class Gacha:
         rarity_get = rarity
       else:
         break
-    
-    picked = pick(self.roster.rarity_map[rarity_get])
+
+    available_picks = []
+    while len(available_picks) == 0 and rarity_get > 0:
+      available_picks = self.roster.rarity_map[rarity_get]
+      rarity_get -= 1
+
+    picked = pick(available_picks)
     return self.roster.cards[picked]
 
 
