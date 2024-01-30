@@ -45,7 +45,7 @@ class MitsukiGacha(Extension):
 
   @gacha_cmd.subcommand(
     sub_cmd_name="shards",
-    sub_cmd_description="View your or another user's Mitsuki Shards"
+    sub_cmd_description="View your or another user's amount of Shards"
   )
   @slash_option(
     name="user",
@@ -58,7 +58,10 @@ class MitsukiGacha(Extension):
     shards_get  = userdata.get_shards(target_user.id)
     shards      = shards_get if shards_get else 0
 
+    currency_icon = self.settings.currency_icon
+
     data = dict(
+      currency_icon=currency_icon,
       target_user=target_user.mention,
       shards=shards
     )
@@ -69,7 +72,7 @@ class MitsukiGacha(Extension):
 
   @gacha_cmd.subcommand(
     sub_cmd_name="daily",
-    sub_cmd_description=f"Claim your daily Mitsuki Shards"
+    sub_cmd_description=f"Claim your gacha daily"
   )
   async def daily_cmd(self, ctx: SlashContext):
     # Under construction.
@@ -80,17 +83,28 @@ class MitsukiGacha(Extension):
 
   @gacha_cmd.subcommand(
     sub_cmd_name="roll",
-    sub_cmd_description="Roll once using Mitsuki Shards"
+    sub_cmd_description="Roll gacha once using Shards"
   )
   async def roll_cmd(self, ctx: SlashContext):
-    user_id = ctx.user.id
-    cost    = self.settings.cost
+    user     = ctx.user
+    user_id  = ctx.user.id
+    cost     = self.settings.cost
+
+    currency      = self.settings.currency
+    currency_icon = self.settings.currency_icon
     
     # ---------------------------------------------------------------
     # Check if enough shards - return if insufficient
 
-    if not userdata.is_enough_shards(user_id, cost):
-      embed = message("gacha_insufficient_funds", format=dict(cost=cost))
+    shards = userdata.get_shards(user_id)
+    if shards < cost:
+      data = dict(
+        cost=cost,
+        shards=shards,
+        currency=currency,
+        currency_icon=currency_icon
+      )
+      embed = message("gacha_insufficient_funds", format=data, user=user)
       await ctx.send(embed=embed)
       return
   
@@ -108,17 +122,14 @@ class MitsukiGacha(Extension):
     # ---------------------------------------------------------------
     # Generate embed
 
-    if rolled.rarity > 2:
-      stars = "🌟" * rolled.rarity
-    else:
-      stars = "⭐" * rolled.rarity
-
     color = self.settings.colors.get(rolled.rarity)
+    stars = self.settings.stars.get(rolled.rarity)
 
     data = dict(
       type=rolled.type,
       name=rolled.name,
       stars=stars,
+      currency=currency,
       image=rolled.image,
       dupe_shards=dupe_shards
     )
@@ -126,12 +137,12 @@ class MitsukiGacha(Extension):
     if is_new_card:
       embed = message(
         "gacha_get_new_card",
-        format=data, user=ctx.user, color=color
+        format=data, user=user, color=color
       )
     else:
       embed = message(
         "gacha_get_dupe_card",
-        format=data, user=ctx.user, color=color
+        format=data, user=user, color=color
       )
 
     # ---------------------------------------------------------------
@@ -166,30 +177,86 @@ class MitsukiGacha(Extension):
 
   @gacha_cmd.subcommand(
     sub_cmd_name="give",
-    sub_cmd_description="Give Mitsuki Shards to another user"
+    sub_cmd_description="Give Shards to another user"
   )
-  async def give_cmd(self, ctx: SlashContext):
-    # Under construction.
+  @slash_option(
+    name="target_user",
+    description="User to give Shards to",
+    required=True,
+    opt_type=OptionType.USER
+  )
+  @slash_option(
+    name="shards",
+    description="Amount of Shards to give",
+    required=True,
+    opt_type=OptionType.INTEGER,
+    min_value=1
+  )
+  async def give_cmd(
+    self,
+    ctx: SlashContext,
+    target_user: BaseUser,
+    shards: int
+  ):
+    user          = ctx.user
+    currency      = self.settings.currency
+    currency_icon = self.settings.currency_icon
+    own_shards    = userdata.get_shards(ctx.user.id)
+    own_shards    = own_shards if own_shards else 0
 
-    embed = message("under_construction", user=ctx.user)
-    await ctx.send(embed=embed)
+    if user.id == target_user.id:
+      embed = message("gacha_give_self", user=ctx.user)
+      await ctx.send(embed=embed)
+      return
+
+    if own_shards < shards:
+      data = dict(
+        cost=shards,
+        shards=own_shards,
+        currency=currency,
+        currency_icon=currency_icon
+      )
+      embed = message("gacha_insufficient_funds", format=data, user=ctx.user)
+      await ctx.send(embed=embed)
+      return
+
+    data = dict(
+      currency=currency,
+      currency_icon=currency_icon,
+      target_user=target_user.mention,
+      shards=shards
+    )
+    embed = message("gacha_give", format=data, user=ctx.user)
+
+    with Session(userdata_engine) as session:
+      userdata.modify_shards(session, user.id, -shards)
+      userdata.modify_shards(session, target_user.id, +shards)
+
+      try:
+        await ctx.send(embed=embed)
+      except Exception:
+        session.rollback()
+        raise
+      else:
+        session.commit()
+
   
 
   @gacha_cmd.subcommand(
     group_name="admin",
     group_description="Bot owner only: Admin functions for gacha module",
     sub_cmd_name="give",
-    sub_cmd_description="Give Mitsuki Shards to another user"
+    sub_cmd_description="Give Shards to another user"
   )
   @slash_option(
     name="target_user",
-    description="User to give Mitsuki Shards to",
+    description="User to give Shards to",
     required=True,
     opt_type=OptionType.USER
   )
   @slash_option(
     name="shards",
-    description="Amount of Mitsuki Shards to give",
+    description="Amount of Shards to give",
     required=True,
     opt_type=OptionType.INTEGER,
     min_value=1
@@ -202,14 +269,16 @@ class MitsukiGacha(Extension):
     target_user: BaseUser,
     shards: int
   ):
-    embed = ipy.Embed(
-      description=f"Gave {shards} Mitsuki Shards to {target_user.mention}",
-      author=ipy.EmbedAuthor(
-        name=ctx.user.display_name,
-        icon_url=ctx.user.avatar_url
-      ),
-      color=0x237feb # yellow
+    currency      = self.settings.currency
+    currency_icon = self.settings.currency_icon
+
+    data = dict(
+      currency=currency,
+      currency_icon=currency_icon,
+      target_user=target_user.mention,
+      shards=shards
     )
+    embed = message("gacha_give", format=data, user=ctx.user)
 
     with Session(userdata_engine) as session:
       userdata.modify_shards(session, target_user.id, shards)

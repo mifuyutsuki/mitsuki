@@ -65,10 +65,16 @@ class Settings:
     self._data: dict    = _load_yaml(gacha_settings_yaml)
 
     self.cost: int                   = self._data.get("cost")
+    self.currency_icon: str          = self._data.get("currency_icon")
+    self.currency_name: str          = self._data.get("currency_name")
+    self.currency: str               = f"{self.currency_icon} {self.currency_name}"
+
     self.rates: Dict[int, float]     = self._load_rates()
     self.pity: Dict[int, int]        = self._load_pity()
     self.dupe_shards: Dict[int, int] = self._load_dupe_shards()
     self.colors: Dict[int, int]      = self._load_colors()
+    self.stars: Dict[int, str]       = self._load_stars()
+
     self.rarities: List[int]         = sorted(self.rates.keys(), reverse=True)
     
 
@@ -79,7 +85,7 @@ class Settings:
   def _load_rates(self):
     data: Dict[str, float] = self._data.get("rates")
     if data is None:
-      return None
+      return {}
     
     rates: Dict[int, float] = {}
     total_weight = sum(data.values())
@@ -93,7 +99,7 @@ class Settings:
   def _load_pity(self):
     data: Dict[str, float] = self._data.get("pity")
     if data is None:
-      return None
+      return {}
 
     pity: Dict[int, int] = {}
 
@@ -106,7 +112,7 @@ class Settings:
   def _load_dupe_shards(self):
     data: Dict[str, int] = self._data.get("dupe_shards")
     if data is None:
-      return None
+      return {}
     
     available_rarities = self.rates.keys()
 
@@ -125,7 +131,7 @@ class Settings:
   def _load_colors(self):
     data: Dict[str, int] = self._data.get("colors")
     if data is None:
-      return None
+      return {}
     
     colors: Dict[int, int] = {}
     for rarity_key, color in data.items():
@@ -133,6 +139,18 @@ class Settings:
       colors[rarity] = color
     
     return colors
+  
+  def _load_stars(self):
+    data: Dict[str, int] = self._data.get("stars")
+    if data is None:
+      return {}
+    
+    stars: Dict[int, str] = {}
+    for rarity_key, rarity_stars in data.items():
+      rarity = int(rarity_key[1:2])
+      stars[rarity] = rarity_stars
+    
+    return stars
     
 
 class Card:

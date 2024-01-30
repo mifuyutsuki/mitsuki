@@ -101,22 +101,50 @@ help_license:
 # /gacha shards
 # Show Shards amount held by a target user.
 # 
-# target_user : Target user (mention), defaults to self
-# shards      : Number of Shards held by target user
+# currency_icon : Gacha currency icon (Shards)
+# target_user   : Target user (mention), defaults to self
+# shards        : Number of Shards held by target user
 gacha_shards:
   title: >-
-    💠 ${shards}
+    ${currency_icon} ${shards}
   description: >-
-    Shards owned by ${target_user}
-  
+    Amount held by ${target_user}
 
-# /gacha roll
-# Message if user has not enough Shards.
+
+# /gacha give
+# /gacha admin give
+# Give an amount of Shards to another user.
 # 
-# cost  : Cost of one roll
-gacha_insufficient_funds:
+# currency    : Gacha currency, shown with icon
+# target_user : Target user (mention) other than self
+# shards      : Number of Shards held by target user
+gacha_give:
+  title: >-
+    ${shards} ${currency} sent
   description: >-
-    Not enough Mitsuki Shards to roll (${cost})
+    Sent to ${target_user}
+
+
+# Message if user has not enough Shards.
+# Can be triggered from /gacha roll or /gacha give.
+# 
+# currency : Gacha currency, shown with icon
+# cost     : Shards required
+gacha_insufficient_funds:
+  title: >-
+    Not enough ${currency}
+  description: >-
+    Need ${currency_icon} **${cost}**, has ${currency_icon} ${shards}
+  color: *color_error
+
+
+# Message if user supplied self as target user.
+# Can be triggered from /gacha give.
+gacha_give_self:
+  title: >-
+    Invalid target user
+  description: >-
+    Selected yourself as target user - please select another user
   color: *color_error
 
 
@@ -124,7 +152,7 @@ gacha_insufficient_funds:
 # Message if user rolled a new card.
 # 
 # type  : Type of card
-# stars : Stars denoting rarity (backend-generated)
+# stars : Stars denoting rarity
 # name  : Card name
 gacha_get_new_card:
   author      :
@@ -144,6 +172,7 @@ gacha_get_new_card:
 # type        : Type of card
 # stars       : Stars denoting rarity (backend-generated)
 # name        : Card name
+# currency    : Gacha currency, shown with icon
 # dupe_shards : Shards obtained from dupe
 gacha_get_dupe_card:
   author      :
@@ -152,6 +181,6 @@ gacha_get_dupe_card:
   title: >-
     ${name}
   description: >-
-    ${stars} — 💠 +**${dupe_shards}** Mitsuki Shards
+    ${stars} — **${currency}** +${dupe_shards}
   image: >-
     ${image}
