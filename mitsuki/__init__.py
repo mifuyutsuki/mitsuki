@@ -32,6 +32,7 @@ class Bot(Client):
   @listen()
   async def on_startup(self):
     print("Bot is starting up")
+    initialize()
 
   @listen()
   async def on_ready(self):
