@@ -55,7 +55,7 @@ class MitsukiGacha(Extension):
   )
   async def shards_cmd(self, ctx: SlashContext, user: Optional[BaseUser] = None):
     target_user = user if user else ctx.user
-    shards_get  = userdata.get_shards(target_user.id)
+    shards_get  = userdata.get_shards(target_user)
     shards      = shards_get if shards_get else 0
 
     currency_icon = self.settings.currency_icon
@@ -96,7 +96,7 @@ class MitsukiGacha(Extension):
     # ---------------------------------------------------------------
     # Check if enough shards - return if insufficient
 
-    shards = userdata.get_shards(user_id)
+    shards = userdata.get_shards(user)
     if shards < cost:
       data = dict(
         cost=cost,
@@ -111,9 +111,9 @@ class MitsukiGacha(Extension):
     # ---------------------------------------------------------------
     # Roll
 
-    min_rarity  = userdata.check_user_pity(self.settings.pity, user_id)
+    min_rarity  = userdata.check_user_pity(self.settings.pity, user)
     rolled      = self.roll(min_rarity=min_rarity)
-    is_new_card = not userdata.user_has_card(user_id, rolled.id)
+    is_new_card = not userdata.user_has_card(user, rolled)
 
     dupe_shards = 0
     if not is_new_card:
@@ -147,13 +147,13 @@ class MitsukiGacha(Extension):
 
     # ---------------------------------------------------------------
     # Update userdata
+      
+    pity_settings = self.settings.pity
 
     with Session(userdata_engine) as session:
-      userdata.modify_shards(session, user_id, dupe_shards - cost)
-      userdata.give_card(session, user_id, rolled.id)
-      userdata.update_user_pity(
-        session, self.settings.pity, user_id, rolled.rarity
-      )
+      userdata.modify_shards(session, user, dupe_shards - cost)
+      userdata.give_card(session, user, rolled)
+      userdata.update_user_pity(session, pity_settings, user, rolled.rarity)
       
       try:
         await ctx.send(embed=embed)
@@ -201,11 +201,11 @@ class MitsukiGacha(Extension):
     user          = ctx.user
     currency      = self.settings.currency
     currency_icon = self.settings.currency_icon
-    own_shards    = userdata.get_shards(ctx.user.id)
+    own_shards    = userdata.get_shards(user)
     own_shards    = own_shards if own_shards else 0
 
     if user.id == target_user.id:
-      embed = message("gacha_give_self", user=ctx.user)
+      embed = message("gacha_give_self", user=user)
       await ctx.send(embed=embed)
       return
 
@@ -216,7 +216,7 @@ class MitsukiGacha(Extension):
         currency=currency,
         currency_icon=currency_icon
       )
-      embed = message("gacha_insufficient_funds", format=data, user=ctx.user)
+      embed = message("gacha_insufficient_funds", format=data, user=user)
       await ctx.send(embed=embed)
       return
 
@@ -226,11 +226,11 @@ class MitsukiGacha(Extension):
       target_user=target_user.mention,
       shards=shards
     )
-    embed = message("gacha_give", format=data, user=ctx.user)
+    embed = message("gacha_give", format=data, user=user)
 
     with Session(userdata_engine) as session:
-      userdata.modify_shards(session, user.id, -shards)
-      userdata.modify_shards(session, target_user.id, +shards)
+      userdata.modify_shards(session, user, -shards)
+      userdata.modify_shards(session, target_user, +shards)
 
       try:
         await ctx.send(embed=embed)
@@ -281,7 +281,7 @@ class MitsukiGacha(Extension):
     embed = message("gacha_give", format=data, user=ctx.user)
 
     with Session(userdata_engine) as session:
-      userdata.modify_shards(session, target_user.id, shards)
+      userdata.modify_shards(session, target_user, shards)
 
       try:
         await ctx.send(embed=embed)

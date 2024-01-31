@@ -15,8 +15,10 @@ from time import time, gmtime
 from sqlalchemy import select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Mapped, mapped_column, Session
+from interactions import BaseUser
 
 from ..common import UserdataBase, userdata_engine
+from .gachaman import Card
 
 
 # ===================================================================
@@ -27,13 +29,14 @@ class Rolls(UserdataBase):
 
   id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
   user: Mapped[int]
+  rarity: Mapped[int]
   card: Mapped[str]
   time: Mapped[float]
 
   def __repr__(self):
     return (
       f"Rolls(id={self.id!r}, user={self.user!r}, "
-      f"time={self.time!r}, card={self.card!r})"
+      f"time={self.time!r}, card={self.card!r}, rarity={self.rarity!r})"
     )
   
 
@@ -56,6 +59,7 @@ class Inventory(UserdataBase):
 
   id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
   user: Mapped[int]
+  rarity: Mapped[int]
   card: Mapped[str]
   count: Mapped[int]
   first_acquired: Mapped[Optional[float]]
@@ -63,7 +67,7 @@ class Inventory(UserdataBase):
   def __repr__(self):
     return (
       f"Inventory(id={self.id!r}, user={self.user!r}, "
-      f"card={self.card!r}, count={self.count!r}, "
+      f"rarity={self.rarity!r}, card={self.card!r}, count={self.count!r}, "
       f"first_acquired={self.first_acquired!r})"
     )
 
@@ -102,16 +106,16 @@ class Pity(UserdataBase):
 # ===================================================================
   
 
-def get_shards(user: int):
+def get_shards(user: BaseUser):
   statement = (
     select(Currency.amount)
-    .where(Currency.user == user)
+    .where(Currency.user == user.id)
   )
   with Session(userdata_engine) as session:
     return session.scalar(statement)
   
 
-def set_shards(session: Session, user: int, amount: int, daily: bool = False):
+def set_shards(session: Session, user: BaseUser, amount: int, daily: bool = False):
   if amount < 0:
     raise ValueError(f"Invalid set amount of '{amount}' shards")
   
@@ -119,7 +123,7 @@ def set_shards(session: Session, user: int, amount: int, daily: bool = False):
     current_time = time()
     statement = (
       insert(Currency)
-      .values(user=user, amount=amount, last_daily=current_time)
+      .values(user=user.id, amount=amount, last_daily=current_time)
       .on_conflict_do_update(
         index_elements=['user'],
         set_=dict(amount=amount, last_daily=current_time)
@@ -128,7 +132,7 @@ def set_shards(session: Session, user: int, amount: int, daily: bool = False):
   else:
     statement = (
       insert(Currency)
-      .values(user=user, amount=amount)
+      .values(user=user.id, amount=amount)
       .on_conflict_do_update(
         index_elements=['user'],
         set_=dict(amount=amount)
@@ -139,14 +143,14 @@ def set_shards(session: Session, user: int, amount: int, daily: bool = False):
   session.execute(statement)
 
 
-def is_enough_shards(user: int, amount: int):
+def is_enough_shards(user: BaseUser, amount: int):
   current_amount = get_shards(user)
   new_amount     = current_amount - amount
 
   return new_amount >= 0
 
 
-def modify_shards(session: Session, user: int, amount: int, daily: bool = False):
+def modify_shards(session: Session, user: BaseUser, amount: int, daily: bool = False):
   current_amount = get_shards(user)
   
   if current_amount is None:
@@ -175,22 +179,22 @@ def modify_shards(session: Session, user: int, amount: int, daily: bool = False)
 # ===================================================================
 
 
-def user_has_card(user: int, card: str):
+def user_has_card(user: BaseUser, card: Card):
   return get_card_count(user, card) is not None
 
 
-def get_card_count(user: int, card: str):
+def get_card_count(user: BaseUser, card: Card):
   statement = (
     select(Inventory.count)
-    .where(Inventory.user == user)
-    .where(Inventory.card == card)
+    .where(Inventory.user == user.id)
+    .where(Inventory.card == card.id)
     .limit(1)
   )
   with Session(userdata_engine) as session:
     return session.scalar(statement)
 
 
-def give_card(session: Session, user: int, card: str):
+def give_card(session: Session, user: BaseUser, card: Card):
   current_count = get_card_count(user, card)
   new_card      = current_count is None
   new_count     = 1 if new_card else current_count + 1
@@ -200,8 +204,9 @@ def give_card(session: Session, user: int, card: str):
     set_statement_inventory = (
       insert(Inventory)
       .values(
-        user=user,
-        card=card,
+        user=user.id,
+        rarity=card.rarity,
+        card=card.id,
         count=new_count,
         first_acquired=current_time
       )
@@ -209,16 +214,17 @@ def give_card(session: Session, user: int, card: str):
   else:
     set_statement_inventory = (
       update(Inventory)
-      .where(Inventory.user == user)
-      .where(Inventory.card == card)
+      .where(Inventory.user == user.id)
+      .where(Inventory.card == card.id)
       .values(count=new_count)
     )
   
   set_statement_rolls = (
     insert(Rolls)
     .values(
-      user=user,
-      card=card,
+      user=user.id,
+      rarity=card.rarity,
+      card=card.id,
       time=current_time
     )
   )
@@ -229,10 +235,10 @@ def give_card(session: Session, user: int, card: str):
   return new_card
 
 
-def get_user_pity(user: int):
+def get_user_pity(user: BaseUser):
   statement = (
     select(Pity)
-    .where(Pity.user == user)
+    .where(Pity.user == user.id)
   )
   with Session(userdata_engine) as session:
     user_pity = session.scalar(statement)
@@ -253,7 +259,7 @@ def get_user_pity(user: int):
     }
 
 
-def check_user_pity(pity_settings: Dict[int, int], user: int):
+def check_user_pity(pity_settings: Dict[int, int], user: BaseUser):
   user_pity   = get_user_pity(user)
   if user_pity is None:
     return None
@@ -272,7 +278,7 @@ def check_user_pity(pity_settings: Dict[int, int], user: int):
 def update_user_pity(
   session: Session,
   pity_settings: Dict[int, int],
-  user: int,
+  user: BaseUser,
   rolled_rarity: int
 ):
   has_pity      = pity_settings.keys()
@@ -302,7 +308,7 @@ def update_user_pity(
   
   statement = (
     insert(Pity)
-    .values(user=user, **kwargs)
+    .values(user=user.id, **kwargs)
     .on_conflict_do_update(
       index_elements=["user"],
       set_=kwargs
