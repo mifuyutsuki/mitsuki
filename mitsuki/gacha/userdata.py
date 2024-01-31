@@ -263,7 +263,7 @@ def check_user_pity(pity_settings: Dict[int, int], user: int):
     if rarity not in pity_settings.keys():
       continue
 
-    if user_pity[rarity] >= pity_settings[rarity]:
+    if (user_pity[rarity] + 1) >= pity_settings[rarity]:
       pity_rarity = rarity
   
   return pity_rarity
