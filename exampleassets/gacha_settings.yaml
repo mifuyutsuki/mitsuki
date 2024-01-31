@@ -1,0 +1,70 @@
+# Example gacha settings
+
+# Cost of gacha currency to roll.
+cost: 120
+
+# Name of gacha currency.
+currency_name: "Shard"
+
+# Emoji denoting gacha currency.
+#
+# To use a custom emoji, use <:_:emoji_id>
+# Substitute emoji_id with your emoji's id, which is the long number in the
+# emoji image's link (right click emoji -> copy link)
+currency_icon: 💠
+
+# Gacha rates.
+# 
+# Rarities are denoted with numbers from 1 to 9. Its rates are denoted like
+# below from s1 to s9. By convention, rates are expressed as a number
+# from 0 to 1 denoting probability of rolling a given rarity.
+# 
+# For the true rate, each rate value is divided by the sum of all rate values.
+# The below rates will be equal to the true rate if all rate values sum to 1.
+rates:
+  s1: 0.785
+  s2: 0.185
+  s3: 0.030
+
+# (Hard) pity value.
+# 
+# Pity is a mechanic that guarantees a certain rarity within a set amount of
+# rolls. For example, if the rarity-2 pity value is 10, if a player has not
+# obtained a rarity-2 for 9 consecutive rolls (assuming there is rarity-1),
+# the player is guaranteed to obtain the rarity-2 at the next roll. Said pity
+# counter is reset if a rarity-2 is rolled.
+# 
+# If two different rarities hit pity at the same time, the higher rarity would
+# be rolled, making it possible for pity counters to go past the pity value. 
+pity:
+  # s2: 10
+
+# Gacha currency obtained on rolling an already owned item (dupe) per rarity.
+dupe_shards:
+  s1: 75
+  s2: 150
+  s3: 300
+
+# Color of gacha rarity.
+# 
+# The colors are used for the color of the embed showing the rolled item.
+colors:
+  s1: 0x216edb # blue
+  s2: 0x8e30db # purple
+  s3: 0xe6bd37 # orange
+  # s4: 0xf0386c # rose
+  # s5: 0xf52cc3 # hot pink
+  # s6: 0x0f080c # black
+
+# Gacha rarity 'stars'.
+# 
+# The 'stars', which are typically stars but can be different symbols, are used
+# to indicate rarity of the rolled item to the player.
+stars:
+  s1: >-
+    ⭐
+  s2: >-
+    ⭐⭐
+  s3: >-
+    ⭐⭐⭐
+  

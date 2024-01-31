@@ -1,0 +1,132 @@
+# Example gacha roster with 16 cards. (6 r1, 5 r2, 5 r3)
+# Does not include images.
+
+# Template
+# 
+# <id>:
+#   name   : 
+#   series : 
+#   rarity : 
+#   image  : 
+
+# ===============================================
+
+c1001:
+  name   : Ume
+  series : Shirasagi
+  type   : Character
+  rarity : 3
+  image  : 
+  
+c1002:
+  name   : Kasumi
+  series : Shirasagi
+  type   : Character
+  rarity : 2
+  image  : 
+  
+c1003:
+  name   : Ichigo
+  series : Shirasagi
+  type   : Character
+  rarity : 2
+  image  : 
+  
+c1004:
+  name   : Wakaba
+  series : Shirasagi
+  type   : Character
+  rarity : 1
+  image  : 
+
+c1005:
+  name   : Ara
+  series : Shirasagi
+  type   : Character
+  rarity : 1
+  image  : 
+  
+c1006:
+  name   : Melati
+  series : Shirasagi
+  type   : Character
+  rarity : 1
+  image  : 
+
+# ===============================================
+
+c2001:
+  name   : Ayame
+  series : Magitech
+  type   : Character
+  rarity : 3
+  image  : 
+  
+c2002:
+  name   : Kusunoki
+  series : Magitech
+  type   : Character
+  rarity : 3
+  image  : 
+  
+c2003:
+  name   : Pratama
+  series : Magitech
+  type   : Character
+  rarity : 2
+  image  : 
+  
+c2004:
+  name   : Lily
+  series : Magitech
+  type   : Character
+  rarity : 1
+  image  : 
+
+# ===============================================
+
+c3001:
+  name   : Hiiragi
+  series : City of Rikka
+  type   : Character
+  rarity : 3
+  iamge  : 
+
+# ===============================================
+
+p1001:
+  name   : Shirasagi High
+  series : Rikka
+  type   : Location
+  rarity : 1
+  iamge  : 
+  
+p1002:
+  name   : Cafe Cahaya Purnama
+  series : Rikka
+  type   : Location
+  rarity : 1
+  iamge  : 
+  
+p1003:
+  name   : Murasaki Park
+  series : Rikka
+  type   : Location
+  rarity : 2
+  iamge  : 
+
+p1005:
+  name   : Rikka Institute of Magical Technology 
+  series : Rikka
+  type   : Location
+  rarity : 2
+  iamge  : 
+
+# ===============================================
+
+p2001:
+  name   : Sagaraputra Plains
+  series : West Edge
+  type   : Location
+  rarity : 3
+  iamge  : 
