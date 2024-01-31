@@ -49,6 +49,20 @@ default:
   color: *color_ok
 
 
+# Message if an application error (unhandled error) has occured.
+error:
+  title: >-
+    Application Error
+  description: >-
+    An error has occured - please contact bot operator.
+
+    Source of error: `${error_source}` 
+    ```
+    
+    ${error_repr}
+    ```
+  color: *color_error
+
 # Message if a command is under construction.
 under_construction:
   title: >-
@@ -155,13 +169,12 @@ gacha_give_self:
 # stars : Stars denoting rarity
 # name  : Card name
 gacha_get_new_card:
-  author      :
-    name      : >-
-      ${type} Card!
   title: >-
     ${name}
   description: >-
-    ${stars} — ✨ **New!**
+    ${stars} • ${type} • ${series}
+    
+    ✨ **New!**
   image: >-
     ${image}
 
@@ -175,12 +188,11 @@ gacha_get_new_card:
 # currency    : Gacha currency, shown with icon
 # dupe_shards : Shards obtained from dupe
 gacha_get_dupe_card:
-  author      :
-    name      : >-
-      ${type} Card!
   title: >-
     ${name}
   description: >-
-    ${stars} — **${currency}** +${dupe_shards}
+    ${stars} • ${type} • ${series}
+
+    **${currency}** +${dupe_shards}
   image: >-
     ${image}

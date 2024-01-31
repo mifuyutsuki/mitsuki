@@ -127,6 +127,7 @@ class MitsukiGacha(Extension):
 
     data = dict(
       type=rolled.type,
+      series=rolled.series,
       name=rolled.name,
       stars=stars,
       currency=currency,
