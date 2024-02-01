@@ -112,6 +112,31 @@ help_license:
     GNU Affero General Public License for more details.
 
 
+# /gacha daily
+# Claim daily Shards.
+# 
+# currency_icon : Gacha currency icon (Shards)
+# shards        : Number of daily Shards claimed
+# daily_rest    : Daily reset timezone
+gacha_daily:
+  title: >-
+    Claimed daily ${currency_icon} ${shards}
+  description: >-
+    Dailies reset at 00:00 UTC${daily_tz}
+
+
+# /gacha daily
+# Message if daily Shards are already claimed.
+# 
+# daily_tz      : Daily reset timezone
+gacha_daily_already_claimed:
+  title: >-
+    Already claimed for today
+  description: >-
+    Dailies reset at 00:00 UTC${daily_tz}
+  color: *color_error
+
+
 # /gacha shards
 # Show Shards amount held by a target user.
 # 
@@ -131,7 +156,7 @@ gacha_shards:
 # 
 # currency    : Gacha currency, shown with icon
 # target_user : Target user (mention) other than self
-# shards      : Number of Shards held by target user
+# shards      : Number of Shards sent to target user
 gacha_give:
   title: >-
     ${shards} ${currency} sent

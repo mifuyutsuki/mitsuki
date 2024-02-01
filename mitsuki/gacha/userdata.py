@@ -11,7 +11,8 @@
 # GNU Affero General Public License for more details.
 
 from typing import Dict, Optional
-from time import time, gmtime
+from time import time
+from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Mapped, mapped_column, Session
@@ -172,7 +173,29 @@ def modify_shards(session: Session, user: BaseUser, amount: int, daily: bool = F
 #     )
   
 #   set_shards(session, user, new_amount)
+  
 
+def get_last_daily(user: BaseUser):
+  statement = (
+    select(Currency.last_daily)
+    .where(Currency.user == user.id)
+  )
+  with Session(userdata_engine) as session:
+    return session.scalar(statement)
+  
+  
+def is_daily_available(user: BaseUser, tz: int = 0):
+  last_daily_data = get_last_daily(user)
+  if last_daily_data is None:
+    return True
+  
+  daily_tz   = timezone(timedelta(hours=tz))
+  
+  last_daily = datetime.fromtimestamp(last_daily_data, tz=timezone.utc)
+  curr_time  = datetime.now(tz=daily_tz)
+
+  return curr_time.date() > last_daily.astimezone(daily_tz).date()
+  
 
 # ===================================================================
 # Card functions

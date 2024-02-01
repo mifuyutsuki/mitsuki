@@ -13,6 +13,18 @@ currency_name: "Shard"
 # emoji image's link (right click emoji -> copy link)
 currency_icon: 💠
 
+# Amount of claimable daily gacha currency.
+# 
+# Players can claim dailies worth the specified amount with /gacha daily, and
+# can then claim again after 00:00 on the timezone specified by daily_tz.
+daily_shards: 120
+
+# Timezone for daily reset of daily gacha currency.
+# 
+# Timezone is specified as a fixed offset from UTC in hours, disregarding
+# daylight savings time.
+daily_tz: 0
+
 # Gacha rates.
 # 
 # Rarities are denoted with numbers from 1 to 9. Its rates are denoted like

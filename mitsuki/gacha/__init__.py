@@ -75,10 +75,37 @@ class MitsukiGacha(Extension):
     sub_cmd_description=f"Claim your gacha daily"
   )
   async def daily_cmd(self, ctx: SlashContext):
-    # Under construction.
+    daily_tz     = self.settings.daily_tz
+    daily_tz_str = f"-{daily_tz}" if daily_tz < 0 else f"+{daily_tz}"
+
+    is_daily_available = userdata.is_daily_available(ctx.user, daily_tz)
+    if not is_daily_available:
+      data  = dict(
+        daily_tz=daily_tz_str
+      )
+      embed = message("gacha_daily_already_claimed", format=data, user=ctx.user)
+      await ctx.send(embed=embed)
+      return
     
-    embed = message("under_construction", user=ctx.user)
-    await ctx.send(embed=embed)
+    currency_icon = self.settings.currency_icon
+    shards        = self.settings.daily_shards
+    data = dict(
+      daily_tz=daily_tz_str,
+      shards=shards,
+      currency_icon=currency_icon
+    )
+    embed = message("gacha_daily", format=data, user=ctx.user)
+
+    with Session(userdata_engine) as session:
+      userdata.modify_shards(session, ctx.user, shards, daily=True)
+
+      try:
+        await ctx.send(embed=embed)
+      except Exception:
+        session.rollback()
+        raise 
+      else:
+        session.commit()
 
 
   @gacha_cmd.subcommand(
@@ -87,7 +114,6 @@ class MitsukiGacha(Extension):
   )
   async def roll_cmd(self, ctx: SlashContext):
     user     = ctx.user
-    user_id  = ctx.user.id
     cost     = self.settings.cost
 
     currency      = self.settings.currency

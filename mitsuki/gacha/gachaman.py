@@ -68,6 +68,8 @@ class Settings:
     self.currency_icon: str          = self._data.get("currency_icon")
     self.currency_name: str          = self._data.get("currency_name")
     self.currency: str               = f"{self.currency_icon} {self.currency_name}"
+    self.daily_shards: int           = self._data.get("daily_shards")
+    self.daily_tz: int               = self._data.get("daily_tz")
 
     self.rates: Dict[int, float]     = self._load_rates()
     self.pity: Dict[int, int]        = self._load_pity()
