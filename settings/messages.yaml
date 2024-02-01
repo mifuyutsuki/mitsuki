@@ -164,11 +164,56 @@ gacha_give:
     Sent to ${target_user}
 
 
-# Message if user has not enough Shards.
-# Can be triggered from /gacha roll or /gacha give.
+# /gacha cards
+# View a user's collection of gacha cards.
+#
+# target_username : Target user's username
+# target_usericon : Target user's avatar
+# page            : Current page number
+# pages           : Total number of pages
+# total_cards     : Total number of unique cards obtained by target user
 # 
-# currency : Gacha currency, shown with icon
-# cost     : Shards required
+# Recurring field:
+# name   : Card name
+# type   : Type (category) of card
+# series : Series name (subcategory) of card
+# stars  : Stars denoting rarity
+# image  : Image URL of card
+gacha_cards:
+  title: >-
+    ${target_username}'s Cards Collection (${page}/${pages})
+  description: >-
+    `${total_cards}` cards obtained by ${user}
+  thumbnail   : ${target_usericon}
+  field       :
+  - name      : ${stars} ${name}
+    value     : >-
+      `${amount}` • ${type} • ${series} • <t:${first_obtained}:f>
+    inline    : false
+
+
+# /gacha cards
+# Message if the user has no obtained cards.
+#
+# target_username : Target user's username
+# target_usericon : Target user's avatar
+gacha_cards_no_cards:
+  title: >-
+    ${target_username}'s Cards Collection
+  description: >-
+    User has no cards
+  thumbnail   : ${target_usericon}
+  color: *color_error
+
+
+# /gacha roll
+# /gacha give
+# Message if user has not enough Shards.
+# 
+# currency      : Name of gacha currency, shown with symbol
+# currency_icon : Symbol of gacha currency
+# cost          : Shards required
+# shards        : Shards currently owned by user
 gacha_insufficient_funds:
   title: >-
     Not enough ${currency}
@@ -177,8 +222,8 @@ gacha_insufficient_funds:
   color: *color_error
 
 
+# /gacha give
 # Message if user supplied self as target user.
-# Can be triggered from /gacha give.
 gacha_give_self:
   title: >-
     Invalid target user
@@ -190,9 +235,11 @@ gacha_give_self:
 # /gacha roll
 # Message if user rolled a new card.
 # 
-# type  : Type of card
-# stars : Stars denoting rarity
-# name  : Card name
+# name   : Card name
+# type   : Type (category) of card
+# series : Series name (subcategory) of card
+# stars  : Stars denoting rarity
+# image  : Image URL of card
 gacha_get_new_card:
   title: >-
     ${name}
@@ -207,11 +254,14 @@ gacha_get_new_card:
 # /gacha roll
 # Message if user rolled a duplicate card.
 # 
-# type        : Type of card
-# stars       : Stars denoting rarity (backend-generated)
-# name        : Card name
-# currency    : Gacha currency, shown with icon
-# dupe_shards : Shards obtained from dupe
+# name   : Card name
+# type   : Type (category) of card
+# series : Series name (subcategory) of card
+# stars  : Stars denoting rarity
+# image  : Image URL of card
+# 
+# currency    : Name of gacha currency, shown with icon
+# dupe_shards : Shards obtained from obtaining the duplicate card
 gacha_get_dupe_card:
   title: >-
     ${name}
