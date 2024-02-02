@@ -169,6 +169,7 @@ gacha_give:
 #
 # target_username : Target user's username
 # target_usericon : Target user's avatar
+# target_user     : Target user (mention), defaults to self
 # page            : Current page number
 # pages           : Total number of pages
 # total_cards     : Total number of unique cards obtained by target user
@@ -183,12 +184,12 @@ gacha_cards:
   title: >-
     ${target_username}'s Cards Collection (${page}/${pages})
   description: >-
-    `${total_cards}` cards obtained by ${user}
+    `${total_cards}` cards obtained by ${target_user}
   thumbnail   : ${target_usericon}
   field       :
     name      : ${stars} ${name}
     value     : >-
-      `${amount}` • ${type} • ${series} • <t:${first_obtained}:f>
+      `${amount}` • ${type} • ${series} • <t:${first_acquired}:f>
     inline    : false
 
 
