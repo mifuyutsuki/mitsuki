@@ -12,8 +12,9 @@
 
 import interactions as ipy
 from interactions import Client, Intents, listen
-from interactions.api.events import Error
+from interactions.api.events import CommandError
 import logging
+import traceback
 
 from .common import *
 from .messages import load as load_messages
@@ -40,14 +41,14 @@ class Bot(Client):
     print("Bot is starting up")
     initialize()
   
-  @listen()
-  async def on_error(self, error: Error):
-    logger.exception(error.error)
-    
-    if isinstance(error.ctx, ipy.InteractionContext):      
-      data  = dict(error_source=error.source, error_repr=repr(error.error))
-      embed = message("error", format=data, user=error.ctx.user)
-      await error.ctx.send(embed=embed)
+  @listen(CommandError, disable_default_listeners=True)
+  async def on_command_error(self, event: CommandError):
+    logger.exception(event.error)
+    traceback.print_exception(event.error)
+
+    data  = dict(error_source=event.source, error_repr=repr(event.error))
+    embed = message("error", format=data, user=event.ctx.user)
+    await event.ctx.send(embed=embed)
 
   @listen()
   async def on_ready(self):
