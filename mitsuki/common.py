@@ -30,7 +30,9 @@ _env = dotenv_values(".env")
 
 
 class UserdataBase(DeclarativeBase):
-  pass
+  def asdict(self):
+    #: Source: https://stackoverflow.com/a/1960546
+    return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 def get_config(field: str):
   return _env.get(field)
