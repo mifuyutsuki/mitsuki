@@ -16,12 +16,13 @@ from interactions import slash_command, SlashContext
 from interactions import slash_option, OptionType, BaseUser
 from interactions import slash_default_member_permission, Permissions
 from interactions import check, is_owner
+from interactions.ext.paginators import Paginator
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from . import userdata, gachaman
-from ..messages import message
-from ..messages import username_from_user
+from .. import bot
+from ..messages import message, message_with_fields, username_from_user
 from ..common import userdata_engine
 
 
@@ -31,6 +32,7 @@ from ..common import userdata_engine
 class MitsukiGacha(Extension):
   def __init__(self, bot):
     self.gachaman = gachaman.Gacha()
+    self.roster   = self.gachaman.roster
     self.settings = self.gachaman.settings
     self.roll     = self.gachaman.roll
 
@@ -193,13 +195,63 @@ class MitsukiGacha(Extension):
 
   @gacha_cmd.subcommand(
     sub_cmd_name="cards",
-    sub_cmd_description="View your collected cards"
+    sub_cmd_description="View your or another user's collected cards"
   )
-  async def cards_cmd(self, ctx: SlashContext):
-    # Under construction.
+  @slash_option(
+    name="user",
+    description="User to view",
+    required=False,
+    opt_type=OptionType.USER
+  )
+  async def cards_cmd(
+    self,
+    ctx: SlashContext,
+    user: Optional[BaseUser] = None
+  ):
+    target_user       = user if user else ctx.user
+    target_user_cards = userdata.list_cards(target_user)
+    target_username   = username_from_user(target_user)
+    target_usericon   = target_user.avatar_url
 
-    embed = message("under_construction", user=ctx.user)
-    await ctx.send(embed=embed)
+    if len(target_user_cards) <= 0:
+      data = dict(
+        target_username=target_username,
+        target_usericon=target_usericon
+      )
+      embed = message("gacha_cards_no_cards", format=data, user=ctx.user)
+      await ctx.send(embed=embed)
+      return
+
+    cards = []
+    cards_data = self.roster.from_ids(target_user_cards.keys())
+    for card_data in cards_data:
+      stars = self.settings.stars.get(card_data.rarity)
+      card = dict(
+        name=card_data.name,
+        type=card_data.type,
+        series=card_data.series,
+        stars=stars,
+        amount=target_user_cards[card_data.id].count,
+        first_acquired=int(target_user_cards[card_data.id].first_acquired)
+      )
+      cards.append(card)
+    
+    data = dict(
+      target_username=target_username,
+      target_usericon=target_usericon,
+      target_user=target_user.mention,
+      total_cards=len(target_user_cards)
+    )
+
+    embeds = message_with_fields(
+      "gacha_cards",
+      cards,
+      base_format=data,
+      user=ctx.user
+    )
+    paginator = Paginator.create_from_embeds(bot, *embeds, timeout=45)
+    paginator.show_select_menu = True
+    await paginator.send(ctx)
   
 
   @gacha_cmd.subcommand(
@@ -267,7 +319,6 @@ class MitsukiGacha(Extension):
       else:
         session.commit()
 
-  
 
   @gacha_cmd.subcommand(
     group_name="admin",

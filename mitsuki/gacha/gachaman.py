@@ -171,6 +171,16 @@ class Card:
     self.type: str            = type
     self.series: str          = series
     self.image: Optional[str] = image
+  
+  def asdict(self):
+    return dict(
+      id=self.id,
+      name=self.name,
+      rarity=self.rarity,
+      type=self.type,
+      series=self.series,
+      image=self.image
+    )
 
 
 class Roster:
@@ -206,6 +216,22 @@ class Roster:
       if series not in self.series_map.keys():
         self.series_map[series] = []
       self.series_map[series].append(id)
+  
+  def from_ids(self, ids: List[str]):
+    cards: List[Card] = []
+    for id in ids:
+      if id in self.cards.keys():
+        cards.append(self.cards[id])
+    
+    return cards
+  
+  def from_ids_as_dict(self, ids: List[str]):
+    cards: List[dict] = []
+    for id in ids:
+      if id in self.cards.keys():
+        cards.append(self.cards[id].asdict())
+
+    return cards
 
 
 # =================================================================

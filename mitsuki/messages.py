@@ -62,15 +62,19 @@ def message_with_fields(
     **kwargs
   )
 
+  _base_format = base_format if base_format else {}
+
   embeds = []
+  pages  = (len(field_formats) // fields_per_embed) + 1
   field_data = base_message_data.get("field")
-  if isinstance(field_data, list):
+  if isinstance(field_data, dict):
     # message_data may have nested dicts, use deepcopy
     message_data = deepcopy(base_message_data)
 
     cursor = 0
+    page   = 1
     while cursor < len(field_formats):
-      format = base_format.copy()
+      format = _base_format.copy()
       fields = []
       for idx in range(cursor, cursor + fields_per_embed):
         try:
@@ -78,7 +82,8 @@ def message_with_fields(
         except IndexError:
           break
 
-        format = base_format.copy()
+        format = _base_format.copy()
+        format.update(page=page, pages=pages)
         format.update(**field_format)
         field = field_data.copy()
         field = _assign_format(field, format=format)

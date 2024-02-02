@@ -215,6 +215,24 @@ def get_card_count(user: BaseUser, card: Card):
   )
   with Session(userdata_engine) as session:
     return session.scalar(statement)
+  
+
+def list_cards(user: BaseUser):
+  statement = (
+    select(Inventory)
+    .where(Inventory.user == user.id)
+    .order_by(Inventory.rarity.desc())
+    .order_by(Inventory.first_acquired.desc())
+  )
+
+  with Session(userdata_engine) as session:
+    data = session.scalars(statement).all()
+  
+  result = {}
+  for row in data:
+    result[row.card] = row
+  
+  return result
 
 
 def give_card(session: Session, user: BaseUser, card: Card):
