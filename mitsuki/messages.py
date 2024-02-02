@@ -12,44 +12,113 @@
 
 import interactions as ipy
 from yaml import safe_load
-from typing import Optional
+from typing import Optional, List
 from string import Template
 from urllib.parse import urlparse
+from copy import deepcopy
 
 
-class Messages(dict):
-  pass
-    
-messages: Optional[Messages] = None
+_messages: Optional[dict] = None
 
 
 def load(source_file: str):
-  global messages
+  global _messages
   with open(source_file, encoding="UTF-8") as f:
-    messages = safe_load(f)
+    _messages = safe_load(f)
 
 
-def generate(
+def message(
   message_name: str,
   format: Optional[dict] = None,
   user: Optional[ipy.BaseUser] = None,
   **kwargs
 ):
-  global messages
+  global _messages
+  
+  message_data = _init_message_data(
+    message_name,
+    format=format,
+    user=user,
+    **kwargs
+  )
+  message_data = _assign_format(message_data, format=format)
+  embed_data   = _process_message_data(message_data)
+  
+  return ipy.Embed(**embed_data)
+
+
+def message_with_fields(
+  message_name: str,
+  field_formats: List[dict],
+  fields_per_embed: int = 6,
+  base_format: Optional[dict] = None,
+  user: Optional[ipy.BaseUser] = None,
+  **kwargs
+):
+  base_message_data = _init_message_data(
+    message_name,
+    format=base_format,
+    user=user,
+    **kwargs
+  )
+
+  embeds = []
+  field_data = base_message_data.get("field")
+  if isinstance(field_data, list):
+    # message_data may have nested dicts, use deepcopy
+    message_data = deepcopy(base_message_data)
+
+    cursor = 0
+    while cursor < len(field_formats):
+      format = base_format.copy()
+      fields = []
+      for idx in range(cursor, cursor + fields_per_embed):
+        try:
+          field_format = field_formats[idx]
+        except IndexError:
+          break
+
+        format = base_format.copy()
+        format.update(**field_format)
+        field = field_data.copy()
+        field = _assign_format(field, format=format)
+        fields.append(field)
+      
+      message_data["fields"] = fields
+      message_data = _assign_format(message_data, format=format)
+      embed_data   = _process_message_data(message_data)
+      embeds.append(ipy.Embed(**embed_data))
+      
+      cursor += fields_per_embed
+
+  return embeds
+
+
+def username_from_user(user: ipy.BaseUser):
+  if user.discriminator == "0":
+    return user.username
+  else:
+    return f"{user.username}#{user.discriminator}"
+  
+
+def _init_message_data(
+  message_name: str,
+  format: Optional[dict] = None,
+  user: Optional[ipy.BaseUser] = None,
+  **kwargs  
+):
+  global _messages
   _format = format if format else {}
 
-  # -----------------------------------------------------------------
-  # Grab message data from yaml data and kwargs
-
   # Get default
-  message_data_get: dict = messages.get("default")
+  message_data_get: dict = _messages.get("default")
   if isinstance(message_data_get, dict):
     message_data = message_data_get.copy()
   else:
     message_data = {}
   
   # Get <message_name>
-  message_data_get = messages.get(message_name)
+  message_data_get = _messages.get(message_name)
   if isinstance(message_data_get, dict):  
     message_data.update(message_data_get)
   else:
@@ -65,11 +134,10 @@ def generate(
     _format.update(username=username_from_user(user), usericon=user.avatar_url)
   
   # Assign format fields e.g. ${shards}
-  message_data = _assign_format(message_data, _format)
-  
-  # -----------------------------------------------------------------
-  # Handle keys
+  return message_data
 
+
+def _process_message_data(message_data: dict):
   title       = message_data.get("title")
   url         = message_data.get("url")
   description = message_data.get("description")
@@ -119,13 +187,14 @@ def generate(
   fields = []
   if isinstance(_fields_data, list):
     for field_data in _fields_data:
-      fields.append(ipy.EmbedField(
-        name=field_data.get("name"),
-        value=field_data.get("value"),
-        inline=field_data.get("inline")
-      ))
+      if isinstance(field_data, dict):
+        fields.append(ipy.EmbedField(
+          name=field_data.get("name"),
+          value=field_data.get("value"),
+          inline=field_data.get("inline")
+        ))
   
-  return ipy.Embed(
+  return dict(
     title=title,
     description=description,
     color=color,
@@ -136,13 +205,6 @@ def generate(
     thumbnail=thumbnail,
     footer=footer
   )
-
-
-def username_from_user(user: ipy.BaseUser):
-  if user.discriminator == "0":
-    return user.username
-  else:
-    return f"{user.username}#{user.discriminator}"
 
 
 def _assign_format(

@@ -30,7 +30,7 @@ template:
   timestamp   :       # timestamp (UC)
   color       :       # color
   field       :       # fields (recurring) (UC)
-  - name      :       # fields.name
+    name      :       # fields.name
     value     :       # fields.value
     inline    : false # fields.inline
   fields      :       # fields
@@ -186,7 +186,7 @@ gacha_cards:
     `${total_cards}` cards obtained by ${user}
   thumbnail   : ${target_usericon}
   field       :
-  - name      : ${stars} ${name}
+    name      : ${stars} ${name}
     value     : >-
       `${amount}` • ${type} • ${series} • <t:${first_obtained}:f>
     inline    : false

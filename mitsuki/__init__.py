@@ -17,7 +17,7 @@ import logging
 
 from .common import *
 from .messages import load as load_messages
-from .messages import generate as message
+from .messages import message
 
 
 logger = logging.getLogger(__name__)

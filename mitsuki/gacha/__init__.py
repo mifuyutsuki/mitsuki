@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from . import userdata, gachaman
-from ..messages import generate as message
+from ..messages import message
 from ..messages import username_from_user
 from ..common import userdata_engine
 
