@@ -207,6 +207,23 @@ gacha_cards_no_cards:
   color: *color_error
 
 
+# /gacha viewer
+# View a user's collection of gacha cards with image.
+gacha_viewer:
+  author:
+    name: >-
+      ${target_username}'s Cards Collection (${card_no}/${total_cards})
+  title: >-
+    ${name}
+  description: >-
+    `${amount}` • ${type} • ${series} • <t:${first_acquired}:f>
+
+    Part of ${target_user}'s card collection
+  thumbnail   : ${target_usericon}
+  image: >-
+    ${image}
+
+
 # /gacha roll
 # /gacha give
 # Message if user has not enough Shards.
