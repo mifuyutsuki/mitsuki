@@ -39,7 +39,7 @@ class MitsukiGacha(Extension):
 
   @slash_command(
     name="gacha",
-    description="Roll your favorite characters and memories."
+    description="Roll your favorite characters and memories"
   )
   async def gacha_cmd(self, ctx: SlashContext):
     pass
@@ -320,9 +320,11 @@ class MitsukiGacha(Extension):
         session.commit()
 
 
-  @gacha_cmd.subcommand(
-    group_name="admin",
-    group_description="Bot owner only: Admin functions for gacha module",
+  @slash_command(
+    name="admin",
+    description="Bot owner only: administrative functions",
+    group_name="gacha",
+    group_description="Roll your favorite characters and memories",
     sub_cmd_name="give",
     sub_cmd_description="Give Shards to another user"
   )
