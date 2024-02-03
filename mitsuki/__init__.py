@@ -13,15 +13,11 @@
 import interactions as ipy
 from interactions import Client, Intents, listen
 from interactions.api.events import CommandError
-import logging
 import traceback
 
 from .common import *
 from .messages import load as load_messages
 from .messages import message
-
-
-logger = logging.getLogger(__name__)
 
 
 class Bot(Client):
@@ -43,10 +39,9 @@ class Bot(Client):
   
   @listen(CommandError, disable_default_listeners=True)
   async def on_command_error(self, event: CommandError):
-    logger.exception(event.error)
     traceback.print_exception(event.error)
 
-    data  = dict(error_source=event.source, error_repr=repr(event.error))
+    data  = dict(error_repr=repr(event.error))
     embed = message("error", format=data, user=event.ctx.user)
     await event.ctx.send(embed=embed)
 
