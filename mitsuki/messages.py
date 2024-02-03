@@ -35,13 +35,16 @@ def message(
 ):
   global _messages
   
+  _format = format if format else {}
+  _format = _assign_user_to_format(_format, user)
+
   message_data = _init_message_data(
     message_name,
-    format=format,
+    format=_format,
     user=user,
     **kwargs
   )
-  message_data = _assign_format(message_data, format=format)
+  message_data = _assign_format(message_data, format=_format)
   embed_data   = _process_message_data(message_data)
   
   return ipy.Embed(**embed_data)
@@ -57,12 +60,12 @@ def message_with_fields(
 ):
   base_message_data = _init_message_data(
     message_name,
-    format=base_format,
-    user=user,
+    format=base_format
     **kwargs
   )
 
   _base_format = base_format if base_format else {}
+  _base_format = _assign_user_to_format(_base_format, user)
 
   embeds = []
   pages  = (len(field_formats) // fields_per_embed) + 1
@@ -109,7 +112,6 @@ def username_from_user(user: ipy.BaseUser):
 def _init_message_data(
   message_name: str,
   format: Optional[dict] = None,
-  user: Optional[ipy.BaseUser] = None,
   **kwargs  
 ):
   global _messages
@@ -133,10 +135,6 @@ def _init_message_data(
   
   # Get overrides
   message_data.update(**kwargs)
-
-  # Get username, usericon
-  if user is not None:
-    _format.update(username=username_from_user(user), usericon=user.avatar_url)
   
   # Assign format fields e.g. ${shards}
   return message_data
@@ -233,6 +231,15 @@ def _assign_format(
     formatted_data[key] = formatted_value
   
   return formatted_data
+
+
+def _assign_user_to_format(format: dict, user: Optional[ipy.BaseUser] = None):
+  _format = deepcopy(format)
+  
+  # Get username, usericon
+  if user is not None:
+    _format.update(username=username_from_user(user), usericon=user.avatar_url)
+  return _format
 
 
 def _is_valid_url(url: Optional[str]):
