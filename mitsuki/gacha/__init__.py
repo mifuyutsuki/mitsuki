@@ -246,7 +246,37 @@ class MitsukiGacha(Extension):
     paginator = Paginator.create_from_embeds(bot, *embeds, timeout=45)
     paginator.show_select_menu = True
     await paginator.send(ctx)
+
   
+  @gacha_cmd.subcommand(
+    sub_cmd_name="view",
+    sub_cmd_description="View a card from your or another user's collection"
+  )
+  @slash_option(
+    name="card_name",
+    description="Card name to search",
+    required=True,
+    opt_type=OptionType.STRING,
+    min_length=3,
+    max_length=128
+  )
+  @slash_option(
+    name="target_user",
+    description="User's collection to view (default: self)",
+    required=False,
+    opt_type=OptionType.USER
+  )
+  async def gacha_view_cmd(
+    self,
+    ctx: SlashContext,
+    card_name: str,
+    target_user: Optional[BaseUser] = None
+  ):
+    # Under construction.
+
+    embed = message("under_construction", user=ctx.user)
+    await ctx.send(embed=embed)
+
 
   @gacha_cmd.subcommand(
     sub_cmd_name="give",
