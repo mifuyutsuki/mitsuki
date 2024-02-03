@@ -20,7 +20,8 @@ from interactions.ext.paginators import Paginator
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from . import userdata, gachaman
+from . import userdata
+from .gachaman import gacha
 from .. import bot
 from ..messages import message, message_with_fields, username_from_user
 from ..common import userdata_engine
@@ -30,13 +31,6 @@ from ..common import userdata_engine
 
 
 class MitsukiGacha(Extension):
-  def __init__(self, bot):
-    self.gachaman = gachaman.Gacha()
-    self.roster   = self.gachaman.roster
-    self.settings = self.gachaman.settings
-    self.roll     = self.gachaman.roll
-
-
   @slash_command(
     name="gacha",
     description="Roll your favorite characters and memories"
@@ -60,7 +54,7 @@ class MitsukiGacha(Extension):
     shards_get  = userdata.get_shards(target_user)
     shards      = shards_get if shards_get else 0
 
-    currency_icon = self.settings.currency_icon
+    currency_icon = gacha.settings.currency_icon
 
     data = dict(
       currency_icon=currency_icon,
@@ -77,7 +71,7 @@ class MitsukiGacha(Extension):
     sub_cmd_description=f"Claim your gacha daily"
   )
   async def daily_cmd(self, ctx: SlashContext):
-    daily_tz     = self.settings.daily_tz
+    daily_tz     = gacha.settings.daily_tz
     daily_tz_str = f"-{daily_tz}" if daily_tz < 0 else f"+{daily_tz}"
 
     is_daily_available = userdata.is_daily_available(ctx.user, daily_tz)
@@ -89,8 +83,8 @@ class MitsukiGacha(Extension):
       await ctx.send(embed=embed)
       return
     
-    currency_icon = self.settings.currency_icon
-    shards        = self.settings.daily_shards
+    currency_icon = gacha.settings.currency_icon
+    shards        = gacha.settings.daily_shards
     data = dict(
       daily_tz=daily_tz_str,
       shards=shards,
@@ -116,10 +110,10 @@ class MitsukiGacha(Extension):
   )
   async def roll_cmd(self, ctx: SlashContext):
     user     = ctx.user
-    cost     = self.settings.cost
+    cost     = gacha.settings.cost
 
-    currency      = self.settings.currency
-    currency_icon = self.settings.currency_icon
+    currency      = gacha.settings.currency
+    currency_icon = gacha.settings.currency_icon
     
     # ---------------------------------------------------------------
     # Check if enough shards - return if insufficient
@@ -139,19 +133,19 @@ class MitsukiGacha(Extension):
     # ---------------------------------------------------------------
     # Roll
 
-    min_rarity  = userdata.check_user_pity(self.settings.pity, user)
-    rolled      = self.roll(min_rarity=min_rarity)
+    min_rarity  = userdata.check_user_pity(gacha.settings.pity, user)
+    rolled      = gacha.roll(min_rarity=min_rarity)
     is_new_card = not userdata.user_has_card(user, rolled)
 
     dupe_shards = 0
     if not is_new_card:
-      dupe_shards = self.settings.dupe_shards[rolled.rarity]
+      dupe_shards = gacha.settings.dupe_shards[rolled.rarity]
 
     # ---------------------------------------------------------------
     # Generate embed
 
-    color = self.settings.colors.get(rolled.rarity)
-    stars = self.settings.stars.get(rolled.rarity)
+    color = gacha.settings.colors.get(rolled.rarity)
+    stars = gacha.settings.stars.get(rolled.rarity)
 
     data = dict(
       type=rolled.type,
@@ -177,7 +171,7 @@ class MitsukiGacha(Extension):
     # ---------------------------------------------------------------
     # Update userdata
       
-    pity_settings = self.settings.pity
+    pity_settings = gacha.settings.pity
 
     with Session(userdata_engine) as session:
       userdata.modify_shards(session, user, dupe_shards - cost)
@@ -223,9 +217,9 @@ class MitsukiGacha(Extension):
       return
 
     cards = []
-    cards_data = self.roster.from_ids(target_user_cards.keys())
+    cards_data = gacha.roster.from_ids(target_user_cards.keys())
     for card_data in cards_data:
-      stars = self.settings.stars.get(card_data.rarity)
+      stars = gacha.settings.stars.get(card_data.rarity)
       card = dict(
         name=card_data.name,
         type=card_data.type,
@@ -278,8 +272,8 @@ class MitsukiGacha(Extension):
     shards: int
   ):
     user          = ctx.user
-    currency      = self.settings.currency
-    currency_icon = self.settings.currency_icon
+    currency      = gacha.settings.currency
+    currency_icon = gacha.settings.currency_icon
     own_shards    = userdata.get_shards(user)
     own_shards    = own_shards if own_shards else 0
 
@@ -349,8 +343,8 @@ class MitsukiGacha(Extension):
     target_user: BaseUser,
     shards: int
   ):
-    currency      = self.settings.currency
-    currency_icon = self.settings.currency_icon
+    currency      = gacha.settings.currency
+    currency_icon = gacha.settings.currency_icon
 
     data = dict(
       currency=currency,

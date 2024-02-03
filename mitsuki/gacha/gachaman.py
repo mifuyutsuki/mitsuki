@@ -17,10 +17,10 @@ from random import Random
 from ..common import get_config
 
 
-class Gacha:
-  def __init__(self):
-    self.settings = Settings()
-    self.roster   = Roster()
+class Gachaman:
+  def __init__(self, settings_yaml: str, roster_yaml: str):
+    self.settings = Settings(settings_yaml=settings_yaml)
+    self.roster   = Roster(roster_yaml=roster_yaml)
     self.random   = None
 
     self.refresh_random()
@@ -60,9 +60,8 @@ class Gacha:
   
 
 class Settings:
-  def __init__(self):
-    gacha_settings_yaml = get_config("GACHA_SETTINGS_YAML")
-    self._data: dict    = _load_yaml(gacha_settings_yaml)
+  def __init__(self, settings_yaml: str):
+    self._data: dict    = _load_yaml(settings_yaml)
 
     self.cost: int                   = self._data.get("cost")
     self.currency_icon: str          = self._data.get("currency_icon")
@@ -184,9 +183,8 @@ class Card:
 
 
 class Roster:
-  def __init__(self):
-    gacha_roster_yaml = get_config("GACHA_ROSTER_YAML")
-    self._data: dict  = _load_yaml(gacha_roster_yaml)
+  def __init__(self, roster_yaml: str):
+    self._data: dict  = _load_yaml(roster_yaml)
 
     self.cards: Dict[str, Card]           = {}
     self.rarity_map: Dict[str, List[str]] = {}
@@ -240,3 +238,12 @@ class Roster:
 def _load_yaml(filename: str):
   with open(filename, encoding='UTF-8') as f:
     return safe_load(f)
+
+
+# =================================================================
+
+
+gacha = Gachaman(
+  settings_yaml=get_config("GACHA_SETTINGS_YAML"),
+  roster_yaml=get_config("GACHA_ROSTER_YAML")
+)
