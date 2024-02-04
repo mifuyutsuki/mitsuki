@@ -64,40 +64,42 @@ def message_with_fields(
     **kwargs
   )
 
+  field_data = base_message_data.get("field")
+
   _base_format = base_format if base_format else {}
   _base_format = _assign_user_to_format(_base_format, user)
 
   embeds = []
-  pages  = (len(field_formats) // fields_per_embed) + 1
-  field_data = base_message_data.get("field")
-  if isinstance(field_data, dict):
+  cursor = 0
+  page   = 1
+  pages  = (max(0, len(field_formats) - 1) // fields_per_embed) + 1
+
+  while cursor < len(field_formats):
     # message_data may have nested dicts, use deepcopy
     message_data = deepcopy(base_message_data)
+    format = _base_format.copy()
+    format.update(page=page, pages=pages)
 
-    cursor = 0
-    page   = 1
-    while cursor < len(field_formats):
-      format = _base_format.copy()
-      fields = []
+    fields = []
+    if isinstance(field_data, dict):
       for idx in range(cursor, cursor + fields_per_embed):
         try:
           field_format = field_formats[idx]
         except IndexError:
           break
 
-        format = _base_format.copy()
-        format.update(page=page, pages=pages)
-        format.update(**field_format)
+        field_format.update(**format)
         field = field_data.copy()
-        field = _assign_format(field, format=format)
+        field = _assign_format(field, format=field_format)
         fields.append(field)
-      
-      message_data["fields"] = fields
-      message_data = _assign_format(message_data, format=format)
-      embed_data   = _process_message_data(message_data)
-      embeds.append(ipy.Embed(**embed_data))
-      
-      cursor += fields_per_embed
+    
+    message_data["fields"] = fields
+    message_data = _assign_format(message_data, format=format)
+    embed_data   = _process_message_data(message_data)
+    embeds.append(ipy.Embed(**embed_data))
+    
+    cursor += fields_per_embed
+    page += 1
 
   return embeds
 
