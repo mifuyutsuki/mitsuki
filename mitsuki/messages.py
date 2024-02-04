@@ -60,7 +60,7 @@ def message_with_fields(
 ):
   base_message_data = _init_message_data(
     message_name,
-    format=base_format
+    format=base_format,
     **kwargs
   )
 
