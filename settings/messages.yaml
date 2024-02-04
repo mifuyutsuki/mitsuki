@@ -183,7 +183,7 @@ gacha_cards:
   title: >-
     ${target_username}'s Cards Collection (${page}/${pages})
   description: >-
-    `${total_cards}` cards obtained by ${target_user}
+    `${total_cards}` unique cards obtained by ${target_user}
   thumbnail   : ${target_usericon}
   field       :
     name      : ${stars} ${name}
@@ -201,7 +201,7 @@ gacha_cards_no_cards:
   title: >-
     ${target_username}'s Cards Collection
   description: >-
-    User has no cards
+    User ${target_user} has no cards
   thumbnail   : ${target_usericon}
   color: *color_error
 
@@ -213,27 +213,26 @@ gacha_view_search_results:
   title: >-
     Search results for "${search_key}"
   description: >-
-    `${total_cards}` cards obtained by ${target_user}
+    `${total_cards}` unique cards obtained by ${target_user}
+
+    Select the card you're looking for through the select menu.
+    If you can't find what you're looking for, the card might have not been
+    obtained by the user or doesn't exist.
   thumbnail   : ${target_usericon}
   field       :
     name      : ${stars} ${name}
     value     : >-
       `${amount}` • ${type} • ${series} • <t:${first_acquired}:f>
     inline    : false
-  ephemeral   : true
 
 
 # /gacha view
-# Message upon returning *no* search results.
-gacha_view_no_results:
+# Message if target user has no cards.
+gacha_view_no_cards:
   title: >-
-    Search results for "${search_key}"
+    Target user has no cards
   description: >-
-    `${total_cards}` cards obtained by ${target_user}
-
-    No matching cards found.
-  thumbnail   : ${target_usericon}
-  ephemeral   : true
+    User ${target_user} has no cards to view.
   color: *color_error
 
 
@@ -243,6 +242,7 @@ gacha_view_card:
   author:
     name: >-
       ${target_username}'s Cards Collection
+    icon_url: ${target_usericon}
   title: >-
     ${name}
   description: >-
@@ -252,7 +252,6 @@ gacha_view_card:
     `${amount}` in ${target_user}'s card collection
 
     First acquired by user: <t:${first_acquired}:f>
-  thumbnail   : ${target_usericon}
   image: >-
     ${image}
 
