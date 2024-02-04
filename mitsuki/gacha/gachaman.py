@@ -215,11 +215,15 @@ class Roster:
         self.series_map[series] = []
       self.series_map[series].append(id)
   
+  def from_id(self, id: str):
+    return self.cards.get(id)
+  
   def from_ids(self, ids: List[str]):
     cards: List[Card] = []
     for id in ids:
-      if id in self.cards.keys():
-        cards.append(self.cards[id])
+      card = self.from_id(id)
+      if card is not None:
+        cards.append(card)
     
     return cards
   
