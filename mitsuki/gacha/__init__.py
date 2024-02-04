@@ -42,7 +42,8 @@ from ..common import userdata_engine
 class MitsukiGacha(Extension):
   @slash_command(
     name="gacha",
-    description="Roll your favorite characters and memories"
+    description="Roll your favorite characters and memories",
+    dm_permission=False
   )
   async def gacha_cmd(self, ctx: SlashContext):
     pass
