@@ -359,7 +359,13 @@ class MitsukiGacha(Extension):
     # -------
 
     async def check(component: Component):
-      return component.ctx.author == ctx.author
+      is_caller = component.ctx.author == ctx.author
+      if not is_caller:
+        await component.ctx.send(
+          "This interaction is not for you", 
+          ephemeral=True
+        )
+      return is_caller
     
     try:
       used_component = await bot.wait_for_component(
