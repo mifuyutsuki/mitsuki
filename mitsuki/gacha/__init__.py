@@ -10,14 +10,23 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-import interactions as ipy
-from interactions import Extension
-from interactions import slash_command, SlashContext
-from interactions import slash_option, OptionType, BaseUser
-from interactions import slash_default_member_permission, Permissions
-from interactions import check, is_owner
+from interactions import (
+  Extension,
+  slash_command,
+  slash_option,
+  slash_default_member_permission,
+  SlashContext,
+  StringSelectMenu,
+  OptionType,
+  BaseUser,
+  Permissions,
+  check,
+  is_owner
+)
+from interactions.api.events import Component
 from interactions.ext.paginators import Paginator
 from sqlalchemy.orm import Session
+from rapidfuzz import fuzz, utils, process
 from typing import Optional
 
 from . import userdata
@@ -253,7 +262,7 @@ class MitsukiGacha(Extension):
     sub_cmd_description="View a card from your or another user's collection"
   )
   @slash_option(
-    name="card_name",
+    name="name",
     description="Card name to search",
     required=True,
     opt_type=OptionType.STRING,
@@ -261,20 +270,131 @@ class MitsukiGacha(Extension):
     max_length=128
   )
   @slash_option(
-    name="target_user",
+    name="user",
     description="User's collection to view (default: self)",
     required=False,
     opt_type=OptionType.USER
   )
-  async def gacha_view_cmd(
+  async def view_cmd(
     self,
     ctx: SlashContext,
-    card_name: str,
-    target_user: Optional[BaseUser] = None
-  ):
-    # Under construction.
+    name: str,
+    user: Optional[BaseUser] = None
+  ):    
+    target_user       = user if user else ctx.user
+    target_user_cards = userdata.list_cards(target_user)
+    target_username   = username_from_user(target_user)
+    target_usericon   = target_user.avatar_url
 
-    embed = message("under_construction", user=ctx.user)
+    if len(target_user_cards) <= 0:
+      data = dict(
+        target_user=target_user.mention
+      )
+      embed = message("gacha_view_no_cards", format=data, user=ctx.user)
+      await ctx.send(embed=embed)
+      return
+
+    cards_data = gacha.roster.from_ids(target_user_cards.keys())
+
+    card_ids    = []
+    card_names  = []
+    for card_data in cards_data:
+      card_ids.append(card_data.id)
+      card_names.append(card_data.name)
+    
+    search_key = name
+    search_results = process.extract(
+      search_key,
+      card_names,
+      scorer=fuzz.WRatio,
+      limit=6,
+      processor=utils.default_process
+    )
+
+    cards = []
+    card_select = []
+    card_select_ids = []
+    for _, __, idx in search_results:
+      card_select.append(card_names[idx])
+      card_select_ids.append(card_ids[idx])
+    
+    cards_data = gacha.roster.from_ids(card_select_ids)
+    for card_data in cards_data:
+      stars = gacha.settings.stars.get(card_data.rarity)
+      card = dict(
+        name=card_data.name,
+        type=card_data.type,
+        series=card_data.series,
+        stars=stars,
+        amount=target_user_cards[card_data.id].count,
+        first_acquired=int(target_user_cards[card_data.id].first_acquired)
+      )
+      cards.append(card)
+    
+    data = dict(
+      target_username=target_username,
+      target_usericon=target_usericon,
+      target_user=target_user.mention,
+      total_cards=len(target_user_cards),
+      search_key=search_key
+    )
+
+    select_menu = StringSelectMenu(
+      *card_select,
+      placeholder="Card to view from search results",
+      custom_id="gacha_view_select",
+      min_values=1,
+      max_values=1
+    )
+
+    embed = message_with_fields(
+      "gacha_view_search_results",
+      cards,
+      base_format=data,
+      user=ctx.user
+    )[0]
+
+    select_msg = await ctx.send(embed=embed, components=select_menu)
+    
+    # -------
+
+    async def check(component: Component):
+      return component.ctx.author == ctx.author
+    
+    try:
+      used_component = await bot.wait_for_component(
+        components=select_menu,
+        check=check,
+        timeout=45
+      )
+    except TimeoutError:
+      select_menu.disabled = True
+      await select_msg.edit(embed=embed, components=select_menu)
+      return
+    else:
+      await select_msg.delete(delay=1)
+    
+    selected_name = used_component.ctx.values[0]
+    selected_idx  = card_select.index(selected_name)
+    selected_card = cards_data[selected_idx]
+
+    color = gacha.settings.colors.get(selected_card.rarity)
+    stars = gacha.settings.stars.get(selected_card.rarity)
+
+    data = dict(
+      target_username=target_username,
+      target_usericon=target_usericon,
+      target_user=target_user.mention,
+      name=selected_card.name,
+      type=selected_card.type,
+      series=selected_card.series,
+      stars=stars,
+      amount=target_user_cards[card_data.id].count,
+      first_acquired=int(target_user_cards[card_data.id].first_acquired),
+      image=selected_card.image,
+    )
+
+    embed = message("gacha_view_card", format=data, user=ctx.user, color=color)
     await ctx.send(embed=embed)
 
 
