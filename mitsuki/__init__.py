@@ -13,6 +13,7 @@
 import interactions as ipy
 from interactions import Client, Intents, listen
 from interactions.api.events import CommandError
+from interactions.client.errors import CommandCheckFailure
 import traceback
 
 from .common import *
@@ -31,19 +32,27 @@ class Bot(Client):
     )
 
     self.intents  = Intents.DEFAULT
-    
+
+
   @listen()
   async def on_startup(self):
     print("Bot is starting up")
     initialize()
   
+
   @listen(CommandError, disable_default_listeners=True)
   async def on_command_error(self, event: CommandError):
+    if isinstance(event.error, CommandCheckFailure):
+      embed = message("error_command_perms", user=event.ctx.user)
+      await event.ctx.send(embed=embed)
+      return
+    
     traceback.print_exception(event.error)
 
     data  = dict(error_repr=repr(event.error))
     embed = message("error", format=data, user=event.ctx.user)
     await event.ctx.send(embed=embed)
+
 
   @listen()
   async def on_ready(self):
