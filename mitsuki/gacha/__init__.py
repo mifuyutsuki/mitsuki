@@ -378,8 +378,6 @@ class MitsukiGacha(Extension):
       select_menu.disabled = True
       await select_msg.edit(embed=embed, components=select_menu)
       return
-    else:
-      await select_msg.delete(delay=1)
     
     selected_name = used_component.ctx.values[0]
     selected_idx  = card_select.index(selected_name)
@@ -402,7 +400,7 @@ class MitsukiGacha(Extension):
     )
 
     embed = message("gacha_view_card", format=data, user=ctx.user, color=color)
-    await ctx.send(embed=embed)
+    await used_component.ctx.edit_origin(embed=embed, components=[])
 
 
   @gacha_cmd.subcommand(
