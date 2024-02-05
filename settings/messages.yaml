@@ -62,6 +62,16 @@ error:
     ```
   color: *color_error
 
+
+# Message if a command check (almost always a permissions check) has occured.
+error_command_perms:
+  title: >-
+    Application Error
+  description: >-
+    You do not have permissions to run this command.
+  color: *color_error
+
+
 # Message if a command is under construction.
 under_construction:
   title: >-
@@ -213,10 +223,12 @@ gacha_view_search_results:
   title: >-
     Search results for "${search_key}"
   description: >-
-    `${total_cards}` unique cards obtained by ${target_user}
+    Searching from `${total_cards}` unique cards in ${target_user}'s
+    card collection
 
-    Select the card you're looking for through the select menu.
-    If you can't find what you're looking for, the card might have not been
+
+    To find more results, further specify the card name.
+    If you can't find the card, the card might have not been
     obtained by the user or doesn't exist.
   thumbnail   : ${target_usericon}
   field       :
@@ -291,11 +303,16 @@ gacha_give_self:
 # stars  : Stars denoting rarity
 # image  : Image URL of card
 gacha_get_new_card:
+  author:
+    name: >-
+      Obtained card!
+    icon_url: ${usericon}
   title: >-
     ${name}
   description: >-
     ${stars} • ${type} • ${series}
     
+
     ✨ **New!**
   image: >-
     ${image}
@@ -313,10 +330,15 @@ gacha_get_new_card:
 # currency    : Name of gacha currency, shown with icon
 # dupe_shards : Shards obtained from obtaining the duplicate card
 gacha_get_dupe_card:
+  author:
+    name: >-
+      Obtained card!
+    icon_url: ${usericon}
   title: >-
     ${name}
   description: >-
     ${stars} • ${type} • ${series}
+
 
     **${currency}** +${dupe_shards}
   image: >-
