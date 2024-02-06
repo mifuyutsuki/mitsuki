@@ -545,3 +545,44 @@ class MitsukiGacha(Extension):
     embed = message("gacha_reload", format=data, user=ctx.user)
 
     await ctx.send(embed=embed, ephemeral=True)
+
+
+  @admin_cmd.subcommand(
+    group_name="gacha",
+    group_description="Roll your favorite characters and memories",
+    sub_cmd_name="cards",
+    sub_cmd_description="View the card roster"
+  )
+  @slash_default_member_permission(Permissions.ADMINISTRATOR)
+  @check(is_owner())
+  @auto_defer(ephemeral=True)
+  async def admin_cards_cmd(self, ctx: SlashContext):
+    cards_data = gacha.roster.cards.values()
+    cards_data = sorted(cards_data, key=lambda card: card.name)
+    cards_data = sorted(cards_data, key=lambda card: card.rarity, reverse=True)
+
+    cards = []
+    for card_data in cards_data:
+      stars = gacha.settings.stars.get(card_data.rarity)
+      card = dict(
+        name=card_data.name,
+        card_id=card_data.id,
+        type=card_data.type,
+        series=card_data.series,
+        stars=stars
+      )
+      cards.append(card)
+    
+    data = dict(
+      total_cards=len(cards)
+    )
+
+    embeds = message_with_fields(
+      "gacha_cards_admin",
+      cards,
+      base_format=data,
+      user=ctx.user
+    )
+    paginator = Paginator.create_from_embeds(bot, *embeds)
+    paginator.show_select_menu = True
+    await paginator.send(ctx, ephemeral=True)

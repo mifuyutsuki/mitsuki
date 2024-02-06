@@ -351,3 +351,17 @@ gacha_reload:
     Reloaded gacha configuration
   description: >-
     Cards in roster: ${cards}
+  
+
+# /admin gacha cards
+# Similar to /gacha cards, but list all cards currently in roster.
+gacha_cards_admin:
+  title: >-
+    Card Roster (${page}/${pages})
+  description: >-
+    `${total_cards}` unique cards in the roster
+  field       :
+    name      : ${stars} ${name}
+    value     : >-
+      `${card_id}` • ${type} • ${series}
+    inline    : false
