@@ -520,7 +520,7 @@ class MitsukiGacha(Extension):
       userdata.modify_shards(session, target_user, shards)
 
       try:
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, ephemeral=True)
       except Exception:
         session.rollback()
         raise
@@ -536,7 +536,7 @@ class MitsukiGacha(Extension):
   )
   @slash_default_member_permission(Permissions.ADMINISTRATOR)
   @check(is_owner())
-  @auto_defer()
+  @auto_defer(ephemeral=True)
   async def admin_reload_cmd(self, ctx: SlashContext):
     gacha.reload()
 
@@ -544,4 +544,4 @@ class MitsukiGacha(Extension):
     data = dict(cards=total_cards_in_roster)
     embed = message("gacha_reload", format=data, user=ctx.user)
 
-    await ctx.send(embed=embed)
+    await ctx.send(embed=embed, ephemeral=True)
