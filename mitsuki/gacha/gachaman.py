@@ -19,11 +19,28 @@ from ..common import get_config
 
 class Gachaman:
   def __init__(self, settings_yaml: str, roster_yaml: str):
+    self.reload(settings_yaml=settings_yaml, roster_yaml=roster_yaml)
+  
+  
+  def reload(
+    self,
+    settings_yaml: Optional[str] = None,
+    roster_yaml: Optional[str] = None
+  ):
+    settings_yaml = settings_yaml if settings_yaml else self._settings_yaml
+    roster_yaml   = roster_yaml if roster_yaml else self._roster_yaml
+
     self.settings = Settings(settings_yaml=settings_yaml)
     self.roster   = Roster(roster_yaml=roster_yaml)
     self.random   = None
+    
+    self._settings_yaml = settings_yaml
+    self._roster_yaml = roster_yaml
 
     self.refresh_random()
+
+  
+  # =================================================================
   
 
   def roll(self, min_rarity: Optional[int] = None):
@@ -61,7 +78,14 @@ class Gachaman:
 
 class Settings:
   def __init__(self, settings_yaml: str):
-    self._data: dict    = _load_yaml(settings_yaml)
+    self.reload(settings_yaml=settings_yaml)
+
+
+  def reload(self, settings_yaml: Optional[str] = None):
+    settings_yaml = settings_yaml if settings_yaml else self._settings_yaml
+
+    self._data: dict         = _load_yaml(settings_yaml)
+    self._settings_yaml: str = settings_yaml
 
     self.cost: int                   = self._data.get("cost")
     self.currency_icon: str          = self._data.get("currency_icon")
@@ -97,6 +121,7 @@ class Settings:
     
     return rates
 
+
   def _load_pity(self):
     data: Dict[str, float] = self._data.get("pity")
     if data is None:
@@ -109,6 +134,7 @@ class Settings:
       pity[rarity] = rarity_pity
 
     return pity
+
 
   def _load_dupe_shards(self):
     data: Dict[str, int] = self._data.get("dupe_shards")
@@ -129,6 +155,7 @@ class Settings:
     
     return dupe_shards
 
+
   def _load_colors(self):
     data: Dict[str, int] = self._data.get("colors")
     if data is None:
@@ -141,6 +168,7 @@ class Settings:
     
     return colors
   
+
   def _load_stars(self):
     data: Dict[str, int] = self._data.get("stars")
     if data is None:
@@ -184,7 +212,13 @@ class Card:
 
 class Roster:
   def __init__(self, roster_yaml: str):
-    self._data: dict  = _load_yaml(roster_yaml)
+    self.reload(roster_yaml=roster_yaml)
+
+
+  def reload(self, roster_yaml: Optional[str] = None):
+    roster_yaml: str       = roster_yaml if roster_yaml else self._roster_yaml
+    self._data: dict       = _load_yaml(roster_yaml)
+    self._roster_yaml: str = roster_yaml
 
     self.cards: Dict[str, Card]           = {}
     self.rarity_map: Dict[str, List[str]] = {}
@@ -215,8 +249,10 @@ class Roster:
         self.series_map[series] = []
       self.series_map[series].append(id)
   
+
   def from_id(self, id: str):
     return self.cards.get(id)
+  
   
   def from_ids(self, ids: List[str]):
     cards: List[Card] = []
@@ -227,6 +263,7 @@ class Roster:
     
     return cards
   
+
   def from_ids_as_dict(self, ids: List[str]):
     cards: List[dict] = []
     for id in ids:
@@ -251,3 +288,11 @@ gacha = Gachaman(
   settings_yaml=get_config("GACHA_SETTINGS_YAML"),
   roster_yaml=get_config("GACHA_ROSTER_YAML")
 )
+
+
+def reload():
+  global gacha
+  gacha = Gachaman(
+    settings_yaml=get_config("GACHA_SETTINGS_YAML"),
+    roster_yaml=get_config("GACHA_ROSTER_YAML")
+  )

@@ -21,7 +21,8 @@ from interactions import (
   BaseUser,
   Permissions,
   check,
-  is_owner
+  is_owner,
+  auto_defer,
 )
 from interactions.api.events import Component
 from interactions.ext.paginators import Paginator
@@ -468,10 +469,16 @@ class MitsukiGacha(Extension):
       else:
         session.commit()
 
-
+  
   @slash_command(
     name="admin",
-    description="Bot owner only: administrative functions",
+    description="Bot owner only: administrative functions"
+  )
+  async def admin_cmd(self, ctx: SlashContext):
+    pass
+
+
+  @admin_cmd.subcommand(
     group_name="gacha",
     group_description="Roll your favorite characters and memories",
     sub_cmd_name="give",
@@ -520,3 +527,21 @@ class MitsukiGacha(Extension):
       else:
         session.commit()
   
+
+  @admin_cmd.subcommand(
+    group_name="gacha",
+    group_description="Roll your favorite characters and memories",
+    sub_cmd_name="reload",
+    sub_cmd_description="Reload gacha configuration files"
+  )
+  @slash_default_member_permission(Permissions.ADMINISTRATOR)
+  @check(is_owner())
+  @auto_defer()
+  async def admin_reload_cmd(self, ctx: SlashContext):
+    gacha.reload()
+
+    total_cards_in_roster = len(gacha.roster.cards)
+    data = dict(cards=total_cards_in_roster)
+    embed = message("gacha_reload", format=data, user=ctx.user)
+
+    await ctx.send(embed=embed)

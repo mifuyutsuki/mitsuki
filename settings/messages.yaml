@@ -343,3 +343,11 @@ gacha_get_dupe_card:
     **${currency}** +${dupe_shards}
   image: >-
     ${image}
+
+
+# /admin gacha reload
+gacha_reload:
+  title: >-
+    Reloaded gacha configuration
+  description: >-
+    Cards in roster: ${cards}
