@@ -48,19 +48,23 @@ class Gachaman:
     roll  = self.random.random
     pick  = self.random.choice
 
-    rarity_get = min_rarity if min_rarity else 1
+    # TODO: Replace min_rarity arg with dict of pity counter
+
+    rarities   = sorted(rates.keys())
+    rarity_1   = rarities[0]
+    rarity_get = max(min_rarity, rarity_1) if min_rarity else rarity_1
     arona      = roll()
-    for rarity in sorted(rates.keys()):
-      if rarity < rarity_get:
-        continue
-      if arona < rates[rarity]:
+
+    for rarity in rarities:
+      arona -= rates[rarity]
+      
+      if arona < 0.0:
         rarity_get = rarity
-      else:
         break
 
-    available_picks = []
-    while len(available_picks) == 0 and rarity_get > 0:
-      available_picks = self.roster.rarity_map[rarity_get]
+    available_picks = None
+    while available_picks is None and rarity_get > 0:
+      available_picks = self.roster.rarity_map.get(rarity_get)
       rarity_get -= 1
 
     picked = pick(available_picks)
