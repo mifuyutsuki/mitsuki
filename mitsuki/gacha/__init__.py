@@ -311,7 +311,8 @@ class MitsukiGacha(Extension):
       card_names,
       scorer=fuzz.WRatio,
       limit=6,
-      processor=utils.default_process
+      processor=utils.default_process,
+      score_cutoff=50.0
     )
 
     cards = []
