@@ -24,6 +24,7 @@ from interactions import (
   is_owner,
   auto_defer,
 )
+from interactions.client.errors import HTTPException
 from interactions.api.events import Component
 from interactions.ext.paginators import Paginator
 from sqlalchemy.orm import Session
@@ -377,7 +378,11 @@ class MitsukiGacha(Extension):
       )
     except TimeoutError:
       select_menu.disabled = True
-      await select_msg.edit(embed=embed, components=select_menu)
+      try:
+        await select_msg.edit(embed=embed, components=select_menu)
+      except HTTPException:
+        # Case: message does not exist
+        pass
       return
     
     selected_name = used_component.ctx.values[0]
