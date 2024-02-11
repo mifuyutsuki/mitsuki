@@ -26,7 +26,7 @@ from interactions import (
 )
 from interactions.client.errors import HTTPException
 from interactions.api.events import Component
-from interactions.ext.paginators import Paginator
+from mitsuki.paginators import Paginator
 from sqlalchemy.orm import Session
 from rapidfuzz import fuzz, utils, process
 from typing import Optional
