@@ -319,8 +319,15 @@ class MitsukiGacha(Extension):
     card_select = []
     card_select_ids = []
     for _, __, idx in search_results:
-      card_select.append(card_names[idx])
       card_select_ids.append(card_ids[idx])
+
+      repeat_no = 2
+      card_select_name = card_names[idx]
+      # Dupe name handling
+      while card_select_name in card_select:
+        card_select_name = f"{card_names[idx]} ({repeat_no})"
+        repeat_no += 1
+      card_select.append(card_select_name)
     
     cards_data = gacha.roster.from_ids(card_select_ids)
     for card_data in cards_data:
