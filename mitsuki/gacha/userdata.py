@@ -18,8 +18,8 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Mapped, mapped_column, Session
 from interactions import BaseUser
 
-from ..common import UserdataBase, userdata_engine
-from .gachaman import Card
+from mitsuki.common import UserdataBase, userdata_engine
+from mitsuki.gacha.gachaman import Card
 
 
 # ===================================================================

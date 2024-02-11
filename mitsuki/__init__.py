@@ -16,9 +16,9 @@ from interactions.api.events import CommandError
 from interactions.client.errors import CommandCheckFailure
 import traceback
 
-from .common import *
-from .messages import load as load_messages
-from .messages import message
+from mitsuki.common import *
+from mitsuki.messages import load as load_messages
+from mitsuki.messages import message
 
 
 class Bot(Client):

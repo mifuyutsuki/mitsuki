@@ -31,11 +31,11 @@ from sqlalchemy.orm import Session
 from rapidfuzz import fuzz, utils, process
 from typing import Optional
 
-from . import userdata
-from .gachaman import gacha
-from .. import bot
-from ..messages import message, message_with_fields, username_from_user
-from ..common import userdata_engine
+from mitsuki import bot
+from mitsuki.messages import message, message_with_fields, username_from_user
+from mitsuki.common import userdata_engine
+from mitsuki.gacha import userdata
+from mitsuki.gacha.gachaman import gacha
 
 
 # =================================================================

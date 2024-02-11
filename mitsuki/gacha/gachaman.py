@@ -14,7 +14,7 @@ from yaml import safe_load
 from typing import Dict, List, Optional
 from random import Random
 
-from ..common import get_config
+from mitsuki.common import get_config
 
 
 class Gachaman:

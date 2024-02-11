@@ -14,7 +14,7 @@ import interactions as ipy
 from interactions import Extension
 from interactions import slash_command, SlashContext
 
-from .messages import message
+from mitsuki.messages import message
 
 
 class MitsukiCore(Extension):
