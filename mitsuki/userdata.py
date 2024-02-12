@@ -12,44 +12,24 @@
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase
-
-from dotenv import dotenv_values
-from yaml import safe_load
+from os import environ
 
 __all__ = (
-  "UserdataBase",
-  "get_config",
-  "load_yaml",
+  "Base",
+  "engine",
   "initialize",
-  "userdata_engine",
-  "BOT_TOKEN",
-  "DEV_GUILD",
-  "MESSAGES_YAML",
 )
-_env = dotenv_values(".env")
+
+USERDATA_PATH = environ.get("USERDATA_PATH")
+engine = create_engine(f"sqlite+pysqlite:///{USERDATA_PATH}")
 
 
-class UserdataBase(DeclarativeBase):
+class Base(DeclarativeBase):
   def asdict(self):
     #: Source: https://stackoverflow.com/a/1960546
     return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
-def get_config(field: str):
-  return _env.get(field)
 
-def load_yaml(filename: str):
-  with open(filename, encoding='UTF-8') as f:
-    return safe_load(f)
-  
 def initialize():
-  global userdata_engine
-  UserdataBase.metadata.create_all(userdata_engine)
-
-
-# Mandatory keys
-_userdata_path = _env["USERDATA_PATH"]
-BOT_TOKEN = _env["BOT_TOKEN"]
-DEV_GUILD = _env["DEV_GUILD"]
-MESSAGES_YAML = _env["MESSAGES_YAML"]
-
-userdata_engine = create_engine(f"sqlite+pysqlite:///{_userdata_path}")
+  global engine
+  Base.metadata.create_all(engine)

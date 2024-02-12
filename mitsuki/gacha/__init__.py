@@ -33,7 +33,7 @@ from typing import Optional
 
 from mitsuki import bot
 from mitsuki.messages import message, message_with_fields, username_from_user
-from mitsuki.common import userdata_engine
+from mitsuki.userdata import engine
 from mitsuki.gacha import userdata
 from mitsuki.gacha.gachaman import gacha
 
@@ -104,7 +104,7 @@ class MitsukiGacha(Extension):
     )
     embed = message("gacha_daily", format=data, user=ctx.user)
 
-    with Session(userdata_engine) as session:
+    with Session(engine) as session:
       userdata.modify_shards(session, ctx.user, shards, daily=True)
 
       try:
@@ -185,7 +185,7 @@ class MitsukiGacha(Extension):
       
     pity_settings = gacha.settings.pity
 
-    with Session(userdata_engine) as session:
+    with Session(engine) as session:
       userdata.modify_shards(session, user, dupe_shards - cost)
       userdata.give_card(session, user, rolled)
       userdata.update_user_pity(session, pity_settings, user, rolled.rarity)
@@ -470,7 +470,7 @@ class MitsukiGacha(Extension):
     )
     embed = message("gacha_give", format=data, user=user)
 
-    with Session(userdata_engine) as session:
+    with Session(engine) as session:
       userdata.modify_shards(session, user, -shards)
       userdata.modify_shards(session, target_user, +shards)
 
@@ -529,7 +529,7 @@ class MitsukiGacha(Extension):
     )
     embed = message("gacha_give", format=data, user=ctx.user)
 
-    with Session(userdata_engine) as session:
+    with Session(engine) as session:
       userdata.modify_shards(session, target_user, shards)
 
       try:

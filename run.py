@@ -10,7 +10,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from mitsuki import bot, BOT_TOKEN
+from mitsuki import run
 
 if __name__ == "__main__":
-  bot.start(BOT_TOKEN)
+  run()

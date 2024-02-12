@@ -10,24 +10,39 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-import interactions as ipy
-from interactions import Client, Intents, listen
+from interactions import (
+  Status,
+  Activity,
+  ActivityType,
+  Client,
+  Intents,
+  listen
+)
 from interactions.api.events import CommandError
 from interactions.client.errors import CommandCheckFailure
+from os import environ
 import traceback
 
-from mitsuki.common import *
 from mitsuki.messages import load as load_messages
 from mitsuki.messages import message
+from mitsuki.userdata import initialize
+
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
+__all__ = (
+  "bot",
+  "run",
+)
 
 
 class Bot(Client):
   def __init__(self):
     super().__init__(
-      status=ipy.Status.DND,
-      activity=ipy.Activity(
+      status=Status.DND,
+      activity=Activity(
         name = "Starting up...",
-        type = ipy.ActivityType.PLAYING
+        type = ActivityType.PLAYING
       )
     )
 
@@ -57,10 +72,10 @@ class Bot(Client):
   @listen()
   async def on_ready(self):
     await self.change_presence(
-      status=ipy.Status.ONLINE,
-      activity=ipy.Activity(
+      status=Status.ONLINE,
+      activity=Activity(
         name="Mitsuki Tsukuyomi",
-        type=ipy.ActivityType.PLAYING
+        type=ActivityType.PLAYING
       )
     )
 
@@ -68,7 +83,12 @@ class Bot(Client):
     print(f"User: {self.user.tag} ({self.user.id})")
 
 
-load_messages(MESSAGES_YAML)
+load_messages(environ.get("MESSAGES_YAML"))
 bot = Bot()
 bot.load_extension("mitsuki.core")
 bot.load_extension("mitsuki.gacha")
+
+
+def run():
+  global bot
+  bot.start(environ.get("BOT_TOKEN"))

@@ -18,14 +18,14 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Mapped, mapped_column, Session
 from interactions import BaseUser
 
-from mitsuki.common import UserdataBase, userdata_engine
+from mitsuki.userdata import Base, engine
 from mitsuki.gacha.gachaman import Card
 
 
 # ===================================================================
 
 
-class Rolls(UserdataBase):
+class Rolls(Base):
   __tablename__ = "gacha_rolls"
 
   id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -41,7 +41,7 @@ class Rolls(UserdataBase):
     )
   
 
-class Currency(UserdataBase):
+class Currency(Base):
   __tablename__ = "gacha_currency"
 
   user: Mapped[int] = mapped_column(primary_key=True)
@@ -55,7 +55,7 @@ class Currency(UserdataBase):
     )
 
 
-class Inventory(UserdataBase):
+class Inventory(Base):
   __tablename__ = "gacha_inventory"
 
   id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -73,7 +73,7 @@ class Inventory(UserdataBase):
     )
 
 
-class Pity(UserdataBase):
+class Pity(Base):
   __tablename__ = "gacha_pity"
 
   user: Mapped[int] = mapped_column(primary_key=True)
@@ -112,7 +112,7 @@ def get_shards(user: BaseUser):
     select(Currency.amount)
     .where(Currency.user == user.id)
   )
-  with Session(userdata_engine) as session:
+  with Session(engine) as session:
     return session.scalar(statement)
   
 
@@ -139,7 +139,6 @@ def set_shards(session: Session, user: BaseUser, amount: int, daily: bool = Fals
         set_=dict(amount=amount)
       )
     )
-    
   
   session.execute(statement)
 
@@ -180,7 +179,7 @@ def get_last_daily(user: BaseUser):
     select(Currency.last_daily)
     .where(Currency.user == user.id)
   )
-  with Session(userdata_engine) as session:
+  with Session(engine) as session:
     return session.scalar(statement)
   
   
@@ -213,7 +212,7 @@ def get_card_count(user: BaseUser, card: Card):
     .where(Inventory.card == card.id)
     .limit(1)
   )
-  with Session(userdata_engine) as session:
+  with Session(engine) as session:
     return session.scalar(statement)
   
 
@@ -225,7 +224,7 @@ def list_cards(user: BaseUser):
     .order_by(Inventory.first_acquired.desc())
   )
 
-  with Session(userdata_engine) as session:
+  with Session(engine) as session:
     data = session.scalars(statement).all()
   
   result = {}
@@ -281,7 +280,7 @@ def get_user_pity(user: BaseUser):
     select(Pity)
     .where(Pity.user == user.id)
   )
-  with Session(userdata_engine) as session:
+  with Session(engine) as session:
     user_pity = session.scalar(statement)
   
   if user_pity is None:

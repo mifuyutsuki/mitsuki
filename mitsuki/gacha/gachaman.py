@@ -13,8 +13,7 @@
 from yaml import safe_load
 from typing import Dict, List, Optional
 from random import Random
-
-from mitsuki.common import get_config
+from os import environ
 
 
 class Gachaman:
@@ -289,14 +288,14 @@ def _load_yaml(filename: str):
 
 
 gacha = Gachaman(
-  settings_yaml=get_config("GACHA_SETTINGS_YAML"),
-  roster_yaml=get_config("GACHA_ROSTER_YAML")
+  settings_yaml=environ.get("GACHA_SETTINGS_YAML"),
+  roster_yaml=environ.get("GACHA_ROSTER_YAML")
 )
 
 
 def reload():
   global gacha
   gacha = Gachaman(
-    settings_yaml=get_config("GACHA_SETTINGS_YAML"),
-    roster_yaml=get_config("GACHA_ROSTER_YAML")
+    settings_yaml=environ.get("GACHA_SETTINGS_YAML"),
+    roster_yaml=environ.get("GACHA_ROSTER_YAML")
   )
