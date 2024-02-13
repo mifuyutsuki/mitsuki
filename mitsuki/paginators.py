@@ -311,8 +311,7 @@ class Paginator:
 
         if self.show_select_menu:
             current = self.pages[self.page_index]
-            ps = self.pages
-            lower_page_index = max(
+            lower_index = max(
                 # Lower bound
                 0,
                 min(
@@ -322,24 +321,14 @@ class Paginator:
                     self.page_index - 12
                 )
             )
-            upper_page_index = min(
-                # Upper bound
-                len(self.pages),
-                max(
-                # Lower bound
-                    25,
-                # Cursor
-                    self.page_index + 13
-                )
-            )
             output.append(
                 StringSelectMenu(
                     *(
                         StringSelectOption(
-                            label=f"{i+1} {ps[i].get_summary if isinstance(ps[i], Page) else ps[i].title}",
+                            label=f"{i+1} {p.get_summary if isinstance(p, Page) else p.title}",
                             value=str(i)
                         )
-                        for i in range(lower_page_index, upper_page_index)
+                        for i, p in enumerate(self.pages[lower_index:lower_index+25], start=lower_index)
                     ),
                     custom_id=f"{self._uuid}|select",
                     placeholder=f"{self.page_index+1} {current.get_summary if isinstance(current, Page) else current.title}",
