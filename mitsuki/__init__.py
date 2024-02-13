@@ -10,6 +10,9 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
 from interactions import (
   Status,
   Activity,
@@ -26,9 +29,6 @@ import traceback
 from mitsuki.messages import load as load_messages
 from mitsuki.messages import message
 from mitsuki.userdata import initialize
-
-from dotenv import load_dotenv
-load_dotenv(override=True)
 
 __all__ = (
   "bot",
