@@ -219,11 +219,13 @@ class MitsukiGacha(Extension):
     target_username   = username_from_user(target_user)
     target_usericon   = target_user.avatar_url
 
+    data = dict(
+      target_username=target_username,
+      target_usericon=target_usericon,
+      target_user=target_user.mention
+    )
+
     if len(target_user_cards) <= 0:
-      data = dict(
-        target_username=target_username,
-        target_usericon=target_usericon
-      )
       embed = message("gacha_cards_no_cards", format=data, user=ctx.user)
       await ctx.send(embed=embed)
       return
@@ -242,12 +244,7 @@ class MitsukiGacha(Extension):
       )
       cards.append(card)
     
-    data = dict(
-      target_username=target_username,
-      target_usericon=target_usericon,
-      target_user=target_user.mention,
-      total_cards=len(target_user_cards)
-    )
+    data.update(total_cards=len(target_user_cards))
 
     embeds = message_with_fields(
       "gacha_cards",
