@@ -289,10 +289,14 @@ class MitsukiGacha(Extension):
     target_username   = username_from_user(target_user)
     target_usericon   = target_user.avatar_url
 
+    data = dict(
+      target_username=target_username,
+      target_usericon=target_usericon,
+      target_user=target_user.mention,
+      total_cards=len(target_user_cards)
+    )
+
     if len(target_user_cards) <= 0:
-      data = dict(
-        target_user=target_user.mention
-      )
       embed = message("gacha_view_no_cards", format=data, user=ctx.user)
       await ctx.send(embed=embed)
       return
@@ -314,6 +318,13 @@ class MitsukiGacha(Extension):
       processor=utils.default_process,
       score_cutoff=50.0
     )
+
+    data.update(search_key=search_key)
+
+    if len(search_results) <= 0:
+      embed = message("gacha_view_no_results", format=data, user=ctx.user)
+      await ctx.send(embed=embed)
+      return
 
     cards = []
     card_select = []
@@ -341,14 +352,6 @@ class MitsukiGacha(Extension):
         first_acquired=int(target_user_cards[card_data.id].first_acquired)
       )
       cards.append(card)
-    
-    data = dict(
-      target_username=target_username,
-      target_usericon=target_usericon,
-      target_user=target_user.mention,
-      total_cards=len(target_user_cards),
-      search_key=search_key
-    )
 
     select_menu = StringSelectMenu(
       *card_select,

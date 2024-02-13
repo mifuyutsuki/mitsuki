@@ -239,12 +239,30 @@ gacha_view_search_results:
 
 
 # /gacha view
+# Message when there are no matching results for a search key.
+gacha_view_no_results:
+  title: >-
+    No matching results for "${search_key}"
+  description: >-
+    Searching from `${total_cards}` unique cards in ${target_user}'s
+    card collection
+
+
+    To find more results, further specify the card name.
+    If you can't find the card, the card might have not been
+    obtained by the user or doesn't exist.
+  thumbnail   : ${target_usericon}
+  color: *color_error
+
+
+# /gacha view
 # Message if target user has no cards.
 gacha_view_no_cards:
   title: >-
     Target user has no cards
   description: >-
     User ${target_user} has no cards to view.
+  thumbnail   : ${target_usericon}
   color: *color_error
 
 
