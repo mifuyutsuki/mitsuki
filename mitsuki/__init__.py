@@ -74,7 +74,7 @@ class Bot(Client):
     await self.change_presence(
       status=Status.ONLINE,
       activity=Activity(
-        name="Mitsuki Tsukuyomi",
+        name="Magical Mitsuki",
         type=ActivityType.PLAYING
       )
     )
