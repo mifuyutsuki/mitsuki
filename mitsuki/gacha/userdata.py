@@ -113,7 +113,9 @@ def get_shards(user: BaseUser):
     .where(Currency.user == user.id)
   )
   with Session(engine) as session:
-    return session.scalar(statement)
+    shards = session.scalar(statement)
+  
+  return shards if shards else 0
   
 
 def set_shards(session: Session, user: BaseUser, amount: int, daily: bool = False):

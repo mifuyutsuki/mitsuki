@@ -63,8 +63,7 @@ class MitsukiGacha(Extension):
   )
   async def shards_cmd(self, ctx: SlashContext, user: Optional[BaseUser] = None):
     target_user = user if user else ctx.user
-    shards_get  = userdata.get_shards(target_user)
-    shards      = shards_get if shards_get else 0
+    shards      = userdata.get_shards(target_user)
 
     currency_icon = gacha.settings.currency_icon
 
@@ -444,7 +443,6 @@ class MitsukiGacha(Extension):
     currency      = gacha.settings.currency
     currency_icon = gacha.settings.currency_icon
     own_shards    = userdata.get_shards(user)
-    own_shards    = own_shards if own_shards else 0
 
     if user.id == target_user.id:
       embed = message("gacha_give_self", user=user)
