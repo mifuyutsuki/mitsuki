@@ -12,7 +12,7 @@
 
 from yaml import safe_load
 from typing import Dict, List, Optional
-from random import Random
+from random import SystemRandom
 from os import environ
 
 
@@ -31,12 +31,10 @@ class Gachaman:
 
     self.settings = Settings(settings_yaml=settings_yaml)
     self.roster   = Roster(roster_yaml=roster_yaml)
-    self.random   = None
+    self.random   = SystemRandom()
     
     self._settings_yaml = settings_yaml
     self._roster_yaml = roster_yaml
-
-    self.refresh_random()
 
   
   # =================================================================
@@ -71,9 +69,7 @@ class Gachaman:
 
 
   def refresh_random(self):
-    seeder      = Random()
-    seed        = seeder.randint(0, 2**63)
-    self.random = Random(seed)
+    self.random = SystemRandom()
 
 
 # =================================================================
