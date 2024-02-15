@@ -29,6 +29,7 @@ import traceback
 from mitsuki.messages import load as load_messages
 from mitsuki.messages import message
 from mitsuki.userdata import initialize
+from mitsuki.version import __version__
 
 __all__ = (
   "bot",
@@ -51,7 +52,6 @@ class Bot(Client):
 
   @listen()
   async def on_startup(self):
-    print("Bot is starting up")
     initialize()
   
 
@@ -74,14 +74,17 @@ class Bot(Client):
     await self.change_presence(
       status=Status.ONLINE,
       activity=Activity(
-        name="Magical Mitsuki",
+        name=f"Magical Mitsuki",
         type=ActivityType.PLAYING
       )
     )
 
-    print("Bot is ready")
-    print(f"User: {self.user.tag} ({self.user.id})")
+    print(f"Ready: {self.user.tag} ({self.user.id})")
 
+
+print(f"Mitsuki {__version__}")
+print(f"Copyright (c) 2024 Mifuyu (mifuyutsuki)")
+print(f"---------------------------------------")
 
 load_messages(environ.get("MESSAGES_YAML"))
 bot = Bot()

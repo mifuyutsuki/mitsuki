@@ -84,7 +84,7 @@ under_construction:
 # /help about
 help_about:
   title: >-
-    About Mitsuki
+    Mitsuki ${version}
   description: >-
     A little fun bot.
 
