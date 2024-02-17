@@ -12,6 +12,8 @@
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.event import listens_for
+from sqlite3 import Connection as SQLite3Connection
 from os import environ
 
 __all__ = (
@@ -33,3 +35,11 @@ class Base(DeclarativeBase):
 def initialize():
   global engine
   Base.metadata.create_all(engine)
+
+
+@listens_for(engine, "connect")
+def set_wal(dbapi_connection, connection_record):
+  if isinstance(dbapi_connection, SQLite3Connection):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.close()
