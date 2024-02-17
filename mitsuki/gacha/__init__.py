@@ -35,7 +35,56 @@ from mitsuki import bot
 from mitsuki.messages import message, message_with_fields, username_from_user
 from mitsuki.userdata import engine
 from mitsuki.gacha import userdata
-from mitsuki.gacha.gachaman import gacha
+from mitsuki.gacha.gachaman import gacha, Card
+
+
+# =================================================================
+
+
+def _data(
+  user: Optional[BaseUser] = None,
+  target_user: Optional[BaseUser] = None,
+  card: Optional[Card] = None,
+  **kwargs
+):
+  # Preset data
+  data = {
+    "currency": gacha.settings.currency,
+    "currency_icon": gacha.settings.currency_icon,
+    "currency_name": gacha.settings.currency_name,
+  }
+
+  if user:
+    data.update({
+      "user"     : user.mention,
+      "username" : username_from_user(user),
+      "usericon" : user.avatar_url
+    })
+  
+  if target_user:
+    data.update({
+      "target_user"     : target_user.mention,
+      "target_username" : username_from_user(target_user),
+      "target_usericon" : target_user.avatar_url
+    })
+  
+  if card:
+    stars       = gacha.settings.stars.get(card.rarity)
+    dupe_shards = gacha.settings.dupe_shards.get(card.rarity)
+    data.update({
+      "id"          : card.id,
+      "type"        : card.type,
+      "series"      : card.series,
+      "name"        : card.name,
+      "image"       : card.image,
+      "stars"       : stars,
+      "dupe_shards" : dupe_shards,
+      "card_id"     : card.id      # Alias used by /admin gacha cards
+    })
+
+  data.update(**kwargs)
+
+  return data
 
 
 # =================================================================
@@ -62,16 +111,10 @@ class MitsukiGacha(Extension):
     opt_type=OptionType.USER
   )
   async def shards_cmd(self, ctx: SlashContext, user: Optional[BaseUser] = None):
-    target_user = user if user else ctx.user
+    target_user = user or ctx.user
     shards      = userdata.get_shards(target_user)
 
-    currency_icon = gacha.settings.currency_icon
-
-    data = dict(
-      currency_icon=currency_icon,
-      target_user=target_user.mention,
-      shards=shards
-    )
+    data = _data(target_user=target_user, shards=shards)
 
     embed = message("gacha_shards", format=data, user=ctx.user)
     await ctx.send(embed=embed)
@@ -82,25 +125,18 @@ class MitsukiGacha(Extension):
     sub_cmd_description=f"Claim your gacha daily"
   )
   async def daily_cmd(self, ctx: SlashContext):
+    shards       = gacha.settings.daily_shards
     daily_tz     = gacha.settings.daily_tz
     daily_tz_str = f"-{daily_tz}" if daily_tz < 0 else f"+{daily_tz}"
 
+    data = _data(shards=shards, daily_tz=daily_tz_str)
+
     is_daily_available = userdata.is_daily_available(ctx.user, daily_tz)
     if not is_daily_available:
-      data  = dict(
-        daily_tz=daily_tz_str
-      )
       embed = message("gacha_daily_already_claimed", format=data, user=ctx.user)
       await ctx.send(embed=embed)
       return
     
-    currency_icon = gacha.settings.currency_icon
-    shards        = gacha.settings.daily_shards
-    data = dict(
-      daily_tz=daily_tz_str,
-      shards=shards,
-      currency_icon=currency_icon
-    )
     embed = message("gacha_daily", format=data, user=ctx.user)
 
     with Session(engine) as session:
@@ -120,23 +156,15 @@ class MitsukiGacha(Extension):
     sub_cmd_description="Roll gacha once using Shards"
   )
   async def roll_cmd(self, ctx: SlashContext):
-    user     = ctx.user
-    cost     = gacha.settings.cost
+    user   = ctx.user
+    shards = userdata.get_shards(user)
+    cost   = gacha.settings.cost
 
-    currency      = gacha.settings.currency
-    currency_icon = gacha.settings.currency_icon
-    
     # ---------------------------------------------------------------
     # Check if enough shards - return if insufficient
-
-    shards = userdata.get_shards(user)
+    
     if shards < cost:
-      data = dict(
-        cost=cost,
-        shards=shards,
-        currency=currency,
-        currency_icon=currency_icon
-      )
+      data  = _data(shards=shards, cost=cost)
       embed = message("gacha_insufficient_funds", format=data, user=user)
       await ctx.send(embed=embed)
       return
@@ -144,29 +172,18 @@ class MitsukiGacha(Extension):
     # ---------------------------------------------------------------
     # Roll
 
+    # TODO: pass pity data to gachaman.roll
+
     min_rarity  = userdata.check_user_pity(gacha.settings.pity, user)
     rolled      = gacha.roll(min_rarity=min_rarity)
     is_new_card = not userdata.user_has_card(user, rolled)
-
-    dupe_shards = 0
-    if not is_new_card:
-      dupe_shards = gacha.settings.dupe_shards[rolled.rarity]
+    dupe_shards = 0 if is_new_card else gacha.settings.dupe_shards[rolled.rarity]
 
     # ---------------------------------------------------------------
     # Generate embed
 
     color = gacha.settings.colors.get(rolled.rarity)
-    stars = gacha.settings.stars.get(rolled.rarity)
-
-    data = dict(
-      type=rolled.type,
-      series=rolled.series,
-      name=rolled.name,
-      stars=stars,
-      currency=currency,
-      image=rolled.image,
-      dupe_shards=dupe_shards
-    )
+    data  = _data(card=rolled)
 
     if is_new_card:
       embed = message(
@@ -213,16 +230,10 @@ class MitsukiGacha(Extension):
     ctx: SlashContext,
     user: Optional[BaseUser] = None
   ):
-    target_user       = user if user else ctx.user
+    target_user       = user or ctx.user
     target_user_cards = userdata.list_cards(target_user)
-    target_username   = username_from_user(target_user)
-    target_usericon   = target_user.avatar_url
 
-    data = dict(
-      target_username=target_username,
-      target_usericon=target_usericon,
-      target_user=target_user.mention
-    )
+    data = _data(target_user=target_user)
 
     if len(target_user_cards) <= 0:
       embed = message("gacha_cards_no_cards", format=data, user=ctx.user)
@@ -232,18 +243,14 @@ class MitsukiGacha(Extension):
     cards = []
     cards_data = gacha.roster.from_ids(target_user_cards.keys())
     for card_data in cards_data:
-      stars = gacha.settings.stars.get(card_data.rarity)
-      card = dict(
-        name=card_data.name,
-        type=card_data.type,
-        series=card_data.series,
-        stars=stars,
+      card = _data(
+        card=card_data,
         amount=target_user_cards[card_data.id].count,
         first_acquired=int(target_user_cards[card_data.id].first_acquired)
       )
       cards.append(card)
     
-    data.update(total_cards=len(target_user_cards))
+    data.update(total_cards=len(cards_data))
 
     embeds = message_with_fields(
       "gacha_cards",
@@ -282,15 +289,8 @@ class MitsukiGacha(Extension):
   ):    
     target_user       = user if user else ctx.user
     target_user_cards = userdata.list_cards(target_user)
-    target_username   = username_from_user(target_user)
-    target_usericon   = target_user.avatar_url
 
-    data = dict(
-      target_username=target_username,
-      target_usericon=target_usericon,
-      target_user=target_user.mention,
-      total_cards=len(target_user_cards)
-    )
+    data = _data(target_user=target_user, total_cards=len(target_user_cards))
 
     if len(target_user_cards) <= 0:
       embed = message("gacha_view_no_cards", format=data, user=ctx.user)
@@ -338,12 +338,8 @@ class MitsukiGacha(Extension):
     
     cards_data = gacha.roster.from_ids(card_select_ids)
     for card_data in cards_data:
-      stars = gacha.settings.stars.get(card_data.rarity)
-      card = dict(
-        name=card_data.name,
-        type=card_data.type,
-        series=card_data.series,
-        stars=stars,
+      card = _data(
+        card=card_data,
         amount=target_user_cards[card_data.id].count,
         first_acquired=int(target_user_cards[card_data.id].first_acquired)
       )
@@ -397,19 +393,12 @@ class MitsukiGacha(Extension):
     selected_card = cards_data[selected_idx]
 
     color = gacha.settings.colors.get(selected_card.rarity)
-    stars = gacha.settings.stars.get(selected_card.rarity)
 
-    data = dict(
-      target_username=target_username,
-      target_usericon=target_usericon,
-      target_user=target_user.mention,
-      name=selected_card.name,
-      type=selected_card.type,
-      series=selected_card.series,
-      stars=stars,
+    data = _data(
+      target_user=target_user,
+      card=selected_card,
       amount=target_user_cards[card_data.id].count,
       first_acquired=int(target_user_cards[card_data.id].first_acquired),
-      image=selected_card.image,
     )
 
     embed = message("gacha_view_card", format=data, user=ctx.user, color=color)
@@ -440,32 +429,20 @@ class MitsukiGacha(Extension):
     shards: int
   ):
     user          = ctx.user
-    currency      = gacha.settings.currency
-    currency_icon = gacha.settings.currency_icon
     own_shards    = userdata.get_shards(user)
 
     if user.id == target_user.id:
       embed = message("gacha_give_self", user=user)
       await ctx.send(embed=embed)
       return
+    
+    data = _data(target_user=target_user, cost=shards, shards=own_shards)
 
     if own_shards < shards:
-      data = dict(
-        cost=shards,
-        shards=own_shards,
-        currency=currency,
-        currency_icon=currency_icon
-      )
       embed = message("gacha_insufficient_funds", format=data, user=user)
       await ctx.send(embed=embed)
       return
 
-    data = dict(
-      currency=currency,
-      currency_icon=currency_icon,
-      target_user=target_user.mention,
-      shards=shards
-    )
     embed = message("gacha_give", format=data, user=user)
 
     with Session(engine) as session:
@@ -516,13 +493,8 @@ class MitsukiGacha(Extension):
     target_user: BaseUser,
     shards: int
   ):
-    currency      = gacha.settings.currency
-    currency_icon = gacha.settings.currency_icon
-
-    data = dict(
-      currency=currency,
-      currency_icon=currency_icon,
-      target_user=target_user.mention,
+    data = _data(
+      target_user=target_user,
       shards=shards
     )
     embed = message("gacha_give", format=data, user=ctx.user)
@@ -551,8 +523,7 @@ class MitsukiGacha(Extension):
   async def admin_reload_cmd(self, ctx: SlashContext):
     gacha.reload()
 
-    total_cards_in_roster = len(gacha.roster.cards)
-    data = dict(cards=total_cards_in_roster)
+    data  = _data(cards=len(gacha.roster.cards))
     embed = message("gacha_reload", format=data, user=ctx.user)
 
     await ctx.send(embed=embed, ephemeral=True)
@@ -574,20 +545,9 @@ class MitsukiGacha(Extension):
 
     cards = []
     for card_data in cards_data:
-      stars = gacha.settings.stars.get(card_data.rarity)
-      card = dict(
-        name=card_data.name,
-        card_id=card_data.id,
-        type=card_data.type,
-        series=card_data.series,
-        stars=stars
-      )
-      cards.append(card)
+      cards.append(_data(card=card_data))
     
-    data = dict(
-      total_cards=len(cards)
-    )
-
+    data   = _data(total_cards=len(cards))
     embeds = message_with_fields(
       "gacha_cards_admin",
       cards,
