@@ -325,12 +325,18 @@ class MitsukiGacha(Extension):
     cards = []
     card_select = []
     card_select_ids = []
-    for _, __, idx in search_results:
+    strong_match_ids = []
+
+    for _, score, idx in search_results:
       card_select_ids.append(card_ids[idx])
 
+      # Strong match handling
+      if score >= 90.0:
+        strong_match_ids.append(card_ids[idx])
+      
+      # Dupe name handling
       repeat_no = 2
       card_select_name = card_names[idx]
-      # Dupe name handling
       while card_select_name in card_select:
         card_select_name = f"{card_names[idx]} ({repeat_no})"
         repeat_no += 1
@@ -345,55 +351,57 @@ class MitsukiGacha(Extension):
       )
       cards.append(card)
 
-    select_menu = StringSelectMenu(
-      *card_select,
-      placeholder="Card to view from search results",
-      custom_id="gacha_view_select",
-      min_values=1,
-      max_values=1
-    )
-
-    embed = message_with_fields(
-      "gacha_view_search_results",
-      cards,
-      base_format=data,
-      user=ctx.user
-    )[0]
-
-    select_msg = await ctx.send(embed=embed, components=select_menu)
-    
-    # -------
-
-    async def check(component: Component):
-      is_caller = component.ctx.author.id == ctx.author.id
-      if not is_caller:
-        await component.ctx.send(
-          "This interaction is not for you", 
-          ephemeral=True
-        )
-      return is_caller
-    
-    try:
-      used_component = await bot.wait_for_component(
-        components=select_menu,
-        check=check,
-        timeout=45
+    if len(strong_match_ids) == 1:
+      # Unambiguous strong match
+      selected_card = gacha.roster.from_id(strong_match_ids[0])
+      send = ctx.send
+    else:
+      # Ambiguous and/or weak match(es)
+      select_menu = StringSelectMenu(
+        *card_select,
+        placeholder="Card to view from search results",
+        custom_id="gacha_view_select",
+        min_values=1,
+        max_values=1
       )
-    except TimeoutError:
-      select_menu.disabled = True
+      embed = message_with_fields(
+        "gacha_view_search_results",
+        cards,
+        base_format=data,
+        user=ctx.user
+      )[0]
+      select_msg = await ctx.send(embed=embed, components=select_menu)
+
+      async def check(component: Component):
+        is_caller = component.ctx.author.id == ctx.author.id
+        if not is_caller:
+          await component.ctx.send(
+            "This interaction is not for you", 
+            ephemeral=True
+          )
+        return is_caller
+      
       try:
-        await select_msg.edit(embed=embed, components=select_menu)
-      except HTTPException:
-        # Case: message does not exist
-        pass
-      return
-    
-    selected_name = used_component.ctx.values[0]
-    selected_idx  = card_select.index(selected_name)
-    selected_card = cards_data[selected_idx]
+        used_component = await bot.wait_for_component(
+          components=select_menu,
+          check=check,
+          timeout=45
+        )
+      except TimeoutError:
+        select_menu.disabled = True
+        try:
+          await select_msg.edit(embed=embed, components=select_menu)
+        except HTTPException:
+          # Case: message does not exist
+          pass
+        return
+      
+      selected_name = used_component.ctx.values[0]
+      selected_idx  = card_select.index(selected_name)
+      selected_card = cards_data[selected_idx]
+      send = used_component.ctx.edit_origin
 
     color = gacha.settings.colors.get(selected_card.rarity)
-
     data = _data(
       target_user=target_user,
       card=selected_card,
@@ -402,7 +410,7 @@ class MitsukiGacha(Extension):
     )
 
     embed = message("gacha_view_card", format=data, user=ctx.user, color=color)
-    await used_component.ctx.edit_origin(embed=embed, components=[])
+    await send(embed=embed, components=[])
 
 
   @gacha_cmd.subcommand(
