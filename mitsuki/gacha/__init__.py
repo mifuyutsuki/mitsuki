@@ -30,6 +30,7 @@ from mitsuki.paginators import Paginator
 from sqlalchemy.orm import Session
 from rapidfuzz import fuzz, utils, process
 from typing import Optional
+from datetime import datetime, timedelta, timezone
 
 from mitsuki import bot
 from mitsuki.messages import message, message_with_fields, username_from_user
@@ -128,8 +129,25 @@ class MitsukiGacha(Extension):
     shards       = gacha.settings.daily_shards
     daily_tz     = gacha.settings.daily_tz
     daily_tz_str = f"-{daily_tz}" if daily_tz < 0 else f"+{daily_tz}"
+    
+    # Timestamp for next daily
+    daily_timestamp = (
+      (
+        datetime.now(tz=timezone(timedelta(hours=daily_tz)))
+        + timedelta(days=1)
+      )
+      .replace(hour=0, minute=0, second=0, microsecond=0)
+      .timestamp()
+    )
+    daily_timestamp_r = f"<t:{int(daily_timestamp)}:R>"
+    daily_timestamp_f = f"<t:{int(daily_timestamp)}:f>"
 
-    data = _data(shards=shards, daily_tz=daily_tz_str)
+    data = _data(
+      shards=shards,
+      daily_tz=daily_tz_str,
+      timestamp_r=daily_timestamp_r,
+      timestamp_f=daily_timestamp_f
+    )
 
     is_daily_available = userdata.is_daily_available(ctx.user, daily_tz)
     if not is_daily_available:

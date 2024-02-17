@@ -126,23 +126,23 @@ help_license:
 # 
 # currency_icon : Gacha currency icon (Shards)
 # shards        : Number of daily Shards claimed
-# daily_rest    : Daily reset timezone
+# timestamp_r   : Dynamic timestamp showing time to next reset
 gacha_daily:
   title: >-
     Claimed daily ${currency_icon} ${shards}
   description: >-
-    Dailies reset at 00:00 UTC${daily_tz}
+    Next daily is available ${timestamp_r}
 
 
 # /gacha daily
 # Message if daily Shards are already claimed.
 # 
-# daily_tz      : Daily reset timezone
+# timestamp_r   : Dynamic timestamp showing time to next reset
 gacha_daily_already_claimed:
   title: >-
     Already claimed for today
   description: >-
-    Dailies reset at 00:00 UTC${daily_tz}
+    Next daily is available ${timestamp_r}
   color: *color_error
 
 
