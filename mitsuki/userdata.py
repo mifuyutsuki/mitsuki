@@ -10,6 +10,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
+from interactions import Task, IntervalTrigger
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.event import listens_for
@@ -20,6 +21,7 @@ __all__ = (
   "Base",
   "engine",
   "initialize",
+  "checkpoint",
 )
 
 USERDATA_PATH = environ.get("USERDATA_PATH")
@@ -32,14 +34,33 @@ class Base(DeclarativeBase):
     return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
-def initialize():
-  global engine
-  Base.metadata.create_all(engine)
-
-
 @listens_for(engine, "connect")
 def set_wal(dbapi_connection, connection_record):
   if isinstance(dbapi_connection, SQLite3Connection):
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.close()
+
+
+def checkpoint():
+  global engine
+  try:
+    raw_connection   = engine.raw_connection()
+    dbapi_connection = raw_connection.dbapi_connection
+    if isinstance(dbapi_connection, SQLite3Connection):
+      cursor = dbapi_connection.cursor()
+      cursor.execute("PRAGMA wal_checkpoint")
+      cursor.close()
+  finally:
+    raw_connection.close()
+
+
+@Task.create(IntervalTrigger(minutes=1))
+async def checkpoint_task():
+  checkpoint()
+  
+
+async def initialize():
+  global engine, checkpoint_wal
+  Base.metadata.create_all(engine)
+  checkpoint_task.start()

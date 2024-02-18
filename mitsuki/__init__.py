@@ -52,7 +52,7 @@ class Bot(Client):
 
   @listen()
   async def on_startup(self):
-    initialize()
+    await initialize()
   
 
   @listen(CommandError, disable_default_listeners=True)
