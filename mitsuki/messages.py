@@ -10,7 +10,14 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-import interactions as ipy
+from interactions import (
+  BaseUser,
+  Embed,
+  EmbedAuthor,
+  EmbedAttachment,
+  EmbedField,
+  EmbedFooter,
+)
 from yaml import safe_load
 from typing import Optional, List
 from string import Template
@@ -30,12 +37,10 @@ def load(source_file: str):
 def message(
   message_name: str,
   format: Optional[dict] = None,
-  user: Optional[ipy.BaseUser] = None,
+  user: Optional[BaseUser] = None,
   **kwargs
 ):
-  global _messages
-  
-  _format = format if format else {}
+  _format = format or {}
   _format = _assign_user_to_format(_format, user)
 
   message_data = _init_message_data(
@@ -47,7 +52,43 @@ def message(
   message_data = _assign_format(message_data, format=_format)
   embed_data   = _process_message_data(message_data)
   
-  return ipy.Embed(**embed_data)
+  return Embed(**embed_data)
+
+
+def message_with_pages(
+  message_name: str,
+  page_formats: List[dict],
+  base_format: Optional[dict] = None,
+  user: Optional[BaseUser] = None,
+  **kwargs
+):
+  base_message_data = _init_message_data(
+    message_name,
+    format=base_format,
+    **kwargs
+  )
+  
+  _base_format = base_format or {}
+  _base_format = _assign_user_to_format(_base_format, user)
+
+  embeds = []
+  pages  = len(page_formats)
+  for page, page_format in enumerate(page_formats, start=1):
+    # message_data may have nested dicts, use deepcopy
+    message_data = deepcopy(base_message_data)
+
+    format = _base_format.copy()
+    format.update({
+      "page": page,
+      "pages": pages
+    })
+    format.update(page_format)
+    
+    message_data = _assign_format(message_data, format=format)
+    embed_data   = _process_message_data(message_data)
+    embeds.append(Embed(**embed_data))
+  
+  return embeds
 
 
 def message_with_fields(
@@ -55,7 +96,7 @@ def message_with_fields(
   field_formats: List[dict],
   fields_per_embed: int = 6,
   base_format: Optional[dict] = None,
-  user: Optional[ipy.BaseUser] = None,
+  user: Optional[BaseUser] = None,
   **kwargs
 ):
   base_message_data = _init_message_data(
@@ -66,7 +107,7 @@ def message_with_fields(
 
   field_data = base_message_data.get("field")
 
-  _base_format = base_format if base_format else {}
+  _base_format = base_format or {}
   _base_format = _assign_user_to_format(_base_format, user)
 
   embeds = []
@@ -96,7 +137,7 @@ def message_with_fields(
     message_data["fields"] = fields
     message_data = _assign_format(message_data, format=format)
     embed_data   = _process_message_data(message_data)
-    embeds.append(ipy.Embed(**embed_data))
+    embeds.append(Embed(**embed_data))
     
     cursor += fields_per_embed
     page += 1
@@ -104,7 +145,7 @@ def message_with_fields(
   return embeds
 
 
-def username_from_user(user: ipy.BaseUser):
+def username_from_user(user: BaseUser):
   if user.discriminator == "0":
     return user.username
   else:
@@ -158,7 +199,7 @@ def _process_message_data(message_data: dict):
     _icon_url = _author_data.get("icon_url")
     _icon_url = _icon_url if _is_valid_url(_icon_url) else None
 
-    author = ipy.EmbedAuthor(
+    author = EmbedAuthor(
       name=_author_data.get("name"),
       url=_url,
       icon_url=_icon_url
@@ -168,13 +209,13 @@ def _process_message_data(message_data: dict):
   thumbnail = None
   if isinstance(_thumbnail_data, str):
     if len(_thumbnail_data) > 0 and _is_valid_url(_thumbnail_data):
-      thumbnail = ipy.EmbedAttachment(url=_thumbnail_data)
+      thumbnail = EmbedAttachment(url=_thumbnail_data)
     
   _image_data = message_data.get("image")
   image = ""
   if isinstance(_image_data, str):
     if len(_image_data) > 0 and _is_valid_url(_image_data):
-      image = ipy.EmbedAttachment(url=_image_data)
+      image = EmbedAttachment(url=_image_data)
   images = [image] if image else []
   
   _footer_data = message_data.get("footer")
@@ -183,7 +224,7 @@ def _process_message_data(message_data: dict):
     _icon_url = _footer_data.get("icon_url")
     _icon_url = _icon_url if _is_valid_url(_icon_url) else None
 
-    footer = ipy.EmbedFooter(
+    footer = EmbedFooter(
       text=_footer_data.get("text"),
       icon_url=_icon_url
     )
@@ -193,7 +234,7 @@ def _process_message_data(message_data: dict):
   if isinstance(_fields_data, list):
     for field_data in _fields_data:
       if isinstance(field_data, dict):
-        fields.append(ipy.EmbedField(
+        fields.append(EmbedField(
           name=field_data.get("name"),
           value=field_data.get("value"),
           inline=field_data.get("inline")
@@ -235,7 +276,7 @@ def _assign_format(
   return formatted_data
 
 
-def _assign_user_to_format(format: dict, user: Optional[ipy.BaseUser] = None):
+def _assign_user_to_format(format: dict, user: Optional[BaseUser] = None):
   _format = deepcopy(format)
   
   # Get username, usericon

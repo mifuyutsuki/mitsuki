@@ -16,6 +16,7 @@ from interactions import (
   slash_option,
   slash_default_member_permission,
   SlashContext,
+  SlashCommandChoice,
   StringSelectMenu,
   OptionType,
   BaseUser,
@@ -33,7 +34,12 @@ from typing import Optional
 from datetime import datetime, timedelta, timezone
 
 from mitsuki import bot
-from mitsuki.messages import message, message_with_fields, username_from_user
+from mitsuki.messages import (
+  message,
+  message_with_pages,
+  message_with_fields,
+  username_from_user
+)
 from mitsuki.userdata import engine
 from mitsuki.gacha import userdata
 from mitsuki.gacha.gachaman import gacha, Card
@@ -238,6 +244,17 @@ class MitsukiGacha(Extension):
     sub_cmd_description="View your or another user's collected cards"
   )
   @slash_option(
+    name="mode",
+    description="Card viewing mode, default: List",
+    required=False,
+    opt_type=OptionType.STRING,
+    choices=[
+      SlashCommandChoice(name="list", value="list"),
+      SlashCommandChoice(name="deck", value="deck"),
+      SlashCommandChoice(name="compact", value="compact")
+    ]
+  )
+  @slash_option(
     name="user",
     description="User to view",
     required=False,
@@ -246,6 +263,7 @@ class MitsukiGacha(Extension):
   async def cards_cmd(
     self,
     ctx: SlashContext,
+    mode: Optional[str] = "list",
     user: Optional[BaseUser] = None
   ):
     target_user       = user or ctx.user
@@ -270,12 +288,31 @@ class MitsukiGacha(Extension):
     
     data.update(total_cards=len(cards_data))
 
-    embeds = message_with_fields(
-      "gacha_cards",
-      cards,
-      base_format=data,
-      user=ctx.user
-    )
+    if mode == "list":
+      embeds = message_with_fields(
+        "gacha_cards",
+        cards,
+        base_format=data,
+        user=ctx.user
+      )
+    elif mode == "deck":
+      embeds = message_with_pages(
+        "gacha_cards_deck",
+        cards,
+        base_format=data,
+        user=ctx.user
+      )
+    elif mode == "compact":
+      # Under construction - in the meantime equivalent to "list"
+      embeds = message_with_fields(
+        "gacha_cards",
+        cards,
+        base_format=data,
+        user=ctx.user
+      )
+    else:
+      raise ValueError(f"Unsupported viewing mode '{mode}'")
+    
     paginator = Paginator.create_from_embeds(bot, *embeds, timeout=45)
     paginator.show_select_menu = True
     await paginator.send(ctx)

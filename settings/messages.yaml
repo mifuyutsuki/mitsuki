@@ -174,7 +174,7 @@ gacha_give:
 
 
 # /gacha cards
-# View a user's collection of gacha cards.
+# View a user's collection of gacha cards. (List mode)
 #
 # target_username : Target user's username
 # target_usericon : Target user's avatar
@@ -200,6 +200,40 @@ gacha_cards:
     value     : >-
       `${amount}` • ${type} • ${series} • <t:${first_acquired}:f>
     inline    : false
+  
+
+# /gacha cards
+# View a user's collection of gacha cards. (Deck mode)
+#
+# target_username : Target user's username
+# target_usericon : Target user's avatar
+# target_user     : Target user (mention), defaults to self
+# page            : Current page number
+# pages           : Total number of pages
+# total_cards     : Total number of unique cards obtained by target user
+# 
+# Recurring field:
+# name   : Card name
+# type   : Type (category) of card
+# series : Series name (subcategory) of card
+# stars  : Stars denoting rarity
+# image  : Image URL of card
+gacha_cards_deck:
+  author:
+    name: >-
+      ${target_username}'s Cards Collection (${page}/${pages})
+    icon_url: ${target_usericon}
+  title: >-
+    ${name}
+  description: >-
+    ${stars} • ${type} • ${series}
+
+
+    `${amount}` in ${target_user}'s card collection
+
+    First acquired by user: <t:${first_acquired}:f>
+  image: >-
+    ${image}
 
 
 # /gacha cards
