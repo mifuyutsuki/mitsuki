@@ -566,7 +566,7 @@ class MitsukiGacha(Extension):
   @auto_defer(ephemeral=True)
   async def admin_cards_cmd(self, ctx: SlashContext):
     cards_data = gacha.roster.cards.values()
-    cards_data = sorted(cards_data, key=lambda card: card.name)
+    cards_data = sorted(cards_data, key=lambda card: card.name.lower())
     cards_data = sorted(cards_data, key=lambda card: card.rarity, reverse=True)
 
     cards = []
