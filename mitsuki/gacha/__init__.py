@@ -245,13 +245,12 @@ class MitsukiGacha(Extension):
   )
   @slash_option(
     name="mode",
-    description="Card viewing mode, default: List",
+    description="Card viewing mode (default: list)",
     required=False,
     opt_type=OptionType.STRING,
     choices=[
       SlashCommandChoice(name="list", value="list"),
-      SlashCommandChoice(name="deck", value="deck"),
-      SlashCommandChoice(name="compact", value="compact")
+      SlashCommandChoice(name="deck", value="deck")
     ]
   )
   @slash_option(
@@ -298,14 +297,6 @@ class MitsukiGacha(Extension):
     elif mode == "deck":
       embeds = message_with_pages(
         "gacha_cards_deck",
-        cards,
-        base_format=data,
-        user=ctx.user
-      )
-    elif mode == "compact":
-      # Under construction - in the meantime equivalent to "list"
-      embeds = message_with_fields(
-        "gacha_cards",
         cards,
         base_format=data,
         user=ctx.user
