@@ -49,12 +49,16 @@ class Gachaman:
 
     rarities   = sorted(rates.keys())
     rarity_1   = rarities[0]
-    rarity_get = max(min_rarity, rarity_1) if min_rarity else rarity_1
+    rarity_min = max(min_rarity, rarity_1) if min_rarity else rarity_1
+
+    rarity_get = rarity_min
     arona      = roll()
 
     for rarity in rarities:
       arona -= rates[rarity]
-      
+      if rarity < rarity_min:
+        continue
+
       if arona < 0.0:
         rarity_get = rarity
         break
