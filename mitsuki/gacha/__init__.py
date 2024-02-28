@@ -38,7 +38,6 @@ from mitsuki.messages import (
   message,
   message_with_pages,
   message_with_fields,
-  username_from_user
 )
 from mitsuki.userdata import engine
 from mitsuki.gacha import userdata
@@ -64,14 +63,14 @@ def _data(
   if user:
     data.update({
       "user"     : user.mention,
-      "username" : username_from_user(user),
+      "username" : user.tag,
       "usericon" : user.avatar_url
     })
   
   if target_user:
     data.update({
       "target_user"     : target_user.mention,
-      "target_username" : username_from_user(target_user),
+      "target_username" : target_user.tag,
       "target_usericon" : target_user.avatar_url
     })
   
