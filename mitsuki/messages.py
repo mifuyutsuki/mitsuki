@@ -19,10 +19,257 @@ from interactions import (
   EmbedFooter,
 )
 from yaml import safe_load
-from typing import Optional, List
+
+from typing import (
+  TypeAlias,
+  Optional,
+  Union,
+  List,
+  Dict,
+  Any
+)
 from string import Template
 from urllib.parse import urlparse
 from copy import deepcopy
+from os import PathLike
+
+
+import logging
+logger = logging.getLogger(__name__)
+
+
+FileName: TypeAlias = Union[str, bytes, PathLike]
+MessageTemplate: TypeAlias = Dict[str, Any]
+
+
+class Messages:
+  _templates: Dict[str, MessageTemplate]
+  _default: MessageTemplate
+
+
+  def __init__(self, template_file: FileName):
+    self.reload(template_file)
+
+  
+  def reload(self, template_file: FileName):
+    """
+    Reload a message templates file (YAML).
+
+    Args:
+        template_file: Name of YAML template file.
+    """
+    self._templates = self._load(template_file)
+    self._default   = self._load_template("default")
+
+    num_templates = len(self._templates)
+    logger.debug(
+      f"Loaded {num_templates} message templates from file: '{template_file}'"
+    )
+  
+
+  def modify(self, template_file: FileName):
+    """
+    Modify current message templates using a message templates file.
+
+    If a particular template exists in the file, the existing template will be
+    overwritten.
+
+    Args:
+        template_file: Name of YAML template file.
+    """
+    templates = self._load(template_file)
+    self._templates.update(templates)
+
+    num_templates = len(templates)
+    logger.debug(
+      f"Added/modified {num_templates} message templates from file: '{template_file}'"
+    )
+  
+
+  def message(self, name: str, data: Optional[dict] = None, **kwargs):
+    """
+    Generate a message from a message template and its data.
+    """
+    if name not in self._templates.keys():
+      raise ValueError(f"Message template '{name}' is invalid or does not exist")
+    
+    data = data or {}
+    template  = deepcopy(self._default)
+    template |= self._load_template(name)
+    template  = _assign_data(template, data)
+    template |= kwargs
+
+    return _create_embed(template)
+  
+
+  def message_with_pages(
+    self,
+    name: str,
+    pages_data: List[dict],
+    base_data: Optional[dict] = None,
+    colors: Optional[List[Union[str, int]]] = None,
+    **kwargs
+  ):
+    if name not in self._templates.keys():
+      raise ValueError(f"Message template '{name}' is invalid or does not exist")
+
+    base_data = base_data or {}
+    
+    template  = deepcopy(self._default)
+    template |= self._load_template(name)
+    template  = _assign_data(template, base_data)
+
+    colors = colors or []
+    if len(colors) < len(pages_data):
+      colors.append([
+        self._default.get("color") for _ in range(len(pages_data) - len(colors))
+      ])
+
+    embeds = []
+    pages = len(pages_data)
+    for page, page_data in enumerate(pages_data, start=1):
+      page_template  = deepcopy(template)
+      page_template  = _assign_data(
+        page_template,
+        page_data | {"page": page, "pages": pages}
+      )
+      page_template |= kwargs
+      embeds.append(_create_embed(page_template))
+    
+    return embeds
+  
+
+  # def message_with_fields(
+  #   self,
+  #   name: str,
+  #   fields_data: List[dict],
+  #   base_data: Optional[dict] = None,
+  #   fields_per_page: int = 6,
+  #   **kwargs
+  # ):
+  #   if name not in self._templates.keys():
+  #     raise ValueError(f"Message template '{name}' is invalid or does not exist")
+
+  #   base_data = base_data or {}
+    
+  #   template  = deepcopy(self._default)
+  #   template |= self._load_template(name)
+  #   template  = _assign_data(template, base_data)
+
+  #   field_template = template.get("field")
+  #   embeds = []
+  #   pages = (max(0, len(fields_data) - 1) // fields_per_page) + 1
+
+  #   cursor, page = 0, 1
+  #   while cursor < len(fields_data):
+  #     page_template = deepcopy(template)
+
+  #     fields = []
+  #     for field_data in fields_data[cursor : cursor + fields_per_page]:
+  #       page_data = base_data | field_data
+
+  #     page_template  = _assign_data(
+  #       page_template,
+  #       page_data | {"page": page, "pages": pages}
+  #     )
+
+  #     cursor += fields_per_page
+  #     page += 1
+
+
+  def _load(self, template_file: FileName):
+    with open(template_file, encoding="UTF-8") as f:
+      templates = safe_load(f)
+    if not isinstance(templates, Dict):
+      raise ValueError(f"Message template file '{template_file}' is invalid")
+    
+    return templates
+
+
+  def _load_template(self, name: str):
+    return self._templates.get(name) or {}
+
+
+def _assign_data(
+  template: MessageTemplate,
+  data: Optional[dict] = None
+):
+  if data is None:
+    return template
+  if len(data) <= 0:
+    return template
+  assigned = deepcopy(template)
+
+  DEPTH = 1
+
+  def _recurse_assign(temp: Any, recursions: int = 0):
+    assigned_temp: MessageTemplate = {}
+
+    for key, value in temp.items():
+      if isinstance(value, Dict) and recursions < DEPTH:
+        assigned_value = _recurse_assign(value, recursions+1)
+      elif isinstance(value, str):
+        assigned_value = Template(value).safe_substitute(**data)
+      else:
+        assigned_value = value
+      assigned_temp[key] = assigned_value
+
+    return assigned_temp
+  
+  assigned = _recurse_assign(assigned)
+  return assigned
+
+
+def _create_embed(template: MessageTemplate):
+  title = template.get("title")
+  description = template.get("description")
+  color = template.get("color")
+  url = _valid_url_or_none(template.get("url"))
+
+  fields_get = template.get("fields") or []
+  fields = []
+  for field_get in fields_get:
+    if isinstance(field_get, Dict):
+      field = EmbedField(
+        name=field_get.get("name") or "",
+        value=field_get.get("value") or "",
+        inline=bool(field_get.get("inline"))
+      )
+      fields.append(field)
+
+  author_get = template.get("author") or {}
+  author = EmbedAuthor(
+    name=author_get.get("name"),
+    url=_valid_url_or_none(author_get.get("url")),
+    icon_url=_valid_url_or_none(author_get.get("icon_url"))
+  )
+
+  thumbnail = EmbedAttachment(url=_valid_url_or_none(template.get("thumbnail")))
+
+  image = EmbedAttachment(url=_valid_url_or_none(template.get("image")))
+  images = [image]
+
+  footer_get = template.get("footer") or {}
+  footer = EmbedFooter(
+    text=footer_get.get("text") or "",
+    icon_url=_valid_url_or_none(footer_get.get("icon_url"))
+  )
+
+  return Embed(
+    title=title,
+    description=description,
+    color=color,
+    url=url,
+    fields=fields,
+    author=author,
+    thumbnail=thumbnail,
+    images=images,
+    footer=footer
+  )
+
+
+def _valid_url_or_none(url: str):
+  return url if _is_valid_url(url) else None
 
 
 _messages: Optional[dict] = None
