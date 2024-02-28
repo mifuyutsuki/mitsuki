@@ -451,8 +451,8 @@ class MitsukiGacha(Extension):
     data = _data(
       target_user=target_user,
       card=selected_card,
-      amount=target_user_cards[card_data.id].count,
-      first_acquired=int(target_user_cards[card_data.id].first_acquired),
+      amount=target_user_cards[selected_card.id].count,
+      first_acquired=int(target_user_cards[selected_card.id].first_acquired),
     )
 
     embed = message("gacha_view_card", format=data, user=ctx.user, color=color)
