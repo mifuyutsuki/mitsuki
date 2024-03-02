@@ -117,6 +117,8 @@ class MessageMan:
     self,
     template_name: str,
     data: Optional[dict] = None,
+    user: Optional[BaseUser] = None,
+    target_user: Optional[BaseUser] = None,
     **template_kwargs
   ) -> Message:
     """
@@ -128,6 +130,8 @@ class MessageMan:
     Args:
         template_name: Name of message template obtained from template file
         data: Data to insert to the template
+        user: User to include to data
+        target_user: Target user to include to data
 
     Kwargs:
         template_kwargs: Template overrides
@@ -142,6 +146,10 @@ class MessageMan:
       raise ValueError(f"Message template '{template_name}' is invalid or does not exist")
     
     data = data or {}
+    if user:
+      data |= user_data(user)
+    if target_user:
+      data |= target_user_data(target_user)
 
     template  = deepcopy(self._default)
     template |= self._load_template(template_name)
@@ -161,6 +169,8 @@ class MessageMan:
     template_name: str,
     pages_data: List[dict],
     base_data: Optional[dict] = None,
+    user: Optional[BaseUser] = None,
+    target_user: Optional[BaseUser] = None,
     **template_kwargs
   ) -> Message:
     """
@@ -171,6 +181,8 @@ class MessageMan:
         template_name: Name of message template obtained from template file
         pages_data: List of data for each page to be inserted to the template
         base_data: Data to insert for all pages to the template
+        user: User to include to data
+        target_user: Target user to include to data
 
     Kwargs:
         template_kwargs: Template overrides for all pages
@@ -185,6 +197,10 @@ class MessageMan:
       raise ValueError(f"Message template '{template_name}' is invalid or does not exist")
 
     base_data = base_data or {}
+    if user:
+      base_data |= user_data(user)
+    if target_user:
+      base_data |= target_user_data(target_user)
     
     base_template  = deepcopy(self._default)
     base_template |= self._load_template(template_name)
@@ -215,6 +231,8 @@ class MessageMan:
     template_name: str,
     fields_data: List[dict],
     base_data: Optional[dict] = None,
+    user: Optional[BaseUser] = None,
+    target_user: Optional[BaseUser] = None,
     fields_per_page: int = 6,
     **template_kwargs
   ):
@@ -226,6 +244,8 @@ class MessageMan:
         template_name: Name of message template obtained from template file
         fields_data: List of data for each field to be inserted to the template
         base_data: Data to insert for all pages to the template
+        user: User to include to data
+        target_user: Target user to include to data
         fields_per_page: Number of fields for each page
 
     Kwargs:
@@ -241,6 +261,10 @@ class MessageMan:
       raise ValueError(f"Message template '{template_name}' is invalid or does not exist")
 
     base_data = base_data or {}
+    if user:
+      base_data |= user_data(user)
+    if target_user:
+      base_data |= target_user_data(target_user)
     
     base_template  = deepcopy(self._default)
     base_template |= self._load_template(template_name)
@@ -504,6 +528,22 @@ def load_multifield(
     fields_per_page=fields_per_page,
     **template_kwargs
   )
+
+
+def user_data(user: BaseUser):
+  return {
+    "username": user.tag,
+    "usericon": user.avatar_url,
+    "user": user.mention
+  }
+
+
+def target_user_data(user: BaseUser):
+  return {
+    "target_username": user.tag,
+    "target_usericon": user.avatar_url,
+    "target_user": user.mention
+  }
 
 
 # =============================================================================
