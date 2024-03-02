@@ -18,6 +18,7 @@ logging.basicConfig(
   format="%(asctime)s [%(levelname)s] %(name)s:%(lineno)d: %(message)s",
   level=logging.INFO
 )
+import traceback
 
 from interactions import (
   Status,
@@ -26,9 +27,7 @@ from interactions import (
   Client,
   Intents,
   listen,
-  BaseContext,
   InteractionContext,
-  ComponentContext
 )
 from interactions.api.events import (
   Startup,
@@ -38,10 +37,10 @@ from interactions.api.events import (
   ComponentCompletion
 )
 from interactions.client.errors import CommandCheckFailure
+from interactions.client.mixins.send import SendMixin
 from os import environ
 
-from mitsuki.messages import load as load_messages
-from mitsuki.messages import message
+from mitsuki.messages import load_message
 from mitsuki.userdata import initialize
 from mitsuki.version import __version__
 
@@ -85,15 +84,14 @@ class Bot(Client):
   @listen(CommandError, disable_default_listeners=True)
   async def on_command_error(self, event: CommandError):
     if isinstance(event.error, CommandCheckFailure):
-      embed = message("error_command_perms", user=event.ctx.user)
-      await event.ctx.send(embed=embed)
-      return
+      message = load_message("error_command_perms", user=event.ctx.author)
+    else:
+      traceback.print_exception(event.error)
+      logger.exception(event.error)
+      message = load_message("error", data={"error_repr": repr(event.error)}, user=event.ctx.author)
     
-    logger.exception(event.error)
-
-    data  = dict(error_repr=repr(event.error))
-    embed = message("error", format=data, user=event.ctx.user)
-    await event.ctx.send(embed=embed)
+    if isinstance(event.ctx, SendMixin):
+      await event.ctx.send(**message.to_dict())
   
 
   @listen(CommandCompletion)
@@ -101,9 +99,9 @@ class Bot(Client):
     if isinstance(event.ctx, InteractionContext):
       command_name = event.ctx.invoke_target
       logger.info(f"Command emitted: {command_name}")
-      if len(event.ctx.args) > 0:
-        args = [str(v) for v in event.ctx.args]
-        logger.info(f"args: {args}")
+      # if len(event.ctx.args) > 0:
+      #   args = [str(v) for v in event.ctx.args]
+      #   logger.info(f"args: {args}")
       if len(event.ctx.kwargs) > 0:
         kwargs = {k: str(v) for k, v in event.ctx.kwargs.items()}
         logger.info(f"kwargs: {kwargs}")
@@ -127,7 +125,6 @@ print(f"Mitsuki {__version__}")
 print(f"Copyright (c) 2024 Mifuyu (mifuyutsuki)")
 print(f"---------------------------------------")
 
-load_messages(environ.get("MESSAGES_YAML"))
 bot = Bot()
 bot.load_extension("mitsuki.core")
 bot.load_extension("mitsuki.gacha")

@@ -14,13 +14,11 @@ import interactions as ipy
 from interactions import Extension
 from interactions import slash_command, SlashContext
 
-from mitsuki.messages import message
+from mitsuki.messages import load_message
 from mitsuki.version import __version__
 
 
 class MitsukiCore(Extension):
-  version = {"version": __version__}
-
   @slash_command(
     name="help",
     description="Help on available commands and other info"
@@ -32,14 +30,22 @@ class MitsukiCore(Extension):
     sub_cmd_name="about",
     sub_cmd_description="About this bot"
   )
-  async def about(self, ctx: SlashContext):
-    embed = message("help_about", format=self.version, user=ctx.user)
-    await ctx.send(embed=embed)
+  async def about_cmd(self, ctx: SlashContext):
+    message = load_message(
+      "help_about",
+      data={"version": __version__},
+      user=ctx.author
+    )
+    await ctx.send(**message.to_dict())
   
   @help.subcommand(
     sub_cmd_name="license",
     sub_cmd_description="License information"
   )
-  async def license_(self, ctx: SlashContext):
-    embed = message("help_license", format=self.version, user=ctx.user)
-    await ctx.send(embed=embed)
+  async def license_cmd(self, ctx: SlashContext):
+    message = load_message(
+      "help_license",
+      data={"version": __version__},
+      user=ctx.author
+    )
+    await ctx.send(**message.to_dict())

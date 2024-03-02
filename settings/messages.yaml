@@ -84,7 +84,7 @@ under_construction:
 # /help about
 help_about:
   title: >-
-    Mitsuki ${version}
+    Mitsuki v${version}
   description: >-
     A little fun bot.
 
@@ -104,7 +104,7 @@ help_license:
   title: >-
     License
   description: >-
-    Copyright (c) 2024 **Mifuyu**
+    Copyright (c) 2024 **Mifuyu** (mifuyutsuki)
 
     Source code is available at GitHub https://github.com/mifuyutsuki/mitsuki
 
@@ -234,6 +234,8 @@ gacha_cards_deck:
     First acquired by user: <t:${first_acquired}:f>
   image: >-
     ${image}
+  color: >-
+    ${color}
 
 
 # /gacha cards
@@ -318,6 +320,8 @@ gacha_view_card:
     First acquired by user: <t:${first_acquired}:f>
   image: >-
     ${image}
+  color: >-
+    ${color}
 
 
 # /gacha roll
@@ -368,6 +372,8 @@ gacha_get_new_card:
     ✨ **New!**
   image: >-
     ${image}
+  color: >-
+    ${color}
 
 
 # /gacha roll
@@ -395,6 +401,8 @@ gacha_get_dupe_card:
     **${currency}** +${dupe_shards}
   image: >-
     ${image}
+  color: >-
+    ${color}
 
 
 # /admin gacha reload
@@ -403,7 +411,7 @@ gacha_reload:
     Reloaded gacha configuration
   description: >-
     Cards in roster: ${cards}
-  
+
 
 # /admin gacha cards
 # Similar to /gacha cards, but list all cards currently in roster.
