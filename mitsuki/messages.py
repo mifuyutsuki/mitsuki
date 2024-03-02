@@ -31,29 +31,58 @@ from typing import (
 from string import Template
 from urllib.parse import urlparse
 from copy import deepcopy
-from os import PathLike
+from os import environ, PathLike
 
 
 import logging
 logger = logging.getLogger(__name__)
 
-
 FileName: TypeAlias = Union[str, bytes, PathLike]
 MessageTemplate: TypeAlias = Dict[str, Any]
 
 
-class Messages:
+class Message:
+  content: Optional[str]
+  embed: Optional[Embed]
+  embeds: Optional[List[Embed]]
+
+  def __init__(
+    self,
+    content: Optional[str] = None,
+    embed: Optional[Embed] = None,
+    embeds: Optional[List[Embed]] = None
+  ):
+    self.content = content
+    self.embed = embed
+    self.embeds = embeds
+ 
+
+  def to_dict(self):
+    """
+    Generate kwargs for ctx.send().
+
+    Returns:
+        dict
+    """
+    return {
+      "content": self.content,
+      "embed": self.embed
+    }
+
+
+class MessageMan:
   _templates: Dict[str, MessageTemplate]
   _default: MessageTemplate
 
 
-  def __init__(self, template_file: FileName):
-    self.reload(template_file)
+  def __init__(self, template_file: Optional[FileName] = None):
+    if template_file:
+      self.load(template_file)
 
   
-  def reload(self, template_file: FileName):
+  def load(self, template_file: FileName):
     """
-    Reload a message templates file (YAML).
+    Load or reload a message templates file (YAML).
 
     Args:
         template_file: Name of YAML template file.
@@ -61,9 +90,8 @@ class Messages:
     self._templates = self._load(template_file)
     self._default   = self._load_template("default")
 
-    num_templates = len(self._templates)
     logger.debug(
-      f"Loaded {num_templates} message templates from file: '{template_file}'"
+      f"Loaded {len(self._templates)} message templates from file: '{template_file}'"
     )
   
 
@@ -80,101 +108,177 @@ class Messages:
     templates = self._load(template_file)
     self._templates.update(templates)
 
-    num_templates = len(templates)
     logger.debug(
-      f"Added/modified {num_templates} message templates from file: '{template_file}'"
+      f"Added/modified {len(templates)} message templates from file: '{template_file}'"
     )
   
 
-  def message(self, name: str, data: Optional[dict] = None, **kwargs):
+  def message(
+    self,
+    template_name: str,
+    data: Optional[dict] = None,
+    **template_kwargs
+  ) -> Message:
     """
     Generate a message from a message template and its data.
+
+    The generated Message object may be passed as arguments to ctx.send() using
+    Message.to_dict().
+
+    Args:
+        template_name: Name of message template obtained from template file
+        data: Data to insert to the template
+
+    Kwargs:
+        template_kwargs: Template overrides
+    
+    Returns:
+        Message: Message object to be passed to send()
+    
+    Raises:
+        ValueError: Message template 'name' does not exist in loaded file.
     """
-    if name not in self._templates.keys():
-      raise ValueError(f"Message template '{name}' is invalid or does not exist")
+    if template_name not in self._templates.keys():
+      raise ValueError(f"Message template '{template_name}' is invalid or does not exist")
     
     data = data or {}
-    template  = deepcopy(self._default)
-    template |= self._load_template(name)
-    template  = _assign_data(template, data)
-    template |= kwargs
 
-    return _create_embed(template)
+    template  = deepcopy(self._default)
+    template |= self._load_template(template_name)
+    template  = _assign_data(template, data)
+    template |= template_kwargs
+
+    content = template.get("content")
+
+    return Message(
+      content=str(content) if content else None,
+      embed=_create_embed(template)
+    )
   
 
-  def message_with_pages(
+  def multipage(
     self,
-    name: str,
+    template_name: str,
     pages_data: List[dict],
     base_data: Optional[dict] = None,
-    colors: Optional[List[Union[str, int]]] = None,
-    **kwargs
-  ):
-    if name not in self._templates.keys():
-      raise ValueError(f"Message template '{name}' is invalid or does not exist")
+    **template_kwargs
+  ) -> Message:
+    """
+    Generate multiple-page messages from a message template and a list of data
+    for each page.
+
+    Args:
+        template_name: Name of message template obtained from template file
+        pages_data: List of data for each page to be inserted to the template
+        base_data: Data to insert for all pages to the template
+
+    Kwargs:
+        template_kwargs: Template overrides for all pages
+    
+    Returns:
+        Message: Message object to be passed to Paginator
+    
+    Raises:
+        ValueError: Message template 'name' does not exist.
+    """
+    if template_name not in self._templates.keys():
+      raise ValueError(f"Message template '{template_name}' is invalid or does not exist")
 
     base_data = base_data or {}
     
-    template  = deepcopy(self._default)
-    template |= self._load_template(name)
-    template  = _assign_data(template, base_data)
+    base_template  = deepcopy(self._default)
+    base_template |= self._load_template(template_name)
+    base_template  = _assign_data(base_template, base_data)
+    
+    content = base_template.get("content")
 
-    colors = colors or []
-    if len(colors) < len(pages_data):
-      colors.append([
-        self._default.get("color") for _ in range(len(pages_data) - len(colors))
-      ])
-
+    # Iterate one embed per page
     embeds = []
     pages = len(pages_data)
     for page, page_data in enumerate(pages_data, start=1):
-      page_template  = deepcopy(template)
+      page_template  = deepcopy(base_template)
       page_template  = _assign_data(
         page_template,
         page_data | {"page": page, "pages": pages}
       )
-      page_template |= kwargs
+      page_template |= template_kwargs
       embeds.append(_create_embed(page_template))
     
-    return embeds
+    return Message(
+      content=str(content) if content else None,
+      embeds=embeds
+    )
   
 
-  # def message_with_fields(
-  #   self,
-  #   name: str,
-  #   fields_data: List[dict],
-  #   base_data: Optional[dict] = None,
-  #   fields_per_page: int = 6,
-  #   **kwargs
-  # ):
-  #   if name not in self._templates.keys():
-  #     raise ValueError(f"Message template '{name}' is invalid or does not exist")
+  def multifield(
+    self,
+    template_name: str,
+    fields_data: List[dict],
+    base_data: Optional[dict] = None,
+    fields_per_page: int = 6,
+    **template_kwargs
+  ):
+    """
+    Generate multiple-page message with recurring fields from a message
+    template and a list of data for each field.
 
-  #   base_data = base_data or {}
+    Args:
+        template_name: Name of message template obtained from template file
+        fields_data: List of data for each field to be inserted to the template
+        base_data: Data to insert for all pages to the template
+        fields_per_page: Number of fields for each page
+
+    Kwargs:
+        template_kwargs: Template overrides for all pages
     
-  #   template  = deepcopy(self._default)
-  #   template |= self._load_template(name)
-  #   template  = _assign_data(template, base_data)
+    Returns:
+        Message: Message object to be passed to Paginator
+    
+    Raises:
+        ValueError: Message template 'name' does not exist.
+    """
+    if template_name not in self._templates.keys():
+      raise ValueError(f"Message template '{template_name}' is invalid or does not exist")
 
-  #   field_template = template.get("field")
-  #   embeds = []
-  #   pages = (max(0, len(fields_data) - 1) // fields_per_page) + 1
+    base_data = base_data or {}
+    
+    base_template  = deepcopy(self._default)
+    base_template |= self._load_template(template_name)
+    base_template  = _assign_data(base_template, base_data)
+    field_template = base_template.get("field")
 
-  #   cursor, page = 0, 1
-  #   while cursor < len(fields_data):
-  #     page_template = deepcopy(template)
+    content = base_template.get("content")
 
-  #     fields = []
-  #     for field_data in fields_data[cursor : cursor + fields_per_page]:
-  #       page_data = base_data | field_data
+    # Discord maximum is 25 fields
+    fields_per_page = min(25, fields_per_page)
 
-  #     page_template  = _assign_data(
-  #       page_template,
-  #       page_data | {"page": page, "pages": pages}
-  #     )
+    embeds = []
+    
+    # Iterate <fields_per_page> fields per page
+    pages = (max(0, len(fields_data) - 1) // fields_per_page) + 1
+    cursor, page = 0, 1
+    while cursor < len(fields_data):
+      page_template = deepcopy(base_template)
 
-  #     cursor += fields_per_page
-  #     page += 1
+      fields = []
+      for field_data in fields_data[cursor : cursor + fields_per_page]:
+        field_data = base_data | field_data
+        fields.append(_assign_data(field_template, field_data))     
+
+      page_template = _assign_data(
+        page_template | {"fields": fields},
+        base_data | {"page": page, "pages": pages}
+      )
+      page_template |= template_kwargs
+      embeds.append(_create_embed(page_template))
+
+      cursor += fields_per_page
+      page += 1
+    
+    return Message(
+      content=str(content) if content else None,
+      embeds=embeds
+    )
 
 
   def _load(self, template_file: FileName):
@@ -237,23 +341,23 @@ def _create_embed(template: MessageTemplate):
       )
       fields.append(field)
 
-  author_get = template.get("author") or {}
+  author_get = template.get("author")
   author = EmbedAuthor(
     name=author_get.get("name"),
     url=_valid_url_or_none(author_get.get("url")),
     icon_url=_valid_url_or_none(author_get.get("icon_url"))
-  )
+  ) if author_get else None
 
   thumbnail = EmbedAttachment(url=_valid_url_or_none(template.get("thumbnail")))
 
   image = EmbedAttachment(url=_valid_url_or_none(template.get("image")))
   images = [image]
 
-  footer_get = template.get("footer") or {}
+  footer_get = template.get("footer")
   footer = EmbedFooter(
     text=footer_get.get("text") or "",
     icon_url=_valid_url_or_none(footer_get.get("icon_url"))
-  )
+  ) if footer_get else None
 
   return Embed(
     title=title,
@@ -272,13 +376,148 @@ def _valid_url_or_none(url: str):
   return url if _is_valid_url(url) else None
 
 
-_messages: Optional[dict] = None
+# =============================================================================
+
+
+BASE_MESSAGES_YAML = environ.get("BASE_MESSAGES_YAML")
+MESSAGES_YAML = environ.get("MESSAGES_YAML")
+
+root = MessageMan()
+
+# For logging reasons, use load() on first instead of two modify() calls
+if BASE_MESSAGES_YAML:
+  root.load(BASE_MESSAGES_YAML)
+  root.modify(MESSAGES_YAML)
+elif MESSAGES_YAML:
+  root.load(MESSAGES_YAML)
+else:
+  logger.warning(
+    "No MESSAGES_YAML found, initializing root MessageMan with no templates"
+  )
+
+
+# =============================================================================
+
+
+def load_message(
+  template_name: str,
+  data: Optional[dict] = None,
+  **template_kwargs
+) -> Message:
+  """
+  Generate a message from a message template and its data.
+
+  The generated Message object may be passed as arguments to ctx.send() using
+  Message.to_dict().
+
+  This function uses the root MessageMan, which is determined by MESSAGES_YAML
+  and BASE_MESSAGES_YAML settings variables.
+
+  Args:
+      template_name: Name of message template obtained from template file
+      data: Data to insert to the template
+
+  Kwargs:
+      template_kwargs: Template overrides
+  
+  Returns:
+      Message: Message object to be passed to send()
+  
+  Raises:
+      ValueError: Message template 'name' does not exist in loaded file.
+  """
+  return root.message(
+    template_name=template_name,
+    data=data,
+    **template_kwargs
+  )
+
+
+def load_multipage(
+  template_name: str,
+  pages_data: List[dict],
+  base_data: Optional[dict] = None,
+  **template_kwargs
+) -> Message:
+  """
+  Generate multiple-page messages from a message template and a list of data
+  for each page.
+
+  This function uses the root MessageMan, which is determined by MESSAGES_YAML
+  and BASE_MESSAGES_YAML settings variables.
+
+  Args:
+      template_name: Name of message template obtained from template file
+      pages_data: List of data for each page to be inserted to the template
+      base_data: Data to insert for all pages to the template
+
+  Kwargs:
+      template_kwargs: Template overrides for all pages
+  
+  Returns:
+      Message: Message object to be passed to Paginator
+  
+  Raises:
+      ValueError: Message template 'name' does not exist.
+  """
+  return root.multipage(
+    template_name=template_name,
+    pages_data=pages_data,
+    base_data=base_data,
+    **template_kwargs
+  )
+
+
+def load_multifield(
+  template_name: str,
+  fields_data: List[dict],
+  base_data: Optional[dict] = None,
+  fields_per_page: int = 6,
+  **template_kwargs
+):
+  """
+  Generate multiple-page message with recurring fields from a message
+  template and a list of data for each field.
+
+  This function uses the root MessageMan, which is determined by MESSAGES_YAML
+  and BASE_MESSAGES_YAML settings variables.
+
+  Args:
+      template_name: Name of message template obtained from template file
+      fields_data: List of data for each field to be inserted to the template
+      base_data: Data to insert for all pages to the template
+      fields_per_page: Number of fields for each page
+
+  Kwargs:
+      template_kwargs: Template overrides for all pages
+  
+  Returns:
+      Message: Message object to be passed to Paginator
+  
+  Raises:
+      ValueError: Message template 'name' does not exist.
+  """
+  return root.multifield(
+    template_name=template_name,
+    fields_data=fields_data,
+    base_data=base_data,
+    fields_per_page=fields_per_page,
+    **template_kwargs
+  )
+
+
+# =============================================================================
+# Legacy mitsuki.messages
+# =============================================================================
 
 
 def load(source_file: str):
   global _messages
   with open(source_file, encoding="UTF-8") as f:
     _messages = safe_load(f)
+
+
+_messages: Optional[dict] = None
 
 
 def message(
