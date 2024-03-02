@@ -351,7 +351,7 @@ def _assign_data(
 def _create_embed(template: MessageTemplate):
   title = template.get("title")
   description = template.get("description")
-  color = template.get("color")
+  color = int(template.get("color") or 0)
   url = _valid_url_or_none(template.get("url"))
 
   fields_get = template.get("fields") or []
@@ -426,6 +426,8 @@ else:
 def load_message(
   template_name: str,
   data: Optional[dict] = None,
+  user: Optional[BaseUser] = None,
+  target_user: Optional[BaseUser] = None,
   **template_kwargs
 ) -> Message:
   """
@@ -440,6 +442,8 @@ def load_message(
   Args:
       template_name: Name of message template obtained from template file
       data: Data to insert to the template
+      user: User to include to data
+      target_user: Target user to include to data
 
   Kwargs:
       template_kwargs: Template overrides
@@ -453,6 +457,8 @@ def load_message(
   return root.message(
     template_name=template_name,
     data=data,
+    user=user,
+    target_user=target_user,
     **template_kwargs
   )
 
@@ -461,6 +467,8 @@ def load_multipage(
   template_name: str,
   pages_data: List[dict],
   base_data: Optional[dict] = None,
+  user: Optional[BaseUser] = None,
+  target_user: Optional[BaseUser] = None,
   **template_kwargs
 ) -> Message:
   """
@@ -474,6 +482,8 @@ def load_multipage(
       template_name: Name of message template obtained from template file
       pages_data: List of data for each page to be inserted to the template
       base_data: Data to insert for all pages to the template
+      user: User to include to data
+      target_user: Target user to include to data
 
   Kwargs:
       template_kwargs: Template overrides for all pages
@@ -488,6 +498,8 @@ def load_multipage(
     template_name=template_name,
     pages_data=pages_data,
     base_data=base_data,
+    user=user,
+    target_user=target_user,
     **template_kwargs
   )
 
@@ -496,6 +508,8 @@ def load_multifield(
   template_name: str,
   fields_data: List[dict],
   base_data: Optional[dict] = None,
+  user: Optional[BaseUser] = None,
+  target_user: Optional[BaseUser] = None,
   fields_per_page: int = 6,
   **template_kwargs
 ):
@@ -510,6 +524,8 @@ def load_multifield(
       template_name: Name of message template obtained from template file
       fields_data: List of data for each field to be inserted to the template
       base_data: Data to insert for all pages to the template
+      user: User to include to data
+      target_user: Target user to include to data
       fields_per_page: Number of fields for each page
 
   Kwargs:
@@ -525,6 +541,8 @@ def load_multifield(
     template_name=template_name,
     fields_data=fields_data,
     base_data=base_data,
+    user=user,
+    target_user=target_user,
     fields_per_page=fields_per_page,
     **template_kwargs
   )
