@@ -634,7 +634,7 @@ class MitsukiGacha(Extension):
   )
   @slash_default_member_permission(Permissions.ADMINISTRATOR)
   @check(is_owner())
-  async def admin_give_cmd(
+  async def system_give_cmd(
     self,
     ctx: SlashContext,
     target_user: BaseUser,
@@ -642,7 +642,10 @@ class MitsukiGacha(Extension):
   ):
     message = load_message(
       "gacha_give",
-      data={"shards": shards},
+      data={
+        "shards": shards,
+        **currency_data()
+      },
       user=ctx.author,
       target_user=target_user
     )
