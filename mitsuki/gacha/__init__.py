@@ -640,10 +640,15 @@ class MitsukiGacha(Extension):
     target_user: BaseUser,
     shards: int
   ):
+    shards_before = userdata.get_shards(target_user)
+    shards_after  = shards_before + shards
+
     message = load_message(
       "gacha_give",
       data={
         "shards": shards,
+        "shards_before": shards_before,
+        "shards_after": shards_after,
         **currency_data()
       },
       user=ctx.author,
