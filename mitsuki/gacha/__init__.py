@@ -26,7 +26,6 @@ from interactions import (
   auto_defer,
 )
 from interactions.client.errors import HTTPException
-from interactions.api.events import Component
 from mitsuki.paginators import Paginator
 from sqlalchemy.orm import Session
 from rapidfuzz import fuzz, utils, process
@@ -39,12 +38,19 @@ from mitsuki.messages import (
   load_multipage,
   load_multifield,
 )
+from mitsuki.core import system_command, is_caller
 from mitsuki.userdata import engine
 from mitsuki.gacha import userdata
 from mitsuki.gacha.gachaman import gacha, Card
 
 
 # =============================================================================
+
+
+system_gacha_command = system_command(
+  group_name="gacha",
+  group_description="Manage gacha system"
+)
 
 
 def currency_data():
@@ -486,20 +492,11 @@ class MitsukiGacha(Extension):
 
       # -------------------------------------------------------------
       # Wait for response
-
-      async def check(component: Component):
-        is_caller = component.ctx.author.id == ctx.author.id
-        if not is_caller:
-          await component.ctx.send(
-            "This interaction is not for you", 
-            ephemeral=True
-          )
-        return is_caller
       
       try:
         used_component = await bot.wait_for_component(
           components=select_menu,
-          check=check,
+          check=is_caller(ctx),
           timeout=45
         )
       except TimeoutError:
@@ -613,26 +610,12 @@ class MitsukiGacha(Extension):
         raise
       else:
         session.commit()
-  
-
-  # ===========================================================================
-  # ===========================================================================
-  
-  @slash_command(
-    name="admin",
-    description="Bot owner only: administrative functions"
-  )
-  async def admin_cmd(self, ctx: SlashContext):
-    # TODO: move definitions for admin cmds to own module
-    pass
 
   
   # ===========================================================================
   # ===========================================================================
 
-  @admin_cmd.subcommand(
-    group_name="gacha",
-    group_description="Roll your favorite characters and memories",
+  @system_gacha_command.subcommand(
     sub_cmd_name="give",
     sub_cmd_description="Give Shards to another user"
   )
@@ -679,16 +662,14 @@ class MitsukiGacha(Extension):
   # ===========================================================================
   # ===========================================================================
 
-  @admin_cmd.subcommand(
-    group_name="gacha",
-    group_description="Roll your favorite characters and memories",
+  @system_gacha_command.subcommand(
     sub_cmd_name="reload",
     sub_cmd_description="Reload gacha configuration files"
   )
   @slash_default_member_permission(Permissions.ADMINISTRATOR)
   @check(is_owner())
   @auto_defer(ephemeral=True)
-  async def admin_reload_cmd(self, ctx: SlashContext):
+  async def system_reload_cmd(self, ctx: SlashContext):
     gacha.reload()
 
     message = load_message(
@@ -705,16 +686,14 @@ class MitsukiGacha(Extension):
   # ===========================================================================
   # ===========================================================================
     
-  @admin_cmd.subcommand(
-    group_name="gacha",
-    group_description="Roll your favorite characters and memories",
+  @system_gacha_command.subcommand(
     sub_cmd_name="cards",
     sub_cmd_description="View the card roster"
   )
   @slash_default_member_permission(Permissions.ADMINISTRATOR)
   @check(is_owner())
   @auto_defer(ephemeral=True)
-  async def admin_cards_cmd(self, ctx: SlashContext):
+  async def system_cards_cmd(self, ctx: SlashContext):
     roster_cards = gacha.roster.cards.values()
     roster_cards = sorted(roster_cards, key=lambda card: card.name.lower())
     roster_cards = sorted(roster_cards, key=lambda card: card.rarity, reverse=True)

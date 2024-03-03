@@ -10,23 +10,51 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-import interactions as ipy
-from interactions import Extension
-from interactions import slash_command, SlashContext
-
+from interactions import (
+  Extension,
+  SlashCommand,
+  SlashContext,
+  BaseContext
+)
+from interactions.api.events import Component
 from mitsuki.messages import load_message
 from mitsuki.version import __version__
+from functools import partial
 
+__all__ = (
+  "help_command",
+  "system_command",
+  "is_caller"
+)
+
+
+help_command = SlashCommand(
+  name="help",
+  description="Help on available commands and other info"
+)
+
+system_command = partial(
+  SlashCommand,
+  name="system",
+  description="System commands (bot owner only)"
+)
+
+async def is_caller(ctx: BaseContext):
+  async def check(component: Component):
+    c = component.ctx.author.id == ctx.author.id
+    if not is_caller:
+      await component.ctx.send(
+        "This interaction is not for you", 
+        ephemeral=True
+      )
+    return c
+  return check
+
+
+# =============================================================================
 
 class MitsukiCore(Extension):
-  @slash_command(
-    name="help",
-    description="Help on available commands and other info"
-  )
-  async def help(self, ctx: SlashContext):
-    pass
-
-  @help.subcommand(
+  @help_command.subcommand(
     sub_cmd_name="about",
     sub_cmd_description="About this bot"
   )
@@ -38,7 +66,8 @@ class MitsukiCore(Extension):
     )
     await ctx.send(**message.to_dict())
   
-  @help.subcommand(
+  
+  @help_command.subcommand(
     sub_cmd_name="license",
     sub_cmd_description="License information"
   )
