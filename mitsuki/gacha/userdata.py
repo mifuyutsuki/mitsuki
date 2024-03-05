@@ -18,7 +18,7 @@ from sqlalchemy import select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mitsuki.userdata import engine
+from mitsuki.userdata import new_session
 from mitsuki.gacha.schema import *
 
 
@@ -32,7 +32,7 @@ async def get_shards(user_id: Snowflake):
     select(Currency.amount)
     .where(Currency.user == user_id)
   )
-  async with AsyncSession(engine) as session:
+  async with new_session() as session:
     shards = await session.scalar(statement)
   
   return shards if shards else 0
@@ -106,7 +106,7 @@ async def get_last_daily(user_id: Snowflake):
     select(Currency.last_daily)
     .where(Currency.user == user_id)
   )
-  async with AsyncSession(engine) as session:
+  async with new_session() as session:
     return await session.scalar(statement)
   
   
@@ -139,7 +139,7 @@ async def get_card_count(user_id: Snowflake, card: SimpleCard):
     .where(Inventory.card == card.id)
     .limit(1)
   )
-  async with AsyncSession(engine) as session:
+  async with new_session() as session:
     return await session.scalar(statement)
   
 
@@ -151,7 +151,7 @@ async def list_cards(user_id: Snowflake):
     .order_by(Inventory.first_acquired.desc())
   )
 
-  async with AsyncSession(engine) as session:
+  async with new_session() as session:
     data = (await session.scalars(statement)).all()
   
   result = {}
@@ -188,7 +188,7 @@ async def add_card(session: AsyncSession, card: SimpleCard):
 
 
 async def add_cards(cards: List[SimpleCard]):
-  async with AsyncSession(engine) as session:
+  async with new_session() as session:
     for card in cards:
       await add_card(session, card)
     
@@ -241,7 +241,7 @@ async def get_user_pity(user_id: Snowflake):
     select(Pity)
     .where(Pity.user == user_id)
   )
-  async with AsyncSession(engine) as session:
+  async with new_session() as session:
     user_pity = await session.scalar(statement)
   
   if user_pity is None:

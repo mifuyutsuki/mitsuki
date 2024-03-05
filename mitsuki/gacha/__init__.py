@@ -27,7 +27,6 @@ from interactions import (
 )
 from interactions.client.errors import HTTPException
 from mitsuki.paginators import Paginator
-from sqlalchemy.ext.asyncio import AsyncSession
 from rapidfuzz import fuzz, utils, process
 from typing import Optional
 from datetime import datetime, timedelta, timezone
@@ -39,7 +38,7 @@ from mitsuki.messages import (
   load_multifield,
 )
 from mitsuki.core import system_command, is_caller
-from mitsuki.userdata import engine
+from mitsuki.userdata import new_session
 from mitsuki.gacha import userdata
 from mitsuki.gacha.gachaman import gacha
 from mitsuki.gacha.schema import SimpleCard
@@ -182,7 +181,7 @@ class MitsukiGacha(Extension):
       user=ctx.author
     )
 
-    async with AsyncSession(engine) as session:
+    async with new_session() as session:
       await userdata.modify_shards(session, ctx.user.id, shards, daily=True)
       try:
         await ctx.send(**message.to_dict())
@@ -257,7 +256,7 @@ class MitsukiGacha(Extension):
       
     pity_settings = gacha.settings.pity
 
-    async with AsyncSession(engine) as session:
+    async with new_session() as session:
       await userdata.modify_shards(session, user.id, dupe_shards - cost)
       await userdata.give_card(session, user.id, rolled)
       await userdata.update_user_pity(session, pity_settings, user.id, rolled.rarity)
@@ -605,7 +604,7 @@ class MitsukiGacha(Extension):
       target_user=target_user
     )
 
-    async with AsyncSession(engine) as session:
+    async with new_session() as session:
       await userdata.modify_shards(session, user.id, -shards)
       await userdata.modify_shards(session, target_user.id, +shards)
       try:
@@ -660,7 +659,7 @@ class MitsukiGacha(Extension):
       target_user=target_user
     )
 
-    async with AsyncSession(engine) as session:
+    async with new_session() as session:
       await userdata.modify_shards(session, target_user.id, shards)
 
       try:

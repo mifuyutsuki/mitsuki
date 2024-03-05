@@ -12,17 +12,23 @@
 
 from sqlalchemy.orm import DeclarativeBase
 # from sqlalchemy.event import listens_for
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncAttrs
+from sqlalchemy.ext.asyncio import (
+  create_async_engine,
+  async_sessionmaker,
+  AsyncAttrs,
+)
 from os import environ
 
 __all__ = (
   "Base",
   "engine",
   "initialize",
+  "new_session",
 )
 
 USERDATA_PATH = environ.get("USERDATA_PATH")
 engine = create_async_engine(f"sqlite+aiosqlite:///{USERDATA_PATH}")
+new_session = async_sessionmaker(engine, expire_on_commit=False)
 
 
 class Base(DeclarativeBase, AsyncAttrs):
