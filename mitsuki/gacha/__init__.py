@@ -27,7 +27,7 @@ from interactions import (
 )
 from interactions.client.errors import HTTPException
 from mitsuki.paginators import Paginator
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from rapidfuzz import fuzz, utils, process
 from typing import Optional
 from datetime import datetime, timedelta, timezone
@@ -107,7 +107,7 @@ class MitsukiGacha(Extension):
   )
   async def shards_cmd(self, ctx: SlashContext, user: Optional[BaseUser] = None):
     target_user = user or ctx.user
-    shards      = userdata.get_shards(target_user)
+    shards      = await userdata.get_shards(target_user)
 
     message = load_message(
       "gacha_shards",
@@ -149,7 +149,7 @@ class MitsukiGacha(Extension):
     # ---------------------------------------------------------------
     # Check if daily is already claimed
 
-    if not userdata.is_daily_available(ctx.user, daily_tz):
+    if not await userdata.is_daily_available(ctx.user, daily_tz):
       message = load_message(
         "gacha_daily_already_claimed",
         data={
@@ -177,15 +177,15 @@ class MitsukiGacha(Extension):
       user=ctx.author
     )
 
-    with Session(engine) as session:
-      userdata.modify_shards(session, ctx.user, shards, daily=True)
+    async with AsyncSession(engine) as session:
+      await userdata.modify_shards(session, ctx.user, shards, daily=True)
       try:
         await ctx.send(**message.to_dict())
       except Exception:
-        session.rollback()
+        await session.rollback()
         raise 
       else:
-        session.commit()
+        await session.commit()
 
 
   # ===========================================================================
@@ -197,7 +197,7 @@ class MitsukiGacha(Extension):
   )
   async def roll_cmd(self, ctx: SlashContext):
     user   = ctx.user
-    shards = userdata.get_shards(user)
+    shards = await userdata.get_shards(user)
     cost   = gacha.settings.cost
 
     # ---------------------------------------------------------------
@@ -220,9 +220,9 @@ class MitsukiGacha(Extension):
 
     # TODO: pass pity data to gachaman.roll
 
-    min_rarity  = userdata.check_user_pity(gacha.settings.pity, user)
+    min_rarity  = await userdata.check_user_pity(gacha.settings.pity, user)
     rolled      = gacha.roll(min_rarity=min_rarity)
-    is_new_card = not userdata.user_has_card(user, rolled)
+    is_new_card = not await userdata.user_has_card(user, rolled)
     dupe_shards = 0 if is_new_card else gacha.settings.dupe_shards[rolled.rarity]
 
     # ---------------------------------------------------------------
@@ -252,18 +252,18 @@ class MitsukiGacha(Extension):
       
     pity_settings = gacha.settings.pity
 
-    with Session(engine) as session:
-      userdata.modify_shards(session, user, dupe_shards - cost)
-      userdata.give_card(session, user, rolled)
-      userdata.update_user_pity(session, pity_settings, user, rolled.rarity)
+    async with AsyncSession(engine) as session:
+      await userdata.modify_shards(session, user, dupe_shards - cost)
+      await userdata.give_card(session, user, rolled)
+      await userdata.update_user_pity(session, pity_settings, user, rolled.rarity)
       
       try:
         await ctx.send(**message.to_dict())
       except Exception:
-        session.rollback()
+        await session.rollback()
         raise
       else:
-        session.commit()
+        await session.commit()
 
 
   # ===========================================================================
@@ -297,7 +297,7 @@ class MitsukiGacha(Extension):
     user: Optional[BaseUser] = None
   ):
     target_user       = user or ctx.user
-    target_user_cards = userdata.list_cards(target_user)
+    target_user_cards = await userdata.list_cards(target_user)
 
     # ---------------------------------------------------------------
     # User has no cards?
@@ -376,7 +376,7 @@ class MitsukiGacha(Extension):
     user: Optional[BaseUser] = None
   ):    
     target_user       = user if user else ctx.user
-    target_user_cards = userdata.list_cards(target_user)
+    target_user_cards = await userdata.list_cards(target_user)
     
     # ---------------------------------------------------------------
     # User has no cards?
@@ -560,7 +560,7 @@ class MitsukiGacha(Extension):
     shards: int
   ):
     user       = ctx.user
-    own_shards = userdata.get_shards(user)
+    own_shards = await userdata.get_shards(user)
 
     # ---------------------------------------------------------------
     # Self-give?
@@ -600,16 +600,16 @@ class MitsukiGacha(Extension):
       target_user=target_user
     )
 
-    with Session(engine) as session:
-      userdata.modify_shards(session, user, -shards)
-      userdata.modify_shards(session, target_user, +shards)
+    async with AsyncSession(engine) as session:
+      await userdata.modify_shards(session, user, -shards)
+      await userdata.modify_shards(session, target_user, +shards)
       try:
         await ctx.send(**message.to_dict())
       except Exception:
-        session.rollback()
+        await session.rollback()
         raise
       else:
-        session.commit()
+        await session.commit()
 
   
   # ===========================================================================
@@ -640,7 +640,7 @@ class MitsukiGacha(Extension):
     target_user: BaseUser,
     shards: int
   ):
-    shards_before = userdata.get_shards(target_user)
+    shards_before = await userdata.get_shards(target_user)
     shards_after  = shards_before + shards
 
     message = load_message(
@@ -655,16 +655,16 @@ class MitsukiGacha(Extension):
       target_user=target_user
     )
 
-    with Session(engine) as session:
-      userdata.modify_shards(session, target_user, shards)
+    async with AsyncSession(engine) as session:
+      await userdata.modify_shards(session, target_user, shards)
 
       try:
         await ctx.send(**message.to_dict(), ephemeral=True)
       except Exception:
-        session.rollback()
+        await session.rollback()
         raise
       else:
-        session.commit()
+        await session.commit()
   
   
   # ===========================================================================

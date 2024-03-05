@@ -15,7 +15,8 @@ from time import time
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, update
 from sqlalchemy.dialects.sqlite import insert
-from sqlalchemy.orm import Mapped, mapped_column, Session
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.ext.asyncio import AsyncSession
 from interactions import BaseUser
 
 from mitsuki.userdata import Base, engine
@@ -103,22 +104,27 @@ class Pity(Base):
 
 
 # ===================================================================
-# Shards functions
+# Frontend functions (shards)
 # ===================================================================
   
 
-def get_shards(user: BaseUser):
+async def get_shards(user: BaseUser):
   statement = (
     select(Currency.amount)
     .where(Currency.user == user.id)
   )
-  with Session(engine) as session:
-    shards = session.scalar(statement)
+  async with AsyncSession(engine) as session:
+    shards = await session.scalar(statement)
   
   return shards if shards else 0
   
 
-def set_shards(session: Session, user: BaseUser, amount: int, daily: bool = False):
+async def set_shards(
+  session: AsyncSession,
+  user: BaseUser,
+  amount: int,
+  daily: bool = False
+):
   if amount < 0:
     raise ValueError(f"Invalid set amount of '{amount}' shards")
   
@@ -142,28 +148,28 @@ def set_shards(session: Session, user: BaseUser, amount: int, daily: bool = Fals
       )
     )
   
-  session.execute(statement)
+  await session.execute(statement)
 
 
-def is_enough_shards(user: BaseUser, amount: int):
-  current_amount = get_shards(user)
+async def is_enough_shards(user: BaseUser, amount: int):
+  current_amount = await get_shards(user)
   new_amount     = current_amount - amount
 
   return new_amount >= 0
 
 
-def modify_shards(session: Session, user: BaseUser, amount: int, daily: bool = False):
-  current_amount = get_shards(user)
+async def modify_shards(session: AsyncSession, user: BaseUser, amount: int, daily: bool = False):
+  current_amount = await get_shards(user)
   
   if current_amount is None:
     new_amount = amount
   else:
     new_amount = current_amount + amount
 
-  set_shards(session, user, new_amount, daily=daily)
+  await set_shards(session, user, new_amount, daily=daily)
 
 
-# def take_shards(session: Session, user: int, amount: int):
+# def take_shards(session: AsyncSession, user: int, amount: int):
 #   current_amount = get_shards(user)
   
 #   new_amount = current_amount - amount
@@ -176,17 +182,17 @@ def modify_shards(session: Session, user: BaseUser, amount: int, daily: bool = F
 #   set_shards(session, user, new_amount)
   
 
-def get_last_daily(user: BaseUser):
+async def get_last_daily(user: BaseUser):
   statement = (
     select(Currency.last_daily)
     .where(Currency.user == user.id)
   )
-  with Session(engine) as session:
-    return session.scalar(statement)
+  async with AsyncSession(engine) as session:
+    return await session.scalar(statement)
   
   
-def is_daily_available(user: BaseUser, tz: int = 0):
-  last_daily_data = get_last_daily(user)
+async def is_daily_available(user: BaseUser, tz: int = 0):
+  last_daily_data = await get_last_daily(user)
   if last_daily_data is None:
     return True
   
@@ -203,22 +209,22 @@ def is_daily_available(user: BaseUser, tz: int = 0):
 # ===================================================================
 
 
-def user_has_card(user: BaseUser, card: Card):
-  return get_card_count(user, card) is not None
+async def user_has_card(user: BaseUser, card: Card):
+  return await get_card_count(user, card) is not None
 
 
-def get_card_count(user: BaseUser, card: Card):
+async def get_card_count(user: BaseUser, card: Card):
   statement = (
     select(Inventory.count)
     .where(Inventory.user == user.id)
     .where(Inventory.card == card.id)
     .limit(1)
   )
-  with Session(engine) as session:
-    return session.scalar(statement)
+  async with AsyncSession(engine) as session:
+    return await session.scalar(statement)
   
 
-def list_cards(user: BaseUser):
+async def list_cards(user: BaseUser):
   statement = (
     select(Inventory)
     .where(Inventory.user == user.id)
@@ -226,8 +232,8 @@ def list_cards(user: BaseUser):
     .order_by(Inventory.first_acquired.desc())
   )
 
-  with Session(engine) as session:
-    data = session.scalars(statement).all()
+  async with AsyncSession(engine) as session:
+    data = (await session.scalars(statement)).all()
   
   result = {}
   for row in data:
@@ -236,8 +242,8 @@ def list_cards(user: BaseUser):
   return result
 
 
-def give_card(session: Session, user: BaseUser, card: Card):
-  current_count = get_card_count(user, card)
+async def give_card(session: AsyncSession, user: BaseUser, card: Card):
+  current_count = await get_card_count(user, card)
   new_card      = current_count is None
   new_count     = 1 if new_card else current_count + 1
   current_time  = time()
@@ -271,19 +277,19 @@ def give_card(session: Session, user: BaseUser, card: Card):
     )
   )
 
-  session.execute(set_statement_inventory)
-  session.execute(set_statement_rolls)
+  await session.execute(set_statement_inventory)
+  await session.execute(set_statement_rolls)
 
   return new_card
 
 
-def get_user_pity(user: BaseUser):
+async def get_user_pity(user: BaseUser):
   statement = (
     select(Pity)
     .where(Pity.user == user.id)
   )
-  with Session(engine) as session:
-    user_pity = session.scalar(statement)
+  async with AsyncSession(engine) as session:
+    user_pity = await session.scalar(statement)
   
   if user_pity is None:
     return None
@@ -301,8 +307,8 @@ def get_user_pity(user: BaseUser):
     }
 
 
-def check_user_pity(pity_settings: Dict[int, int], user: BaseUser):
-  user_pity   = get_user_pity(user)
+async def check_user_pity(pity_settings: Dict[int, int], user: BaseUser):
+  user_pity = await get_user_pity(user)
   if user_pity is None:
     return None
   
@@ -317,14 +323,14 @@ def check_user_pity(pity_settings: Dict[int, int], user: BaseUser):
   return pity_rarity
 
 
-def update_user_pity(
-  session: Session,
+async def update_user_pity(
+  session: AsyncSession,
   pity_settings: Dict[int, int],
   user: BaseUser,
   rolled_rarity: int
 ):
   has_pity      = pity_settings.keys()
-  user_pity     = get_user_pity(user)
+  user_pity     = await get_user_pity(user)
   if user_pity is None:
     new_user_pity = {rarity+1: 0 for rarity in range(9)}
   else:
@@ -357,5 +363,5 @@ def update_user_pity(
     )
   )
 
-  session.execute(statement)
+  await session.execute(statement)
   
