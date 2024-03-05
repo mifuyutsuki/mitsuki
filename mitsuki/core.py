@@ -39,7 +39,7 @@ system_command = partial(
   description="System commands (bot owner only)"
 )
 
-async def is_caller(ctx: BaseContext):
+def is_caller(ctx: BaseContext):
   async def check(component: Component):
     c = component.ctx.author.id == ctx.author.id
     if not is_caller:
