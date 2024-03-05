@@ -26,6 +26,8 @@ __all__ = (
   "new_session",
 )
 
+# TODO: postgresql support
+
 USERDATA_PATH = environ.get("USERDATA_PATH")
 engine = create_async_engine(f"sqlite+aiosqlite:///{USERDATA_PATH}")
 new_session = async_sessionmaker(engine, expire_on_commit=False)
@@ -40,3 +42,6 @@ async def initialize():
   global engine
   async with engine.begin() as conn:
     await conn.run_sync(Base.metadata.create_all)
+
+    if "sqlite" in engine.url.drivername:
+      await conn.exec_driver_sql("PRAGMA foreign_keys=ON")

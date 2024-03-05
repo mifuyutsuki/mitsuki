@@ -15,12 +15,14 @@ from time import time
 from datetime import datetime, timezone, timedelta
 from interactions import Snowflake
 from sqlalchemy import select, update
-from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.dialects.sqlite import insert as slinsert
+from sqlalchemy.dialects.postgresql import insert as pginsert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mitsuki.userdata import new_session
+from mitsuki.userdata import engine, new_session
 from mitsuki.gacha.schema import *
 
+insert = pginsert if "postgresql" in engine.url.drivername else slinsert
 
 # ===================================================================
 # Frontend functions (shards)
@@ -46,27 +48,18 @@ async def set_shards(
 ):
   if amount < 0:
     raise ValueError(f"Invalid set amount of '{amount}' shards")
+
+  current_time = time()
+  assign_last_daily = dict(last_daily=current_time) if daily else {}
   
-  if daily:
-    current_time = time()
-    statement = (
-      insert(Currency)
-      .values(user=user_id, amount=amount, last_daily=current_time)
-      .on_conflict_do_update(
-        index_elements=['user'],
-        set_=dict(amount=amount, last_daily=current_time)
-      )
+  statement = (
+    insert(Currency)
+    .values(user=user_id, amount=amount, **assign_last_daily)
+    .on_conflict_do_update(
+      index_elements=['user'],
+      set_=dict(amount=amount, **assign_last_daily)
     )
-  else:
-    statement = (
-      insert(Currency)
-      .values(user=user_id, amount=amount)
-      .on_conflict_do_update(
-        index_elements=['user'],
-        set_=dict(amount=amount)
-      )
-    )
-  
+  )
   await session.execute(statement)
 
 
@@ -317,4 +310,3 @@ async def update_user_pity(
   )
 
   await session.execute(statement)
-  
