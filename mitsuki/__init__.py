@@ -39,6 +39,7 @@ from interactions.api.events import (
 from interactions.client.errors import CommandCheckFailure
 from interactions.client.mixins.send import SendMixin
 from os import environ
+import asyncio
 
 from mitsuki.messages import load_message
 from mitsuki.userdata import initialize
@@ -62,11 +63,12 @@ class Bot(Client):
       )
     )
     self.intents  = Intents.DEFAULT
+    asyncio.run(initialize())
 
 
   @listen(Startup)
   async def on_startup(self):
-    await initialize()
+    pass
 
 
   @listen(Ready)
