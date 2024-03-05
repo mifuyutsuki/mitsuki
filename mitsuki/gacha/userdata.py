@@ -10,97 +10,16 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from typing import Dict, Optional
+from typing import Dict, List
 from time import time
 from datetime import datetime, timezone, timedelta
+from interactions import Snowflake
 from sqlalchemy import select, update
 from sqlalchemy.dialects.sqlite import insert
-from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.ext.asyncio import AsyncSession
-from interactions import BaseUser
 
-from mitsuki.userdata import Base, engine
-from mitsuki.gacha.gachaman import Card
-
-
-# ===================================================================
-
-
-class Rolls(Base):
-  __tablename__ = "gacha_rolls"
-
-  id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-  user: Mapped[int]
-  rarity: Mapped[int]
-  card: Mapped[str]
-  time: Mapped[float]
-
-  def __repr__(self):
-    return (
-      f"Rolls(id={self.id!r}, user={self.user!r}, "
-      f"time={self.time!r}, card={self.card!r}, rarity={self.rarity!r})"
-    )
-  
-
-class Currency(Base):
-  __tablename__ = "gacha_currency"
-
-  user: Mapped[int] = mapped_column(primary_key=True)
-  amount: Mapped[int]
-  last_daily: Mapped[Optional[float]]
-  
-  def __repr__(self):
-    return (
-      f"Currency(user={self.user!r}, amount{self.amount!r}, "
-      f"last_daily={self.last_daily!r})"
-    )
-
-
-class Inventory(Base):
-  __tablename__ = "gacha_inventory"
-
-  id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-  user: Mapped[int]
-  rarity: Mapped[int]
-  card: Mapped[str]
-  count: Mapped[int]
-  first_acquired: Mapped[Optional[float]]
-
-  def __repr__(self):
-    return (
-      f"Inventory(id={self.id!r}, user={self.user!r}, "
-      f"rarity={self.rarity!r}, card={self.card!r}, count={self.count!r}, "
-      f"first_acquired={self.first_acquired!r})"
-    )
-
-
-class Pity(Base):
-  __tablename__ = "gacha_pity"
-
-  user: Mapped[int] = mapped_column(primary_key=True)
-  counter1: Mapped[int]
-  counter2: Mapped[int]
-  counter3: Mapped[int]
-  counter4: Mapped[int]
-  counter5: Mapped[int]
-  counter6: Mapped[int]
-  counter7: Mapped[int]
-  counter8: Mapped[int]
-  counter9: Mapped[int]
-
-  def __repr__(self):
-    return (
-      f"Pity(user={self.user!r}, "
-      f"counter1={self.counter1!r}, "
-      f"counter2={self.counter2!r}, "
-      f"counter3={self.counter3!r}, "
-      f"counter4={self.counter4!r}, "
-      f"counter5={self.counter5!r}, "
-      f"counter6={self.counter6!r}, "
-      f"counter7={self.counter7!r}, "
-      f"counter8={self.counter8!r}, "
-      f"counter9={self.counter9!r})"
-    )
+from mitsuki.userdata import engine
+from mitsuki.gacha.schema import *
 
 
 # ===================================================================
@@ -108,10 +27,10 @@ class Pity(Base):
 # ===================================================================
   
 
-async def get_shards(user: BaseUser):
+async def get_shards(user_id: Snowflake):
   statement = (
     select(Currency.amount)
-    .where(Currency.user == user.id)
+    .where(Currency.user == user_id)
   )
   async with AsyncSession(engine) as session:
     shards = await session.scalar(statement)
@@ -121,7 +40,7 @@ async def get_shards(user: BaseUser):
 
 async def set_shards(
   session: AsyncSession,
-  user: BaseUser,
+  user_id: Snowflake,
   amount: int,
   daily: bool = False
 ):
@@ -132,7 +51,7 @@ async def set_shards(
     current_time = time()
     statement = (
       insert(Currency)
-      .values(user=user.id, amount=amount, last_daily=current_time)
+      .values(user=user_id, amount=amount, last_daily=current_time)
       .on_conflict_do_update(
         index_elements=['user'],
         set_=dict(amount=amount, last_daily=current_time)
@@ -141,7 +60,7 @@ async def set_shards(
   else:
     statement = (
       insert(Currency)
-      .values(user=user.id, amount=amount)
+      .values(user=user_id, amount=amount)
       .on_conflict_do_update(
         index_elements=['user'],
         set_=dict(amount=amount)
@@ -151,22 +70,22 @@ async def set_shards(
   await session.execute(statement)
 
 
-async def is_enough_shards(user: BaseUser, amount: int):
-  current_amount = await get_shards(user)
+async def is_enough_shards(user_id: Snowflake, amount: int):
+  current_amount = await get_shards(user_id)
   new_amount     = current_amount - amount
 
   return new_amount >= 0
 
 
-async def modify_shards(session: AsyncSession, user: BaseUser, amount: int, daily: bool = False):
-  current_amount = await get_shards(user)
+async def modify_shards(session: AsyncSession, user_id: Snowflake, amount: int, daily: bool = False):
+  current_amount = await get_shards(user_id)
   
   if current_amount is None:
     new_amount = amount
   else:
     new_amount = current_amount + amount
 
-  await set_shards(session, user, new_amount, daily=daily)
+  await set_shards(session, user_id, new_amount, daily=daily)
 
 
 # def take_shards(session: AsyncSession, user: int, amount: int):
@@ -182,17 +101,17 @@ async def modify_shards(session: AsyncSession, user: BaseUser, amount: int, dail
 #   set_shards(session, user, new_amount)
   
 
-async def get_last_daily(user: BaseUser):
+async def get_last_daily(user_id: Snowflake):
   statement = (
     select(Currency.last_daily)
-    .where(Currency.user == user.id)
+    .where(Currency.user == user_id)
   )
   async with AsyncSession(engine) as session:
     return await session.scalar(statement)
   
   
-async def is_daily_available(user: BaseUser, tz: int = 0):
-  last_daily_data = await get_last_daily(user)
+async def is_daily_available(user_id: Snowflake, tz: int = 0):
+  last_daily_data = await get_last_daily(user_id)
   if last_daily_data is None:
     return True
   
@@ -209,14 +128,14 @@ async def is_daily_available(user: BaseUser, tz: int = 0):
 # ===================================================================
 
 
-async def user_has_card(user: BaseUser, card: Card):
-  return await get_card_count(user, card) is not None
+async def user_has_card(user_id: Snowflake, card: SimpleCard):
+  return await get_card_count(user_id, card) is not None
 
 
-async def get_card_count(user: BaseUser, card: Card):
+async def get_card_count(user_id: Snowflake, card: SimpleCard):
   statement = (
     select(Inventory.count)
-    .where(Inventory.user == user.id)
+    .where(Inventory.user == user_id)
     .where(Inventory.card == card.id)
     .limit(1)
   )
@@ -224,10 +143,10 @@ async def get_card_count(user: BaseUser, card: Card):
     return await session.scalar(statement)
   
 
-async def list_cards(user: BaseUser):
+async def list_cards(user_id: Snowflake):
   statement = (
     select(Inventory)
-    .where(Inventory.user == user.id)
+    .where(Inventory.user == user_id)
     .order_by(Inventory.rarity.desc())
     .order_by(Inventory.first_acquired.desc())
   )
@@ -242,8 +161,42 @@ async def list_cards(user: BaseUser):
   return result
 
 
-async def give_card(session: AsyncSession, user: BaseUser, card: Card):
-  current_count = await get_card_count(user, card)
+async def add_card(session: AsyncSession, card: SimpleCard):
+  statement = (
+    insert(Card)
+    .values(
+      id=card.id,
+      name=card.name,
+      rarity=card.rarity,
+      type=card.type,
+      series=card.series,
+      image=card.image
+    )
+    .on_conflict_do_update(
+      index_elements=['id'],
+      set_=dict(
+        name=card.name,
+        rarity=card.rarity,
+        type=card.type,
+        series=card.series,
+        image=card.image
+      )
+    )
+  )
+
+  await session.execute(statement)
+
+
+async def add_cards(cards: List[SimpleCard]):
+  async with AsyncSession(engine) as session:
+    for card in cards:
+      await add_card(session, card)
+    
+    await session.commit()
+
+
+async def give_card(session: AsyncSession, user_id: Snowflake, card: SimpleCard):
+  current_count = await get_card_count(user_id, card)
   new_card      = current_count is None
   new_count     = 1 if new_card else current_count + 1
   current_time  = time()
@@ -252,7 +205,7 @@ async def give_card(session: AsyncSession, user: BaseUser, card: Card):
     set_statement_inventory = (
       insert(Inventory)
       .values(
-        user=user.id,
+        user=user_id,
         rarity=card.rarity,
         card=card.id,
         count=new_count,
@@ -262,7 +215,7 @@ async def give_card(session: AsyncSession, user: BaseUser, card: Card):
   else:
     set_statement_inventory = (
       update(Inventory)
-      .where(Inventory.user == user.id)
+      .where(Inventory.user == user_id)
       .where(Inventory.card == card.id)
       .values(count=new_count)
     )
@@ -270,7 +223,7 @@ async def give_card(session: AsyncSession, user: BaseUser, card: Card):
   set_statement_rolls = (
     insert(Rolls)
     .values(
-      user=user.id,
+      user=user_id,
       rarity=card.rarity,
       card=card.id,
       time=current_time
@@ -283,10 +236,10 @@ async def give_card(session: AsyncSession, user: BaseUser, card: Card):
   return new_card
 
 
-async def get_user_pity(user: BaseUser):
+async def get_user_pity(user_id: Snowflake):
   statement = (
     select(Pity)
-    .where(Pity.user == user.id)
+    .where(Pity.user == user_id)
   )
   async with AsyncSession(engine) as session:
     user_pity = await session.scalar(statement)
@@ -307,8 +260,8 @@ async def get_user_pity(user: BaseUser):
     }
 
 
-async def check_user_pity(pity_settings: Dict[int, int], user: BaseUser):
-  user_pity = await get_user_pity(user)
+async def check_user_pity(pity_settings: Dict[int, int], user_id: Snowflake):
+  user_pity = await get_user_pity(user_id)
   if user_pity is None:
     return None
   
@@ -326,11 +279,11 @@ async def check_user_pity(pity_settings: Dict[int, int], user: BaseUser):
 async def update_user_pity(
   session: AsyncSession,
   pity_settings: Dict[int, int],
-  user: BaseUser,
+  user_id: Snowflake,
   rolled_rarity: int
 ):
   has_pity      = pity_settings.keys()
-  user_pity     = await get_user_pity(user)
+  user_pity     = await get_user_pity(user_id)
   if user_pity is None:
     new_user_pity = {rarity+1: 0 for rarity in range(9)}
   else:
@@ -356,7 +309,7 @@ async def update_user_pity(
   
   statement = (
     insert(Pity)
-    .values(user=user.id, **kwargs)
+    .values(user=user_id, **kwargs)
     .on_conflict_do_update(
       index_elements=["user"],
       set_=kwargs

@@ -15,6 +15,9 @@ from typing import Dict, List, Optional
 from random import SystemRandom
 from os import environ
 
+from .schema import SimpleCard
+from .userdata import add_cards
+
 
 class Gachaman:
   def __init__(self, settings_yaml: str, roster_yaml: str):
@@ -35,6 +38,10 @@ class Gachaman:
     
     self._settings_yaml = settings_yaml
     self._roster_yaml = roster_yaml
+  
+
+  async def sync_db(self):
+    await self.roster.sync_db()
 
   
   # =================================================================
@@ -183,34 +190,6 @@ class Settings:
       stars[rarity] = rarity_stars
     
     return stars
-    
-
-class Card:
-  def __init__(
-    self,
-    id: str,
-    name: str,
-    rarity: int,
-    type: str,
-    series: str,
-    image: Optional[str]
-  ):
-    self.id: str              = id
-    self.name: str            = name
-    self.rarity: int          = rarity
-    self.type: str            = type
-    self.series: str          = series
-    self.image: Optional[str] = image
-  
-  def asdict(self):
-    return dict(
-      id=self.id,
-      name=self.name,
-      rarity=self.rarity,
-      type=self.type,
-      series=self.series,
-      image=self.image
-    )
 
 
 class Roster:
@@ -223,7 +202,7 @@ class Roster:
     self._data: dict       = _load_yaml(roster_yaml)
     self._roster_yaml: str = roster_yaml
 
-    self.cards: Dict[str, Card]           = {}
+    self.cards: Dict[str, SimpleCard]     = {}
     self.rarity_map: Dict[str, List[str]] = {}
     self.type_map: Dict[str, List[str]]   = {}
     self.series_map: Dict[str, List[str]] = {}
@@ -238,7 +217,7 @@ class Roster:
         continue
 
       image = data.get("image")
-      self.cards[id] = Card(id, name, rarity, type, series, image)
+      self.cards[id] = SimpleCard(id, name, rarity, type, series, image)
       
       if rarity not in self.rarity_map.keys():
         self.rarity_map[rarity] = []
@@ -253,12 +232,16 @@ class Roster:
       self.series_map[series].append(id)
   
 
+  async def sync_db(self):
+    await add_cards(self.cards.values())
+  
+
   def from_id(self, id: str):
     return self.cards.get(id)
   
   
   def from_ids(self, ids: List[str]):
-    cards: List[Card] = []
+    cards: List[SimpleCard] = []
     for id in ids:
       card = self.from_id(id)
       if card is not None:
