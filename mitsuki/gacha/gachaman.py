@@ -11,12 +11,14 @@
 # GNU Affero General Public License for more details.
 
 from yaml import safe_load
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any, Callable, TypeVar
 from random import SystemRandom
 from os import environ
 
-from .schema import SimpleCard
-from .userdata import add_cards
+from .schema import SimpleCard, SimpleSettings
+from .userdata import add_cards, add_settings
+
+T = TypeVar("T")
 
 
 class Gachaman:
@@ -41,6 +43,7 @@ class Gachaman:
   
 
   async def sync_db(self):
+    await self.settings.sync_db()
     await self.roster.sync_db()
 
   
@@ -104,17 +107,69 @@ class Settings:
     self.daily_shards: int           = self._data.get("daily_shards")
     self.daily_tz: int               = self._data.get("daily_tz")
 
-    self.rates: Dict[int, float]     = self._load_rates()
-    self.pity: Dict[int, int]        = self._load_pity()
-    self.dupe_shards: Dict[int, int] = self._load_dupe_shards()
-    self.colors: Dict[int, int]      = self._load_colors()
-    self.stars: Dict[int, str]       = self._load_stars()
+    self.of_rarity: Dict[int, SimpleSettings] = self._load()
+
+    # Due to how roll() works, rarities order is reversed
+    rarities = self.of_rarity.keys()
+    self.rarities: List[int] = sorted(rarities, reverse=True)
+
+    self.rates: Dict[int, float]     = {r: self.of_rarity[r].rate for r in rarities}
+    self.pity: Dict[int, int]        = {r: self.of_rarity[r].pity for r in rarities}
+    self.dupe_shards: Dict[int, int] = {r: self.of_rarity[r].dupe_shards for r in rarities}
+    self.colors: Dict[int, int]      = {r: self.of_rarity[r].color for r in rarities}
+    self.stars: Dict[int, str]       = {r: self.of_rarity[r].stars for r in rarities}
 
     self.rarities: List[int]         = sorted(self.rates.keys(), reverse=True)
     
+  
+  async def sync_db(self):
+    await add_settings(self.of_rarity.values())
+
 
   # =================================================================
   # Internal helpers
+
+
+  def _load(self):
+    rates_get: Dict[str, float] = self._data.get("rates") or {}
+    pity_get: Dict[str, float] = self._data.get("pity") or {}
+    dupe_shards_get: Dict[str, int] = self._data.get("dupe_shards") or {}
+    colors_get: Dict[str, int] = self._data.get("colors") or {}
+    stars_get: Dict[str, str] = self._data.get("stars") or {}
+
+    # Rates are loaded first
+    rarities = []
+    total_weight = sum(rates_get.values())
+    rates: Dict[int, float] = _transform_settings(
+      rates_get,
+      lambda weight: weight / total_weight
+    )
+    rarities.extend(sorted(rates.keys()))
+
+    # Everything else
+    pity: Dict[int, int] = {r: 0 for r in rarities}
+    pity.update(_transform_settings(pity_get))
+    
+    dupe_shards: Dict[int, int] = {r: 0 for r in rarities}
+    dupe_shards.update(_transform_settings(dupe_shards_get))
+
+    colors: Dict[int, int] = {r: 0x0000ff for r in rarities}
+    colors.update(_transform_settings(colors_get))
+
+    stars: Dict[int, str] = {r: "" for r in rarities}
+    stars.update(_transform_settings(stars_get))
+
+    settings: Dict[int, SimpleSettings] = {
+      r: SimpleSettings(
+        rarity=r,
+        rate=rates[r],
+        pity=pity[r],
+        dupe_shards=dupe_shards[r],
+        color=colors[r],
+        stars=stars[r]
+      ) for r in rarities
+    }
+    return settings
 
 
   def _load_rates(self):
@@ -265,6 +320,14 @@ class Roster:
 def _load_yaml(filename: str):
   with open(filename, encoding='UTF-8') as f:
     return safe_load(f)
+
+
+def _transform_settings(data: Dict[str, Any], function: Optional[Callable[[T], T]] = None):
+  function = function or (lambda v: v)
+  new_data = {}
+  for k, v in data.items():
+    new_data[int(k[1:])] = function(v)
+  return new_data
 
 
 # =================================================================

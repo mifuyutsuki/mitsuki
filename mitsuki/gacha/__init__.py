@@ -24,7 +24,9 @@ from interactions import (
   check,
   is_owner,
   auto_defer,
+  listen,
 )
+from interactions.api.events import Startup
 from interactions.client.errors import HTTPException
 from mitsuki.paginators import Paginator
 from rapidfuzz import fuzz, utils, process
@@ -38,7 +40,7 @@ from mitsuki.messages import (
   load_multifield,
 )
 from mitsuki.core import system_command, is_caller
-from mitsuki.userdata import new_session
+from mitsuki.userdata import new_session, initialize
 from mitsuki.gacha import userdata
 from mitsuki.gacha.gachaman import gacha
 from mitsuki.gacha.schema import SimpleCard
@@ -62,9 +64,9 @@ def currency_data():
 
 
 def card_data(card: SimpleCard):
-  stars       = gacha.settings.stars.get(card.rarity)
-  color       = gacha.settings.colors.get(card.rarity)
-  dupe_shards = gacha.settings.dupe_shards.get(card.rarity)
+  stars       = gacha.settings.stars[card.rarity]
+  color       = gacha.settings.colors[card.rarity]
+  dupe_shards = gacha.settings.dupe_shards[card.rarity]
 
   return {
     "id"          : card.id,
@@ -83,8 +85,14 @@ def card_data(card: SimpleCard):
 
 
 class MitsukiGacha(Extension):
-  async def async_start(self):
-    await gacha.sync_db()
+  @listen(Startup)
+  async def on_startup(self):
+    try:
+      await gacha.sync_db()
+    except Exception:
+      # uninitialized DB?
+      await initialize()
+      await gacha.sync_db()
 
 
   @slash_command(

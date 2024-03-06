@@ -154,40 +154,6 @@ async def list_cards(user_id: Snowflake):
   return result
 
 
-async def add_card(session: AsyncSession, card: SimpleCard):
-  statement = (
-    insert(Card)
-    .values(
-      id=card.id,
-      name=card.name,
-      rarity=card.rarity,
-      type=card.type,
-      series=card.series,
-      image=card.image
-    )
-    .on_conflict_do_update(
-      index_elements=['id'],
-      set_=dict(
-        name=card.name,
-        rarity=card.rarity,
-        type=card.type,
-        series=card.series,
-        image=card.image
-      )
-    )
-  )
-
-  await session.execute(statement)
-
-
-async def add_cards(cards: List[SimpleCard]):
-  async with new_session() as session:
-    for card in cards:
-      await add_card(session, card)
-    
-    await session.commit()
-
-
 async def give_card(session: AsyncSession, user_id: Snowflake, card: SimpleCard):
   current_count = await get_card_count(user_id, card)
   new_card      = current_count is None
@@ -262,6 +228,8 @@ async def check_user_pity(pity_settings: Dict[int, int], user_id: Snowflake):
   for rarity in user_pity.keys():
     if rarity not in pity_settings.keys():
       continue
+    if pity_settings[rarity] <= 1:
+      continue
 
     if (user_pity[rarity] + 1) >= pity_settings[rarity]:
       pity_rarity = rarity
@@ -310,3 +278,76 @@ async def update_user_pity(
   )
 
   await session.execute(statement)
+
+
+# ===================================================================
+# Gachaman functions
+# ===================================================================
+
+
+async def add_card(session: AsyncSession, card: SimpleCard):
+  statement = (
+    insert(Card)
+    .values(
+      id=card.id,
+      name=card.name,
+      rarity=card.rarity,
+      type=card.type,
+      series=card.series,
+      image=card.image
+    )
+    .on_conflict_do_update(
+      index_elements=['id'],
+      set_=dict(
+        name=card.name,
+        rarity=card.rarity,
+        type=card.type,
+        series=card.series,
+        image=card.image
+      )
+    )
+  )
+
+  await session.execute(statement)
+
+
+async def add_cards(cards: List[SimpleCard]):
+  async with new_session() as session:
+    for card in cards:
+      await add_card(session, card)
+    
+    await session.commit()
+
+
+async def add_setting(session: AsyncSession, setting: SimpleSettings):
+  statement = (
+    insert(Settings)
+    .values(
+      rarity=setting.rarity,
+      rate=setting.rate,
+      pity=setting.pity,
+      dupe_shards=setting.dupe_shards,
+      color=setting.color,
+      stars=setting.stars
+    )
+    .on_conflict_do_update(
+      index_elements=['rarity'],
+      set_=dict(
+        rate=setting.rate,
+        pity=setting.pity,
+        dupe_shards=setting.dupe_shards,
+        color=setting.color,
+        stars=setting.stars
+      )
+    )
+  )
+
+  await session.execute(statement)  
+
+
+async def add_settings(settings: List[SimpleSettings]):
+  async with new_session() as session:
+    for setting in settings:
+      await add_setting(session, setting)
+    
+    await session.commit()

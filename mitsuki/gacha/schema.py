@@ -97,15 +97,34 @@ class Pity(Base):
     )
 
 
+class Pity2(Base):
+  __tablename__ = "gacha_pity2"
+
+  id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+  user: Mapped[int]
+  rarity: Mapped[int] = mapped_column(ForeignKey("gacha_settings.rarity"))
+  count: Mapped[int]
+
+  rarity_ref: Mapped["Settings"] = relationship()
+
+  def __repr__(self) -> str:
+    return (
+      f"Pity2(id={self.id!r}, user={self.user!r}, "
+      f"rarity={self.rarity!r}, count={self.count!r})"
+    )
+
+
 class Card(Base):
   __tablename__ = "gacha_cards"
 
   id: Mapped[str] = mapped_column(primary_key=True)
   name: Mapped[str]
-  rarity: Mapped[int]
+  rarity: Mapped[int] = mapped_column(ForeignKey("gacha_settings.rarity"))
   type: Mapped[str]
   series: Mapped[str]
   image: Mapped[Optional[str]]
+
+  rarity_ref: Mapped["Settings"] = relationship()
 
   def __repr__(self):
     return (
@@ -113,6 +132,17 @@ class Card(Base):
       f"rarity={self.rarity!r}, type={self.type!r}, "
       f"series={self.series!r}, image={self.image!r})"
     )
+
+
+class Settings(Base):
+  __tablename__ = "gacha_settings"
+
+  rarity: Mapped[int] = mapped_column(primary_key=True)
+  rate: Mapped[float]
+  dupe_shards: Mapped[int] = mapped_column(default=0)
+  color: Mapped[int]
+  stars: Mapped[str]
+  pity: Mapped[int]
 
 
 class SimpleCard:
@@ -141,3 +171,21 @@ class SimpleCard:
       series=self.series,
       image=self.image
     )
+
+
+class SimpleSettings:
+  def __init__(
+    self,
+    rarity: int,
+    rate: float,
+    pity: int,
+    dupe_shards: int,
+    color: int,
+    stars: str
+  ):
+    self.rarity = rarity
+    self.rate = rate
+    self.pity = pity
+    self.dupe_shards = dupe_shards
+    self.color = color
+    self.stars = stars
