@@ -43,7 +43,7 @@ from mitsuki.core import system_command, is_caller
 from mitsuki.userdata import new_session, initialize
 from mitsuki.gacha import userdata
 from mitsuki.gacha.gachaman import gacha
-from mitsuki.gacha.schema import SimpleCard
+from mitsuki.gacha.schema import SourceCard
 
 
 # =============================================================================
@@ -63,7 +63,7 @@ def currency_data():
   }
 
 
-def card_data(card: SimpleCard):
+def card_data(card: SourceCard):
   stars       = gacha.settings.stars[card.rarity]
   color       = gacha.settings.colors[card.rarity]
   dupe_shards = gacha.settings.dupe_shards[card.rarity]

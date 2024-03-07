@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Any, Callable, TypeVar
 from random import SystemRandom
 from os import environ
 
-from .schema import SimpleCard, SimpleSettings
+from .schema import SourceCard, SourceSettings
 from .userdata import add_cards, add_settings
 
 T = TypeVar("T")
@@ -107,7 +107,7 @@ class Settings:
     self.daily_shards: int           = self._data.get("daily_shards")
     self.daily_tz: int               = self._data.get("daily_tz")
 
-    self.of_rarity: Dict[int, SimpleSettings] = self._load()
+    self.of_rarity: Dict[int, SourceSettings] = self._load()
 
     # Due to how roll() works, rarities order is reversed
     rarities = self.of_rarity.keys()
@@ -159,8 +159,8 @@ class Settings:
     stars: Dict[int, str] = {r: "" for r in rarities}
     stars.update(_transform_settings(stars_get))
 
-    settings: Dict[int, SimpleSettings] = {
-      r: SimpleSettings(
+    settings: Dict[int, SourceSettings] = {
+      r: SourceSettings(
         rarity=r,
         rate=rates[r],
         pity=pity[r],
@@ -257,7 +257,7 @@ class Roster:
     self._data: dict       = _load_yaml(roster_yaml)
     self._roster_yaml: str = roster_yaml
 
-    self.cards: Dict[str, SimpleCard]     = {}
+    self.cards: Dict[str, SourceCard]     = {}
     self.rarity_map: Dict[str, List[str]] = {}
     self.type_map: Dict[str, List[str]]   = {}
     self.series_map: Dict[str, List[str]] = {}
@@ -272,7 +272,7 @@ class Roster:
         continue
 
       image = data.get("image")
-      self.cards[id] = SimpleCard(id, name, rarity, type, series, image)
+      self.cards[id] = SourceCard(id, name, rarity, type, series, image)
       
       if rarity not in self.rarity_map.keys():
         self.rarity_map[rarity] = []
@@ -296,7 +296,7 @@ class Roster:
   
   
   def from_ids(self, ids: List[str]):
-    cards: List[SimpleCard] = []
+    cards: List[SourceCard] = []
     for id in ids:
       card = self.from_id(id)
       if card is not None:

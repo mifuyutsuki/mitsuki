@@ -121,11 +121,11 @@ async def is_daily_available(user_id: Snowflake, tz: int = 0):
 # ===================================================================
 
 
-async def user_has_card(user_id: Snowflake, card: SimpleCard):
+async def user_has_card(user_id: Snowflake, card: SourceCard):
   return await get_card_count(user_id, card) is not None
 
 
-async def get_card_count(user_id: Snowflake, card: SimpleCard):
+async def get_card_count(user_id: Snowflake, card: SourceCard):
   statement = (
     select(Inventory.count)
     .where(Inventory.user == user_id)
@@ -154,7 +154,7 @@ async def list_cards(user_id: Snowflake):
   return result
 
 
-async def give_card(session: AsyncSession, user_id: Snowflake, card: SimpleCard):
+async def give_card(session: AsyncSession, user_id: Snowflake, card: SourceCard):
   current_count = await get_card_count(user_id, card)
   new_card      = current_count is None
   new_count     = 1 if new_card else current_count + 1
@@ -285,7 +285,7 @@ async def update_user_pity(
 # ===================================================================
 
 
-async def add_card(session: AsyncSession, card: SimpleCard):
+async def add_card(session: AsyncSession, card: SourceCard):
   statement = (
     insert(Card)
     .values(
@@ -311,7 +311,7 @@ async def add_card(session: AsyncSession, card: SimpleCard):
   await session.execute(statement)
 
 
-async def add_cards(cards: List[SimpleCard]):
+async def add_cards(cards: List[SourceCard]):
   async with new_session() as session:
     for card in cards:
       await add_card(session, card)
@@ -319,7 +319,7 @@ async def add_cards(cards: List[SimpleCard]):
     await session.commit()
 
 
-async def add_setting(session: AsyncSession, setting: SimpleSettings):
+async def add_setting(session: AsyncSession, setting: SourceSettings):
   statement = (
     insert(Settings)
     .values(
@@ -345,7 +345,7 @@ async def add_setting(session: AsyncSession, setting: SimpleSettings):
   await session.execute(statement)  
 
 
-async def add_settings(settings: List[SimpleSettings]):
+async def add_settings(settings: List[SourceSettings]):
   async with new_session() as session:
     for setting in settings:
       await add_setting(session, setting)

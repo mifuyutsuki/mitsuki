@@ -14,6 +14,8 @@ from mitsuki.userdata import Base
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Optional
+from attrs import define, field
+from attrs import asdict as _asdict
 
 
 class Rolls(Base):
@@ -145,47 +147,24 @@ class Settings(Base):
   pity: Mapped[int]
 
 
-class SimpleCard:
-  def __init__(
-    self,
-    id: str,
-    name: str,
-    rarity: int,
-    type: str,
-    series: str,
-    image: Optional[str]
-  ):
-    self.id: str              = id
-    self.name: str            = name
-    self.rarity: int          = rarity
-    self.type: str            = type
-    self.series: str          = series
-    self.image: Optional[str] = image
+@define
+class SourceCard:
+  id: str
+  name: str
+  rarity: int
+  type: str
+  series: str
+  image: Optional[str] = field(default=None)
   
   def asdict(self):
-    return dict(
-      id=self.id,
-      name=self.name,
-      rarity=self.rarity,
-      type=self.type,
-      series=self.series,
-      image=self.image
-    )
+    return _asdict(self)
 
 
-class SimpleSettings:
-  def __init__(
-    self,
-    rarity: int,
-    rate: float,
-    pity: int,
-    dupe_shards: int,
-    color: int,
-    stars: str
-  ):
-    self.rarity = rarity
-    self.rate = rate
-    self.pity = pity
-    self.dupe_shards = dupe_shards
-    self.color = color
-    self.stars = stars
+@define
+class SourceSettings:
+  rarity: int
+  rate: float
+  pity: int
+  dupe_shards: int
+  color: int
+  stars: str
