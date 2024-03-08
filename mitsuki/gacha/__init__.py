@@ -57,16 +57,16 @@ system_gacha_command = system_command(
 
 def currency_data():
   return {
-    "currency": gacha.settings.currency,
-    "currency_icon": gacha.settings.currency_icon,
-    "currency_name": gacha.settings.currency_name,
+    "currency": gacha.currency,
+    "currency_icon": gacha.currency_icon,
+    "currency_name": gacha.currency_name,
   }
 
 
 def card_data(card: SourceCard):
-  stars       = gacha.settings.stars[card.rarity]
-  color       = gacha.settings.colors[card.rarity]
-  dupe_shards = gacha.settings.dupe_shards[card.rarity]
+  stars       = gacha.stars[card.rarity]
+  color       = gacha.colors[card.rarity]
+  dupe_shards = gacha.dupe_shards[card.rarity]
 
   return {
     "id"          : card.id,
@@ -141,10 +141,10 @@ class MitsukiGacha(Extension):
     sub_cmd_description=f"Claim your gacha daily"
   )
   async def daily_cmd(self, ctx: SlashContext):
-    shards = gacha.settings.daily_shards
+    shards = gacha.daily_shards
 
     # TODO: use global settings for daily reset
-    daily_tz     = gacha.settings.daily_tz
+    daily_tz     = gacha.daily_tz
     daily_tz_str = f"-{daily_tz}" if daily_tz < 0 else f"+{daily_tz}"
     
     # Timestamp for next daily
@@ -210,7 +210,7 @@ class MitsukiGacha(Extension):
   async def roll_cmd(self, ctx: SlashContext):
     user   = ctx.user
     shards = await userdata.get_shards(user.id)
-    cost   = gacha.settings.cost
+    cost   = gacha.cost
 
     # ---------------------------------------------------------------
     # Insufficient funds?
@@ -232,10 +232,10 @@ class MitsukiGacha(Extension):
 
     # TODO: pass pity data to gachaman.roll
 
-    min_rarity  = await userdata.check_user_pity(gacha.settings.pity, user.id)
+    min_rarity  = await userdata.check_user_pity(gacha.pity, user.id)
     rolled      = gacha.roll(min_rarity=min_rarity)
     is_new_card = not await userdata.user_has_card(user.id, rolled)
-    dupe_shards = 0 if is_new_card else gacha.settings.dupe_shards[rolled.rarity]
+    dupe_shards = 0 if is_new_card else gacha.dupe_shards[rolled.rarity]
 
     # ---------------------------------------------------------------
     # Generate embed
@@ -262,7 +262,7 @@ class MitsukiGacha(Extension):
     # ---------------------------------------------------------------
     # Update userdata
       
-    pity_settings = gacha.settings.pity
+    pity_settings = gacha.pity
 
     async with new_session() as session:
       await userdata.modify_shards(session, user.id, dupe_shards - cost)
@@ -323,7 +323,7 @@ class MitsukiGacha(Extension):
     # List cards
 
     cards = []
-    user_cards = gacha.roster.from_ids(target_user_cards.keys())
+    user_cards = gacha.from_ids(target_user_cards.keys())
     for user_card in user_cards:
       cards.append({
         **card_data(user_card),
@@ -403,7 +403,7 @@ class MitsukiGacha(Extension):
     # TODO: Search from all users instead of on a specific user
 
     search_key = name
-    search_cards = gacha.roster.from_ids(target_user_cards.keys())
+    search_cards = gacha.from_ids(target_user_cards.keys())
 
     search_card_ids   = []
     search_card_names = []
@@ -462,7 +462,7 @@ class MitsukiGacha(Extension):
 
       results_card_selects.append(results_card_select)
     
-    results_cards = gacha.roster.from_ids(results_card_ids)
+    results_cards = gacha.from_ids(results_card_ids)
     for results_card in results_cards:
       cards.append({
         **card_data(results_card),
@@ -475,7 +475,7 @@ class MitsukiGacha(Extension):
     
     if len(strong_match_ids) == 1:
       # Unambiguous strong match
-      selected_card = gacha.roster.from_id(strong_match_ids[0])
+      selected_card = gacha.from_id(strong_match_ids[0])
       send = ctx.send
     else:
       # Ambiguous and/or weak match(es)
@@ -696,7 +696,7 @@ class MitsukiGacha(Extension):
     message = load_message(
       "gacha_reload",
       data={
-        "cards": len(gacha.roster.cards)
+        "cards": len(gacha.cards)
       },
       user=ctx.author
     )
@@ -715,7 +715,7 @@ class MitsukiGacha(Extension):
   @check(is_owner())
   @auto_defer(ephemeral=True)
   async def system_cards_cmd(self, ctx: SlashContext):
-    roster_cards = gacha.roster.cards.values()
+    roster_cards = gacha.cards.values()
     roster_cards = sorted(roster_cards, key=lambda card: card.name.lower())
     roster_cards = sorted(roster_cards, key=lambda card: card.rarity, reverse=True)
 

@@ -22,6 +22,37 @@ T = TypeVar("T")
 
 
 class Gachaman:
+  random: SystemRandom
+
+  of_rarity: Dict[int, SourceSettings]
+  rarities: List[int]
+
+  cost: int
+  currency_icon: str
+  currency_name: str
+  daily_shards: int
+  daily_tz: int
+
+  of_rarity: Dict[int, SourceSettings]
+  rarities: List[int]
+
+  rates: Dict[int, float]
+  pity: Dict[int, int]
+  dupe_shards: Dict[int, int]
+  colors: Dict[int, int]
+  stars: Dict[int, str]
+
+  cards: Dict[str, SourceCard]
+  rarity_map: Dict[int, List[str]]
+  type_map: Dict[str, List[str]]
+  series_map: Dict[str, List[str]]
+
+  _data_settings: Dict[str, Any]
+  _data_roster: Dict[str, Dict]
+  _settings_yaml: str
+  _roster_yaml: str
+
+
   def __init__(self, settings_yaml: str, roster_yaml: str):
     self.reload(settings_yaml=settings_yaml, roster_yaml=roster_yaml)
   
@@ -31,31 +62,43 @@ class Gachaman:
     settings_yaml: Optional[str] = None,
     roster_yaml: Optional[str] = None
   ):
-    settings_yaml = settings_yaml if settings_yaml else self._settings_yaml
-    roster_yaml   = roster_yaml if roster_yaml else self._roster_yaml
+    settings_yaml = settings_yaml or self._settings_yaml
+    roster_yaml   = roster_yaml or self._roster_yaml
 
-    self.settings = Settings(settings_yaml=settings_yaml)
-    self.roster   = Roster(roster_yaml=roster_yaml)
-    self.random   = SystemRandom()
+    self._load_settings(settings_yaml)
+    self._load_roster(roster_yaml)
+    
+    self.random = SystemRandom()
     
     self._settings_yaml = settings_yaml
     self._roster_yaml = roster_yaml
   
 
   async def sync_db(self):
-    await self.settings.sync_db()
-    await self.roster.sync_db()
+    await add_settings(self.of_rarity.values())
+    await add_cards(self.cards.values())
 
+
+  def from_id(self, id: str):
+    return self.cards.get(id)
   
-  # =================================================================
+  
+  def from_ids(self, ids: List[str]):
+    cards: List[SourceCard] = []
+    for id in ids:
+      card = self.from_id(id)
+      if card is not None:
+        cards.append(card)
+    
+    return cards
   
 
   def roll(self, min_rarity: Optional[int] = None):
-    rates = self.settings.rates
+    rates = self.rates
     roll  = self.random.random
     pick  = self.random.choice
 
-    # TODO: Replace min_rarity arg with dict of pity counter
+    # TODO: Replace min_rarity arg with dict of pity counter (soft pity?)
 
     rarities   = sorted(rates.keys())
     rarity_1   = rarities[0]
@@ -75,67 +118,88 @@ class Gachaman:
 
     available_picks = None
     while available_picks is None and rarity_get > 0:
-      available_picks = self.roster.rarity_map.get(rarity_get)
+      available_picks = self.rarity_map.get(rarity_get)
       rarity_get -= 1
 
     picked = pick(available_picks)
-    return self.roster.cards[picked]
+    return self.cards[picked]
 
 
   def refresh_random(self):
     self.random = SystemRandom()
-
-
-# =================================================================
   
 
-class Settings:
-  def __init__(self, settings_yaml: str):
-    self.reload(settings_yaml=settings_yaml)
+  @property
+  def currency(self):
+    return f"{self.currency_icon} {self.currency_name}".strip()
 
 
-  def reload(self, settings_yaml: Optional[str] = None):
-    settings_yaml = settings_yaml if settings_yaml else self._settings_yaml
+  # ===========================================================================  
 
-    self._data: dict         = _load_yaml(settings_yaml)
-    self._settings_yaml: str = settings_yaml
+  def _load_settings(self, filename: str):
+    _data: Dict = _load_yaml(filename)
+    self._settings_yaml = filename
 
-    self.cost: int                   = self._data.get("cost")
-    self.currency_icon: str          = self._data.get("currency_icon")
-    self.currency_name: str          = self._data.get("currency_name")
-    self.currency: str               = f"{self.currency_icon} {self.currency_name}"
-    self.daily_shards: int           = self._data.get("daily_shards")
-    self.daily_tz: int               = self._data.get("daily_tz")
+    self.cost          = _data["cost"]
+    self.currency_icon = _data["currency_icon"]
+    self.currency_name = _data.get("currency_name")
+    self.daily_shards  = _data.get("daily_shards")
+    self.daily_tz      = _data.get("daily_tz")
 
-    self.of_rarity: Dict[int, SourceSettings] = self._load()
+    self.of_rarity = self._parse_settings(_data)
 
     # Due to how roll() works, rarities order is reversed
     rarities = self.of_rarity.keys()
-    self.rarities: List[int] = sorted(rarities, reverse=True)
 
-    self.rates: Dict[int, float]     = {r: self.of_rarity[r].rate for r in rarities}
-    self.pity: Dict[int, int]        = {r: self.of_rarity[r].pity for r in rarities}
-    self.dupe_shards: Dict[int, int] = {r: self.of_rarity[r].dupe_shards for r in rarities}
-    self.colors: Dict[int, int]      = {r: self.of_rarity[r].color for r in rarities}
-    self.stars: Dict[int, str]       = {r: self.of_rarity[r].stars for r in rarities}
-
-    self.rarities: List[int]         = sorted(self.rates.keys(), reverse=True)
-    
+    self.rates       = {r: self.of_rarity[r].rate for r in rarities}
+    self.pity        = {r: self.of_rarity[r].pity for r in rarities}
+    self.dupe_shards = {r: self.of_rarity[r].dupe_shards for r in rarities}
+    self.colors      = {r: self.of_rarity[r].color for r in rarities}
+    self.stars       = {r: self.of_rarity[r].stars for r in rarities}
+    self.rarities    = sorted(rarities, reverse=True)
   
-  async def sync_db(self):
-    await add_settings(self.of_rarity.values())
 
+  def _load_roster(self, filename: str):
+    _data: Dict = _load_yaml(filename)
+    self._roster_yaml = filename
 
-  # =================================================================
-  # Internal helpers
+    self.cards      = {}
+    self.rarity_map = {}
+    self.type_map   = {}
+    self.series_map = {}
+        
+    for id, data in _data.items():
+      try:
+        # Mandatory fields
+        name = data["name"]
+        rarity = data["rarity"]
+        type = data["type"]
+        series = data["series"]
+      except KeyError:
+        continue
 
+      image = data.get("image")
+      self.cards[id] = SourceCard(id, name, rarity, type, series, image)
+      
+      if rarity not in self.rarity_map.keys():
+        self.rarity_map[rarity] = []
+      self.rarity_map[rarity].append(id)
 
-  def _load(self):
-    rates_get: Dict[str, float] = self._data.get("rates") or {}
-    pity_get: Dict[str, float] = self._data.get("pity") or {}
-    dupe_shards_get: Dict[str, int] = self._data.get("dupe_shards") or {}
-    colors_get: Dict[str, int] = self._data.get("colors") or {}
-    stars_get: Dict[str, str] = self._data.get("stars") or {}
+      if type not in self.type_map.keys():
+        self.type_map[type] = []
+      self.type_map[type].append(id)
+
+      if series not in self.series_map.keys():
+        self.series_map[series] = []
+      self.series_map[series].append(id)
+  
+  
+  def _parse_settings(self, data: Dict):
+    rates_get: Dict[str, float]     = data.get("rates") or {}
+    pity_get: Dict[str, float]      = data.get("pity") or {}
+    dupe_shards_get: Dict[str, int] = data.get("dupe_shards") or {}
+    colors_get: Dict[str, int]      = data.get("colors") or {}
+    stars_get: Dict[str, str]       = data.get("stars") or {}
 
     # Rates are loaded first
     rarities = []
@@ -170,148 +234,6 @@ class Settings:
       ) for r in rarities
     }
     return settings
-
-
-  def _load_rates(self):
-    data: Dict[str, float] = self._data.get("rates")
-    if data is None:
-      return {}
-    
-    rates: Dict[int, float] = {}
-    total_weight = sum(data.values())
-    for rarity_key, weight in data.items():
-      rarity = int(rarity_key[1:2])
-      rate   = weight / total_weight
-      rates[rarity] = rate
-    
-    return rates
-
-
-  def _load_pity(self):
-    data: Dict[str, float] = self._data.get("pity")
-    if data is None:
-      return {}
-
-    pity: Dict[int, int] = {}
-
-    for rarity_key, rarity_pity in data.items():
-      rarity = int(rarity_key[1:2])
-      pity[rarity] = rarity_pity
-
-    return pity
-
-
-  def _load_dupe_shards(self):
-    data: Dict[str, int] = self._data.get("dupe_shards")
-    if data is None:
-      return {}
-    
-    available_rarities = self.rates.keys()
-
-    dupe_shards: Dict[int, int] = {
-      available_rarity: 0 for available_rarity in available_rarities
-    }
-
-    for rarity_key, dupe_shards_amount in data.items():
-      rarity = int(rarity_key[1:2])
-
-      if rarity in dupe_shards.keys():
-        dupe_shards[rarity] = dupe_shards_amount
-    
-    return dupe_shards
-
-
-  def _load_colors(self):
-    data: Dict[str, int] = self._data.get("colors")
-    if data is None:
-      return {}
-    
-    colors: Dict[int, int] = {}
-    for rarity_key, color in data.items():
-      rarity = int(rarity_key[1:2])
-      colors[rarity] = color
-    
-    return colors
-  
-
-  def _load_stars(self):
-    data: Dict[str, int] = self._data.get("stars")
-    if data is None:
-      return {}
-    
-    stars: Dict[int, str] = {}
-    for rarity_key, rarity_stars in data.items():
-      rarity = int(rarity_key[1:2])
-      stars[rarity] = rarity_stars
-    
-    return stars
-
-
-class Roster:
-  def __init__(self, roster_yaml: str):
-    self.reload(roster_yaml=roster_yaml)
-
-
-  def reload(self, roster_yaml: Optional[str] = None):
-    roster_yaml: str       = roster_yaml if roster_yaml else self._roster_yaml
-    self._data: dict       = _load_yaml(roster_yaml)
-    self._roster_yaml: str = roster_yaml
-
-    self.cards: Dict[str, SourceCard]     = {}
-    self.rarity_map: Dict[str, List[str]] = {}
-    self.type_map: Dict[str, List[str]]   = {}
-    self.series_map: Dict[str, List[str]] = {}
-        
-    for id, data in self._data.items():
-      try:
-        name = data["name"]
-        rarity = data["rarity"]
-        type = data["type"]
-        series = data["series"]
-      except KeyError:
-        continue
-
-      image = data.get("image")
-      self.cards[id] = SourceCard(id, name, rarity, type, series, image)
-      
-      if rarity not in self.rarity_map.keys():
-        self.rarity_map[rarity] = []
-      self.rarity_map[rarity].append(id)
-
-      if type not in self.type_map.keys():
-        self.type_map[type] = []
-      self.type_map[type].append(id)
-
-      if series not in self.series_map.keys():
-        self.series_map[series] = []
-      self.series_map[series].append(id)
-  
-
-  async def sync_db(self):
-    await add_cards(self.cards.values())
-  
-
-  def from_id(self, id: str):
-    return self.cards.get(id)
-  
-  
-  def from_ids(self, ids: List[str]):
-    cards: List[SourceCard] = []
-    for id in ids:
-      card = self.from_id(id)
-      if card is not None:
-        cards.append(card)
-    
-    return cards
-  
-
-  def from_ids_as_dict(self, ids: List[str]):
-    cards: List[dict] = []
-    for id in ids:
-      if id in self.cards.keys():
-        cards.append(self.cards[id].asdict())
-
-    return cards
 
 
 # =================================================================
