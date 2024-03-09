@@ -23,7 +23,6 @@ class Rolls(Base):
 
   id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
   user: Mapped[int]
-  rarity: Mapped[int]
   card: Mapped[str] = mapped_column(ForeignKey("gacha_cards.id"))
   time: Mapped[float]
 
@@ -32,7 +31,7 @@ class Rolls(Base):
   def __repr__(self):
     return (
       f"Rolls(id={self.id!r}, user={self.user!r}, "
-      f"time={self.time!r}, card={self.card!r}, rarity={self.rarity!r})"
+      f"time={self.time!r}, card={self.card!r})"
     )
   
 
@@ -53,10 +52,8 @@ class Currency(Base):
 class Inventory(Base):
   __tablename__ = "gacha_inventory"
 
-  id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-  user: Mapped[int]
-  rarity: Mapped[int]
-  card: Mapped[str] = mapped_column(ForeignKey("gacha_cards.id"))
+  user: Mapped[int] = mapped_column(primary_key=True)
+  card: Mapped[str] = mapped_column(ForeignKey("gacha_cards.id"), primary_key=True)
   count: Mapped[int]
   first_acquired: Mapped[Optional[float]]
 
@@ -65,7 +62,7 @@ class Inventory(Base):
   def __repr__(self):
     return (
       f"Inventory(id={self.id!r}, user={self.user!r}, "
-      f"rarity={self.rarity!r}, card={self.card!r}, count={self.count!r}, "
+      f"card={self.card!r}, count={self.count!r}, "
       f"first_acquired={self.first_acquired!r})"
     )
 
@@ -143,7 +140,7 @@ class Settings(Base):
   dupe_shards: Mapped[int] = mapped_column(default=0)
   color: Mapped[int]
   stars: Mapped[str]
-  pity: Mapped[int]
+  pity: Mapped[Optional[int]]
 
 
 # =============================================================================
