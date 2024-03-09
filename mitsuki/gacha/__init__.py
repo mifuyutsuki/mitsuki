@@ -205,6 +205,7 @@ class MitsukiGacha(Extension):
     sub_cmd_description="Roll gacha once using Shards"
   )
   async def roll_cmd(self, ctx: SlashContext):
+    await ctx.defer()
     user   = ctx.user
     shards = await userdata.shards(user.id)
     cost   = gacha.cost
@@ -303,6 +304,7 @@ class MitsukiGacha(Extension):
     mode: Optional[str] = "list",
     user: Optional[BaseUser] = None
   ):
+    await ctx.defer()
     target_user       = user or ctx.user
     target_user_cards = await userdata.card_list(target_user.id)
 
@@ -375,7 +377,8 @@ class MitsukiGacha(Extension):
     ctx: SlashContext,
     name: str,
     user: Optional[BaseUser] = None
-  ):    
+  ):
+    await ctx.defer()
     target_user       = user or ctx.user
     target_user_cards = await userdata.card_list(target_user.id)
     
