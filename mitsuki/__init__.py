@@ -36,6 +36,7 @@ from interactions.api.events import (
   CommandCompletion,
   ComponentCompletion
 )
+from interactions.client.const import CLIENT_FEATURE_FLAGS
 from interactions.client.errors import CommandCheckFailure
 from interactions.client.mixins.send import SendMixin
 from os import environ
@@ -134,4 +135,6 @@ bot.load_extension("mitsuki.gacha")
 
 def run():
   global bot
+  # fixes image loading issues?
+  CLIENT_FEATURE_FLAGS["FOLLOWUP_INTERACTIONS_FOR_IMAGES"] = True
   bot.start(environ.get("BOT_TOKEN"))
