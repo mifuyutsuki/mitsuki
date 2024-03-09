@@ -11,9 +11,9 @@
 # GNU Affero General Public License for more details.
 
 from mitsuki.userdata import Base
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, Row
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from typing import Optional
+from typing import Optional, List
 from attrs import define, field
 from attrs import asdict as _asdict
 
@@ -102,16 +102,15 @@ class Pity(Base):
 class Pity2(Base):
   __tablename__ = "gacha_pity2"
 
-  id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-  user: Mapped[int]
-  rarity: Mapped[int] = mapped_column(ForeignKey("gacha_settings.rarity"))
+  user: Mapped[int] = mapped_column(primary_key=True)
+  rarity: Mapped[int] = mapped_column(ForeignKey("gacha_settings.rarity"), primary_key=True)
   count: Mapped[int]
 
   rarity_ref: Mapped["Settings"] = relationship()
 
   def __repr__(self) -> str:
     return (
-      f"Pity2(id={self.id!r}, user={self.user!r}, "
+      f"Pity2(user={self.user!r}, "
       f"rarity={self.rarity!r}, count={self.count!r})"
     )
 
@@ -145,6 +144,102 @@ class Settings(Base):
   color: Mapped[int]
   stars: Mapped[str]
   pity: Mapped[int]
+
+
+# =============================================================================
+
+@define
+class UserCard:
+  user: int
+  amount: int
+  first_acquired: int
+  card: str
+  name: str
+  rarity: int
+  type: str
+  series: str
+  color: int = field(repr=False)
+  stars: str = field(repr=False)
+  
+  image: Optional[str] = field(default=None)
+  
+  mention: str = field(init=False)
+
+  @classmethod
+  def create(cls, result: Row):
+    return cls(
+      user=result.Inventory.user,
+      amount=result.Inventory.count,
+      first_acquired=int(result.Inventory.first_acquired),
+      card=result.Inventory.card,
+      name=result.Card.name,
+      rarity=result.Card.rarity,
+      type=result.Card.type,
+      series=result.Card.series,
+      color=result.Settings.color,
+      stars=result.Settings.stars,
+      image=result.Card.image
+    )
+  
+  @classmethod
+  def create_many(cls, results: List[Row]):
+    return [cls.create(result) for result in results]
+  
+  def __attrs_post_init__(self):
+    self.mention = f"<@{self.user}>"
+
+  def asdict(self):
+    return _asdict(self)
+
+
+@define
+class UserPity:
+  user: int
+  rarity: int
+  count: int
+
+  @classmethod
+  def create(cls, result: Pity2):
+    return cls(user=result.user, rarity=result.rarity, count=result.count)
+  
+  @classmethod
+  def create_many(cls, results: List[Pity2]):
+    return [cls.create(result) for result in results]
+  
+  def asdict(self):
+    return _asdict(self)
+
+
+# =============================================================================
+
+
+@define
+class RosterCard:
+  id: str
+  name: str
+  rarity: int
+  type: str
+  series: str
+  color: int
+  stars: str
+  image: Optional[str] = field(default=None)
+
+  @classmethod
+  def from_db(cls, result: Row):
+    return cls(
+      id=result.Card.id,
+      name=result.Card.name,
+      rarity=result.Card.rarity,
+      type=result.Card.type,
+      series=result.Card.series,
+      image=result.Card.image,
+      color=result.Settings.color,
+      stars=result.Settings.stars
+    )
+  
+  @classmethod
+  def from_db_many(cls, results: List[Row]):
+    return [cls.from_db(result) for result in results]
 
 
 @define

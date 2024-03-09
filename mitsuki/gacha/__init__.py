@@ -119,7 +119,7 @@ class MitsukiGacha(Extension):
   )
   async def shards_cmd(self, ctx: SlashContext, user: Optional[BaseUser] = None):
     target_user = user or ctx.user
-    shards      = await userdata.get_shards(target_user.id)
+    shards      = await userdata.shards(target_user.id)
 
     message = load_message(
       "gacha_shards",
@@ -146,13 +146,10 @@ class MitsukiGacha(Extension):
     # TODO: use global settings for daily reset
     daily_tz     = gacha.daily_tz
     daily_tz_str = f"-{daily_tz}" if daily_tz < 0 else f"+{daily_tz}"
+    daily_reset_time = "00:00%+.2d00" % daily_tz
     
     # Timestamp for next daily
-    daily_timestamp = (
-      ( datetime.now(tz=timezone(timedelta(hours=daily_tz))) + timedelta(days=1) )
-      .replace(hour=0, minute=0, second=0, microsecond=0)
-      .timestamp()
-    )
+    daily_timestamp = userdata.daily_next(reset_time=daily_reset_time)
     daily_timestamp_r = f"<t:{int(daily_timestamp)}:R>"
     daily_timestamp_f = f"<t:{int(daily_timestamp)}:f>"
 
@@ -161,7 +158,7 @@ class MitsukiGacha(Extension):
     # ---------------------------------------------------------------
     # Check if daily is already claimed
 
-    if not await userdata.is_daily_available(ctx.user.id, daily_tz):
+    if not await userdata.daily_check(ctx.user.id, daily_reset_time):
       message = load_message(
         "gacha_daily_already_claimed",
         data={
@@ -190,7 +187,7 @@ class MitsukiGacha(Extension):
     )
 
     async with new_session() as session:
-      await userdata.modify_shards(session, ctx.user.id, shards, daily=True)
+      await userdata.daily_give(session, ctx.user.id, shards)
       try:
         await ctx.send(**message.to_dict())
       except Exception:
@@ -209,7 +206,7 @@ class MitsukiGacha(Extension):
   )
   async def roll_cmd(self, ctx: SlashContext):
     user   = ctx.user
-    shards = await userdata.get_shards(user.id)
+    shards = await userdata.shards(user.id)
     cost   = gacha.cost
 
     # ---------------------------------------------------------------
@@ -232,9 +229,9 @@ class MitsukiGacha(Extension):
 
     # TODO: pass pity data to gachaman.roll
 
-    min_rarity  = await userdata.check_user_pity(gacha.pity, user.id)
+    min_rarity  = await userdata.pity_check(user.id, gacha.pity)
     rolled      = gacha.roll(min_rarity=min_rarity)
-    is_new_card = not await userdata.user_has_card(user.id, rolled)
+    is_new_card = not await userdata.card_has(user.id, rolled)
     dupe_shards = 0 if is_new_card else gacha.dupe_shards[rolled.rarity]
 
     # ---------------------------------------------------------------
@@ -261,13 +258,11 @@ class MitsukiGacha(Extension):
 
     # ---------------------------------------------------------------
     # Update userdata
-      
-    pity_settings = gacha.pity
-
+    
     async with new_session() as session:
-      await userdata.modify_shards(session, user.id, dupe_shards - cost)
-      await userdata.give_card(session, user.id, rolled)
-      await userdata.update_user_pity(session, pity_settings, user.id, rolled.rarity)
+      await userdata.shards_update(session, user.id, dupe_shards - cost)
+      await userdata.card_give(session, user.id, rolled)
+      await userdata.pity_update(session, user.id, rolled.rarity, gacha.pity)
       
       try:
         await ctx.send(**message.to_dict())
@@ -309,12 +304,13 @@ class MitsukiGacha(Extension):
     user: Optional[BaseUser] = None
   ):
     target_user       = user or ctx.user
-    target_user_cards = await userdata.list_cards(target_user.id)
+    target_user_cards = await userdata.card_list(target_user.id)
 
     # ---------------------------------------------------------------
     # User has no cards?
-
-    if len(target_user_cards) <= 0:
+    
+    total_cards = len(target_user_cards)
+    if total_cards <= 0:
       message = load_message("gacha_cards_no_cards", user=ctx.author, target_user=target_user)
       await ctx.send(**message.to_dict())
       return
@@ -323,15 +319,8 @@ class MitsukiGacha(Extension):
     # List cards
 
     cards = []
-    user_cards = gacha.from_ids(target_user_cards.keys())
-    for user_card in user_cards:
-      cards.append({
-        **card_data(user_card),
-        "amount": target_user_cards[user_card.id].count,
-        "first_acquired": int(target_user_cards[user_card.id].first_acquired)
-      })
-    
-    total_cards = len(cards)
+    for card in target_user_cards:
+      cards.append(card.asdict())
 
     # ---------------------------------------------------------------
     # Generate message
@@ -387,13 +376,14 @@ class MitsukiGacha(Extension):
     name: str,
     user: Optional[BaseUser] = None
   ):    
-    target_user       = user if user else ctx.user
-    target_user_cards = await userdata.list_cards(target_user.id)
+    target_user       = user or ctx.user
+    target_user_cards = await userdata.card_list(target_user.id)
     
     # ---------------------------------------------------------------
     # User has no cards?
     
-    if len(target_user_cards) <= 0:
+    total_cards = len(target_user_cards)
+    if total_cards <= 0:
       message = load_message("gacha_cards_no_cards", user=ctx.author, target_user=target_user)
       await ctx.send(**message.to_dict())
       return
@@ -403,13 +393,14 @@ class MitsukiGacha(Extension):
     # TODO: Search from all users instead of on a specific user
 
     search_key = name
-    search_cards = gacha.from_ids(target_user_cards.keys())
-
+    
+    search_card_refs  = {}
     search_card_ids   = []
     search_card_names = []
-    for search_card in search_cards:
-      search_card_ids.append(search_card.id)
-      search_card_names.append(search_card.name)
+    for target_user_card in target_user_cards:
+      search_card_refs[target_user_card.card] = target_user_card
+      search_card_ids.append(target_user_card.card)
+      search_card_names.append(target_user_card.name)
     
     search_results = process.extract(
       search_key,
@@ -419,8 +410,6 @@ class MitsukiGacha(Extension):
       processor=utils.default_process,
       score_cutoff=50.0
     )
-
-    total_cards = len(search_cards)
 
     # ---------------------------------------------------------------
     # No search results?
@@ -462,20 +451,16 @@ class MitsukiGacha(Extension):
 
       results_card_selects.append(results_card_select)
     
-    results_cards = gacha.from_ids(results_card_ids)
+    results_cards = [search_card_refs[results_card_id] for results_card_id in results_card_ids]
     for results_card in results_cards:
-      cards.append({
-        **card_data(results_card),
-        "amount": target_user_cards[results_card.id].count,
-        "first_acquired": int(target_user_cards[results_card.id].first_acquired)
-      })
+      cards.append(results_card.asdict())
 
     # ---------------------------------------------------------------
     # Select or prompt select a card
     
     if len(strong_match_ids) == 1:
       # Unambiguous strong match
-      selected_card = gacha.from_id(strong_match_ids[0])
+      selected_card = search_card_refs[strong_match_ids[0]]
       send = ctx.send
     else:
       # Ambiguous and/or weak match(es)
@@ -534,11 +519,7 @@ class MitsukiGacha(Extension):
       
     message = load_message(
       "gacha_view_card",
-      data={
-        **card_data(selected_card),
-        "amount": target_user_cards[selected_card.id].count,
-        "first_acquired": int(target_user_cards[selected_card.id].first_acquired)
-      },
+      data=selected_card.asdict(),
       user=ctx.author,
       target_user=target_user
     )
@@ -571,8 +552,8 @@ class MitsukiGacha(Extension):
     target_user: BaseUser,
     shards: int
   ):
-    user       = ctx.user
-    own_shards = await userdata.get_shards(user.id)
+    user       = ctx.author
+    own_shards = await userdata.shards(user.id)
 
     # ---------------------------------------------------------------
     # Self-give?
@@ -613,8 +594,7 @@ class MitsukiGacha(Extension):
     )
 
     async with new_session() as session:
-      await userdata.modify_shards(session, user.id, -shards)
-      await userdata.modify_shards(session, target_user.id, +shards)
+      await userdata.shards_exchange(session, user.id, target_user.id, shards)
       try:
         await ctx.send(**message.to_dict())
       except Exception:
@@ -652,7 +632,7 @@ class MitsukiGacha(Extension):
     target_user: BaseUser,
     shards: int
   ):
-    shards_before = await userdata.get_shards(target_user.id)
+    shards_before = await userdata.shards(target_user.id)
     shards_after  = shards_before + shards
 
     message = load_message(
@@ -668,7 +648,7 @@ class MitsukiGacha(Extension):
     )
 
     async with new_session() as session:
-      await userdata.modify_shards(session, target_user.id, shards)
+      await userdata.shards_give(session, target_user.id, shards)
 
       try:
         await ctx.send(**message.to_dict(), ephemeral=True)
@@ -715,13 +695,11 @@ class MitsukiGacha(Extension):
   @check(is_owner())
   @auto_defer(ephemeral=True)
   async def system_cards_cmd(self, ctx: SlashContext):
-    roster_cards = gacha.cards.values()
-    roster_cards = sorted(roster_cards, key=lambda card: card.name.lower())
-    roster_cards = sorted(roster_cards, key=lambda card: card.rarity, reverse=True)
+    roster_cards = await userdata.card_list_all()
 
     cards = []
     for roster_card in roster_cards:
-      cards.append(card_data(roster_card))
+      cards.append(roster_card.asdict())
     
     message = load_multifield(
       "gacha_cards_admin",
