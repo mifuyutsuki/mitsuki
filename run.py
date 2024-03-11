@@ -11,6 +11,10 @@
 # GNU Affero General Public License for more details.
 
 from mitsuki import run
+from sys import argv
 
 if __name__ == "__main__":
-  run()
+  if argv[-1] == "dev":
+    run(dev_mode=True)
+  else:
+    run()

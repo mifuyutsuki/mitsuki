@@ -40,8 +40,10 @@ from interactions.client.const import CLIENT_FEATURE_FLAGS
 from interactions.client.errors import CommandCheckFailure
 from interactions.client.mixins.send import SendMixin
 from os import environ
+from datetime import datetime, timezone
 import asyncio
 
+from mitsuki import settings
 from mitsuki.messages import load_message
 from mitsuki.userdata import initialize
 from mitsuki.version import __version__
@@ -124,17 +126,40 @@ class Bot(Client):
       logger.info(f"values: {values}")
 
 
-print(f"Mitsuki {__version__}")
-print(f"Copyright (c) 2024 Mifuyu (mifuyutsuki)")
-print(f"---------------------------------------")
-
 bot = Bot()
-bot.load_extension("mitsuki.core")
-bot.load_extension("mitsuki.gacha")
 
 
-def run():
+def run(dev_mode=False):
   global bot
+
+  curr_time = datetime.now(tz=timezone.utc).isoformat(sep=" ")
+
+  print(f"Mitsuki v{__version__}")
+  print(f"Copyright (c) 2024 Mifuyu (mifuyutsuki)")
+  print(f"Current time in UTC: {curr_time}")
+  print("")
+  
+  if dev_mode:
+    bot.load_extension("interactions.ext.jurigged")
+    print("Running in dev mode. Jurigged is active")
+    
+    if not settings.dev.scope:
+      logger.warning(
+        "Settings property dev.dev_scope is not set. Running commands globally"
+      )
+    
+    bot.debug_scope = settings.dev.scope
+    token = environ.get("DEV_BOT_TOKEN")
+  else:
+    token = environ.get("BOT_TOKEN")
+  
+  if not token:
+    raise SystemExit("Token not set. Please add your bot token to .env")
+  
+  bot.load_extension("mitsuki.core")
+  bot.load_extension("mitsuki.gacha")
+
   # fixes image loading issues?
   CLIENT_FEATURE_FLAGS["FOLLOWUP_INTERACTIONS_FOR_IMAGES"] = True
-  bot.start(environ.get("BOT_TOKEN"))
+
+  bot.start(token)
