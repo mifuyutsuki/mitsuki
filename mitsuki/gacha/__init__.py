@@ -31,9 +31,9 @@ from interactions.client.errors import HTTPException
 from mitsuki.paginators import Paginator
 from rapidfuzz import fuzz, utils, process
 from typing import Optional
-from datetime import datetime, timedelta, timezone
 
 from mitsuki import bot
+from mitsuki import settings
 from mitsuki.messages import (
   load_message,
   load_multipage,
@@ -144,9 +144,7 @@ class MitsukiGacha(Extension):
     shards = gacha.daily_shards
 
     # TODO: use global settings for daily reset
-    daily_tz     = gacha.daily_tz
-    daily_tz_str = f"-{daily_tz}" if daily_tz < 0 else f"+{daily_tz}"
-    daily_reset_time = "00:00%+.2d00" % daily_tz
+    daily_reset_time = settings.mitsuki.daily_reset
     
     # Timestamp for next daily
     daily_timestamp = userdata.daily_next(reset_time=daily_reset_time)
@@ -163,7 +161,6 @@ class MitsukiGacha(Extension):
         "gacha_daily_already_claimed",
         data={
           "shards": shards,
-          "daily_tz": daily_tz_str,
           "timestamp_r": daily_timestamp_r,
           "timestamp_f": daily_timestamp_f,
           **currency_data()
@@ -178,7 +175,6 @@ class MitsukiGacha(Extension):
       "gacha_daily",
       data={
         "shards": shards,
-        "daily_tz": daily_tz_str,
         "timestamp_r": daily_timestamp_r,
         "timestamp_f": daily_timestamp_f,
         **currency_data()
