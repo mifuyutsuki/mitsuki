@@ -61,7 +61,7 @@ mitsuki:
 # [FUTURE] Dev mode (run.py dev) settings.
 dev:
   # Guild ID for the dev-mode. Required to use 'run.py dev'.
-  dev_scope: 
+  scope: 
 
   # Path to dev database.
   # 
