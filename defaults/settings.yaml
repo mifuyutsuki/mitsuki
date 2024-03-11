@@ -1,0 +1,77 @@
+# Mitsuki bot settings file.
+#   To modify these settings for your Mitsuki bot, copy this file to a
+#   gitignored path, such as ./assets and ./settings. This ensures a smooth
+#   update process from the Mitsuki repository.
+
+
+mitsuki:
+  # Path to default (base) messages file.
+  #   To avoid issues when updating Mitsuki from repository, avoid modifying
+  #   the defaults file directly. Instead, create another messages.yaml file
+  #   in a gitignored path, such as ./assets and ./settings.
+  messages_default: "defaults/messages.yaml"
+
+  # Path to custom messages file.
+  #   Templates in this file will overwrite defaults in messages_default.
+  messages: 
+
+  # Daily reset time.
+  #   Determines the reset time for certain functions, such as /gacha daily.
+  # 
+  # Format: HH:MM+hhmm <or> HH:MM-hhmm
+  #   HH:MM   daily reset time (24-hour time)
+  #   +hhmm   daily reset timezone (+0000 for UTC)
+  daily_reset: "00:00+0000"
+
+  # Status messages ("Playing ...").
+  status:
+  - "Magical Mitsuki"
+
+  # Time to cycle to next status, in seconds.
+  #   Setting this value to 0 or having only one status message disables
+  #   status cycling. For rate limit reasons, this setting has a hard minimum
+  #   of 60 seconds.
+  #   
+  # Note:
+  #   The cycle resets after a bot restart.
+  status_cycle: 300
+
+  # Type of database to use.
+  # 
+  # Available options:
+  # - sqlite
+  # - postgresql [FUTURE]
+  db_use: "sqlite"
+
+  # Path to database.
+  #
+  # Notes for sqlite:
+  #   Paths are relative to Mitsuki root path.
+  #   Add an initial slash to use absolute paths.
+  #   For Windows absolute paths, use "/C:\\path\\to\\db.sqlite3".
+  # 
+  # [FUTURE] Notes for postgresql:
+  #   Include only the database host and database name:
+  #     localhost/mitsuki
+  #   Database username (DB_USERNAME) and password (DB_PASSWORD) are separately
+  #   configured in .env.
+  db_path: "data/db.sqlite3"
+
+
+# [FUTURE] Dev mode (run.py dev) settings.
+dev:
+  # Guild ID for the dev-mode. Required to use 'run.py dev'.
+  dev_scope: 
+
+  # Path to dev database.
+  # 
+  # The type of database used follows that of mitsuki.db_use.
+  db_path: "data/db-dev.sqlite3"
+  
+
+gacha:
+  # Gacha settings file, containing rates, gacha currency options, and more.
+  settings: "exampleassets/gacha_settings.yaml"
+
+  # Gacha roster file, containing card definitions.
+  roster: "exampleassets/gacha_roster.yaml"
