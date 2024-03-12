@@ -19,7 +19,7 @@ from interactions import (
   EmbedFooter,
 )
 from yaml import safe_load
-
+from mitsuki import settings
 from typing import (
   TypeAlias,
   Optional,
@@ -31,7 +31,7 @@ from typing import (
 from string import Template
 from urllib.parse import urlparse
 from copy import deepcopy
-from os import environ, PathLike
+from os import PathLike
 
 
 import logging
@@ -403,8 +403,8 @@ def _valid_url_or_none(url: str):
 # =============================================================================
 
 
-BASE_MESSAGES_YAML = environ.get("BASE_MESSAGES_YAML")
-MESSAGES_YAML = environ.get("MESSAGES_YAML")
+BASE_MESSAGES_YAML = settings.mitsuki.messages_default
+MESSAGES_YAML = settings.mitsuki.messages
 
 root = MessageMan()
 

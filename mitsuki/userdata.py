@@ -18,6 +18,8 @@ from sqlalchemy.ext.asyncio import (
   AsyncAttrs,
 )
 from os import environ
+from urllib.parse import quote_plus
+from mitsuki import settings
 
 __all__ = (
   "Base",
@@ -28,8 +30,27 @@ __all__ = (
 
 # TODO: postgresql support
 
-USERDATA_PATH = environ.get("USERDATA_PATH")
-engine = create_async_engine(f"sqlite+aiosqlite:///{USERDATA_PATH}")
+if environ.get("ENABLE_DEV_MODE") == "1":
+  USERDATA_PATH = settings.dev.db_path
+else:
+  USERDATA_PATH = settings.mitsuki.db_path
+
+if settings.mitsuki.db_use == "sqlite":
+  engine = create_async_engine(f"sqlite+aiosqlite:///{USERDATA_PATH}")
+elif settings.mitsuki.db_use == "postgresql":
+  raise SystemExit("PostgreSQL support is coming in a future version.")
+  # username = environ.get("DB_USERNAME")
+  # password = quote_plus(environ.get("DB_PASSWORD"))
+  # host_db  = settings.mitsuki.db_path
+  # engine = create_async_engine(
+  #   f"postgresql+asyncpg://{username}:{password}@{host_db}"
+  # )
+else:
+  raise SystemExit(
+    f"Database '{settings.mitsuki.db_use}' not recognized or supported"
+  )
+
+  
 new_session = async_sessionmaker(engine, expire_on_commit=False)
 
 

@@ -129,9 +129,10 @@ class Bot(Client):
 bot = Bot()
 
 
-def run(dev_mode=False):
+def run():
   global bot
 
+  dev_mode = environ.get("ENABLE_DEV_MODE") == "1"
   curr_time = datetime.now(tz=timezone.utc).isoformat(sep=" ")
 
   print(f"Mitsuki v{__version__}")

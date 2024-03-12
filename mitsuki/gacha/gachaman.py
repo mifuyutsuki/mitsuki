@@ -17,6 +17,7 @@ from os import environ
 
 from .schema import SourceCard, SourceSettings
 from .userdata import add_cards, add_settings
+from mitsuki import settings
 
 T = TypeVar("T")
 
@@ -255,15 +256,18 @@ def _transform_settings(data: Dict[str, Any], function: Optional[Callable[[T], T
 # =================================================================
 
 
+_settings_yaml = settings.gacha.settings
+_roster_yaml   = settings.gacha.roster
+
 gacha = Gachaman(
-  settings_yaml=environ.get("GACHA_SETTINGS_YAML"),
-  roster_yaml=environ.get("GACHA_ROSTER_YAML")
+  settings_yaml=_settings_yaml,
+  roster_yaml=_roster_yaml
 )
 
 
 def reload():
   global gacha
   gacha = Gachaman(
-    settings_yaml=environ.get("GACHA_SETTINGS_YAML"),
-    roster_yaml=environ.get("GACHA_ROSTER_YAML")
+    settings_yaml=_settings_yaml,
+    roster_yaml=_roster_yaml
   )
