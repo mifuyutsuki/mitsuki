@@ -411,7 +411,8 @@ root = MessageMan()
 # For logging reasons, use load() on first instead of two modify() calls
 if BASE_MESSAGES_YAML:
   root.load(BASE_MESSAGES_YAML)
-  root.modify(MESSAGES_YAML)
+  if MESSAGES_YAML:
+    root.modify(MESSAGES_YAML)
 elif MESSAGES_YAML:
   root.load(MESSAGES_YAML)
 else:
