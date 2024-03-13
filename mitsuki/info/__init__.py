@@ -1,0 +1,77 @@
+# Copyright (c) 2024 Mifuyu (mifuyutsuki@proton.me)
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+from interactions import (
+  Extension,
+  slash_command,
+  slash_option,
+  SlashContext,
+  OptionType,
+  BaseUser,
+  Member,
+  User,
+)
+
+from mitsuki import bot
+from mitsuki.messages import load_message
+
+
+class MitsukiInfo(Extension):
+  @slash_command(
+    name="info",
+    description="Informational commands"
+  )
+  async def info_cmd(self, ctx: SlashContext):
+    pass
+
+
+  @info_cmd.subcommand(
+    sub_cmd_name="user",
+    sub_cmd_description="Information about yourself or another user"
+  )
+  @slash_option(
+    name="user",
+    description="User to view, defaults to self",
+    required=False,
+    opt_type=OptionType.USER
+  )
+  async def user_cmd(self, ctx: SlashContext, user: BaseUser = None):
+    await ctx.defer()
+    user = user or ctx.author
+
+    # Obtaining the user banner is not stable, skipping relevant exception
+    try:
+      fetched = await bot.fetch_user(user.id, force=True)
+      banner = fetched.banner.as_url() if fetched.banner else None
+    except Exception:
+      banner = None
+
+    data = {
+      "target_nickname": user.display_name,
+      "target_username": user.tag,
+      "target_usericon": user.avatar_url,
+      "target_user_id": user.id,
+      "created_at": user.created_at.format("f"),
+      "target_userbanner": banner
+    }
+    if isinstance(user, Member):
+      data |= {
+        "guild_name": user.guild.name,
+        "guild_id": user.guild.id,
+        "joined_at": user.joined_at.format("f"),
+        "is_booster": "Yes" if user.premium else "No"
+      }
+      message = load_message("info_user_member", data=data, user=ctx.author)
+    else:
+      message = load_message("info_user_user", data=data, user=ctx.author)
+    
+    await ctx.send(**message.to_dict())

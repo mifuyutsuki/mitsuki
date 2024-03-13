@@ -121,6 +121,39 @@ help_license:
     GNU Affero General Public License for more details.
 
 
+# /info user
+# Info about user, if User.
+info_user_user:
+  title: >-
+    ${target_nickname} • ${target_username}
+  description: >-
+    User ID: ${target_user_id}
+
+    Created at ${created_at}
+  thumbnail   : ${target_usericon}
+  image       : ${target_userbanner}
+
+
+# /info user
+# Info about user, if Member.
+info_user_member:
+  title: >-
+    ${target_nickname} • ${target_username}
+  description: >-
+    User ID: ${target_user_id}
+
+    Created at ${created_at}
+
+
+    Member of **${guild_name}** (${guild_id})
+
+    Last joined: ${joined_at}
+
+    Server booster: ${is_booster}
+  thumbnail   : ${target_usericon}
+  image       : ${target_userbanner}
+
+
 # /gacha daily
 # Claim daily Shards.
 # 
