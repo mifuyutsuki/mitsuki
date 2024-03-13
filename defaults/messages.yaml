@@ -171,6 +171,8 @@ gacha_give:
     ${shards} ${currency} sent
   description: >-
     Sent to ${target_user}
+  content: >-
+    ${target_user}
 
 
 # /gacha cards
