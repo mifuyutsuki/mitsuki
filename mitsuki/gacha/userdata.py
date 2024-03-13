@@ -99,20 +99,36 @@ def daily_next(from_time: Optional[float] = None, reset_time: str = "00:00+0000"
 # Cards functions
 
 
-async def card_has(user_id: int, card: SourceCard):
-  return (await card_count(user_id, card)) > 0
+async def card_has(user_id: int, card_id: str):
+  return (await card_count(user_id, card_id)) > 0
 
 
-async def card_count(user_id: int, card: SourceCard):
+async def card_count(user_id: int, card_id: str):
   statement = (
     select(Inventory.count)
     .where(Inventory.user == user_id)
-    .where(Inventory.card == card.id)
+    .where(Inventory.card == card_id)
   )
   async with new_session() as session:
     count = await session.scalar(statement)
   
   return count or 0
+
+
+async def card_get_user(user_id: int, card_id: str):
+  statement = (
+    select(Inventory, Card, Settings)
+    .join(Card, Inventory.card_ref)
+    .join(Settings, Card.rarity_ref)
+    # Sneaky letter case!
+    .where(Inventory.card == card_id)
+    .where(Inventory.user == user_id)
+  )
+
+  async with new_session() as session:
+    result = (await session.execute(statement)).first()
+  
+  return UserCard.create(result) if result else None
 
 
 async def card_list(user_id: Snowflake, sort: str = "rarity-date"):
@@ -165,8 +181,10 @@ async def card_list_all(sort: str = "rarity-alpha"):
 
 async def card_list_all_obtained(sort: str = "rarity-alpha"):
   statement = (
-    select(Card)
+    select(Card, Settings)
+    .join(Settings, Card.rarity_ref)
     .join(Inventory, Card.id == Inventory.card)
+    .group_by(Card.id)
   )
   
   sort = sort.lower()
@@ -185,13 +203,13 @@ async def card_list_all_obtained(sort: str = "rarity-alpha"):
   return RosterCard.from_db_many(results)
 
 
-async def card_give(session: AsyncSession, user_id: Snowflake, card: SourceCard):
-  count = await card_count(user_id, card)
+async def card_give(session: AsyncSession, user_id: Snowflake, card_id: str):
+  count = await card_count(user_id, card_id)
   current_time = time()
 
   inventory_statement = (
     insert(Inventory)
-      .values(user=user_id, card=card.id, first_acquired=current_time, count=1)
+      .values(user=user_id, card=card_id, first_acquired=current_time, count=1)
       .on_conflict_do_update(
         index_elements=["user", "card"],
         set_=dict(count=Inventory.__table__.c.count + 1)
@@ -199,7 +217,7 @@ async def card_give(session: AsyncSession, user_id: Snowflake, card: SourceCard)
   )
   rolls_statement = (
     insert(Rolls)
-    .values(user=user_id, card=card.id, time=current_time)
+    .values(user=user_id, card=card_id, time=current_time)
   )
 
   await session.execute(inventory_statement)

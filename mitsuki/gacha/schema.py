@@ -221,6 +221,8 @@ class RosterCard:
   stars: str
   image: Optional[str] = field(default=None)
 
+  card: str = field(init=False)
+
   @classmethod
   def from_db(cls, result: Row):
     return cls(
@@ -237,6 +239,12 @@ class RosterCard:
   @classmethod
   def from_db_many(cls, results: List[Row]):
     return [cls.from_db(result) for result in results]
+
+  def __attrs_post_init__(self):
+    self.card = self.id  # Used by /gacha view
+
+  def asdict(self):
+    return _asdict(self)
 
 
 @define

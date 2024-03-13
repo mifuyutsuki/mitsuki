@@ -228,7 +228,7 @@ class MitsukiGacha(Extension):
 
     min_rarity  = await userdata.pity_check(user.id, gacha.pity)
     rolled      = gacha.roll(min_rarity=min_rarity)
-    is_new_card = not await userdata.card_has(user.id, rolled)
+    is_new_card = not await userdata.card_has(user.id, rolled.id)
     dupe_shards = 0 if is_new_card else gacha.dupe_shards[rolled.rarity]
 
     # ---------------------------------------------------------------
@@ -258,7 +258,7 @@ class MitsukiGacha(Extension):
     
     async with new_session() as session:
       await userdata.shards_update(session, user.id, dupe_shards - cost)
-      await userdata.card_give(session, user.id, rolled)
+      await userdata.card_give(session, user.id, rolled.id)
       await userdata.pity_update(session, user.id, rolled.rarity, gacha.pity)
       
       try:
@@ -352,7 +352,7 @@ class MitsukiGacha(Extension):
     
   @gacha_cmd.subcommand(
     sub_cmd_name="view",
-    sub_cmd_description="View a card from your or another user's collection"
+    sub_cmd_description="View an obtained card"
   )
   @slash_option(
     name="name",
@@ -364,7 +364,7 @@ class MitsukiGacha(Extension):
   )
   @slash_option(
     name="user",
-    description="User's collection to view (default: self)",
+    description="View cards in a user's collection",
     required=False,
     opt_type=OptionType.USER
   )
@@ -375,15 +375,21 @@ class MitsukiGacha(Extension):
     user: Optional[BaseUser] = None
   ):
     await ctx.defer()
-    target_user       = user or ctx.user
-    target_user_cards = await userdata.card_list(target_user.id)
+    target_user  = user
+    if target_user:
+      search_cards = await userdata.card_list(target_user.id)
+    else:
+      search_cards = await userdata.card_list_all_obtained()
     
     # ---------------------------------------------------------------
     # User has no cards?
     
-    total_cards = len(target_user_cards)
+    total_cards = len(search_cards)
     if total_cards <= 0:
-      message = load_message("gacha_cards_no_cards", user=ctx.author, target_user=target_user)
+      if target_user:
+        message = load_message("gacha_view_no_cards", user=ctx.author, target_user=target_user)
+      else:
+        message = load_message("gacha_view_no_acquired", user=ctx.author)
       await ctx.send(**message.to_dict())
       return
     
@@ -396,10 +402,10 @@ class MitsukiGacha(Extension):
     search_card_refs  = {}
     search_card_ids   = []
     search_card_names = []
-    for target_user_card in target_user_cards:
-      search_card_refs[target_user_card.card] = target_user_card
-      search_card_ids.append(target_user_card.card)
-      search_card_names.append(target_user_card.name)
+    for search_card in search_cards:
+      search_card_refs[search_card.card] = search_card
+      search_card_ids.append(search_card.card)
+      search_card_names.append(search_card.name)
     
     search_results = process.extract(
       search_key,
@@ -470,7 +476,9 @@ class MitsukiGacha(Extension):
         max_values=1
       )
       message = load_multifield(
-        "gacha_view_search_results",
+        "gacha_view_search_results"
+        if target_user else
+        "gacha_view_search_results_2",
         cards,
         base_data={
           "search_key": search_key,
@@ -515,13 +523,31 @@ class MitsukiGacha(Extension):
 
     # ---------------------------------------------------------------
     # Show card
-      
-    message = load_message(
-      "gacha_view_card",
-      data=selected_card.asdict(),
-      user=ctx.author,
-      target_user=target_user
-    )
+    
+    if target_user:
+      message = load_message(
+        "gacha_view_card",
+        data=selected_card.asdict(),
+        user=ctx.author,
+        target_user=target_user
+      )
+    else:
+      selected_card_user = await userdata.card_get_user(ctx.author.id, selected_card.card)
+      if selected_card_user:
+        message = load_message(
+          "gacha_view_card_2_acquired",
+          data=selected_card_user.asdict(),
+          user=ctx.author,
+          target_user=target_user
+        )
+      else:
+        message = load_message(
+          "gacha_view_card_2_unacquired",
+          data=selected_card.asdict(),
+          user=ctx.author,
+          target_user=target_user
+        )
+
     await send(**message.to_dict(), components=[])
 
 

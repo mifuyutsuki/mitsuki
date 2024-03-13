@@ -254,7 +254,7 @@ gacha_cards_no_cards:
 
 # /gacha view
 # View a card you own.
-# Message upon returning search results.
+# Message upon returning search results. (User search)
 gacha_view_search_results:
   title: >-
     Search results for "${search_key}"
@@ -275,7 +275,27 @@ gacha_view_search_results:
 
 
 # /gacha view
-# Message when there are no matching results for a search key.
+# View a card you own.
+# Message upon returning search results. (Global search)
+gacha_view_search_results_2:
+  title: >-
+    Search results for "${search_key}"
+  description: >-
+    Searching from `${total_cards}` acquired cards
+
+
+    To find more results, further specify the card name.
+    If you can't find the card, the card might have not been
+    obtained by the user or doesn't exist.
+  field       :
+    name      : ${stars} ${name}
+    value     : >-
+      ${type} • ${series}
+    inline    : false
+
+
+# /gacha view
+# Message when there are no matching results for a search key. (User search)
 gacha_view_no_results:
   title: >-
     No matching results for "${search_key}"
@@ -292,6 +312,21 @@ gacha_view_no_results:
 
 
 # /gacha view
+# Message when there are no matching results for a search key. (Global search)
+gacha_view_no_results_2:
+  title: >-
+    No matching results for "${search_key}"
+  description: >-
+    Searching from `${total_cards}` acquired cards
+
+
+    To find more results, further specify the card name.
+    If you can't find the card, the card might have not been
+    obtained by the user or doesn't exist.
+  color: *color_error
+
+
+# /gacha view
 # Message if target user has no cards.
 gacha_view_no_cards:
   title: >-
@@ -303,7 +338,17 @@ gacha_view_no_cards:
 
 
 # /gacha view
-# Message after selecting a card: view a card with image.
+# Message if the acquired roster has no cards (edge case).
+gacha_view_no_acquired:
+  title: >-
+    No acquired cards
+  description: >-
+    There are no acquired cards to view.
+  color: *color_error
+
+
+# /gacha view
+# Message after selecting a card to view. (User search)
 gacha_view_card:
   author:
     name: >-
@@ -318,6 +363,40 @@ gacha_view_card:
     `${amount}` in ${target_user}'s card collection
 
     First acquired by user: <t:${first_acquired}:f>
+  image: >-
+    ${image}
+  color: >-
+    ${color}
+
+
+# /gacha view [NEW]
+# Message after selecting a card to view. (Global search, unacquired by user)
+gacha_view_card_2_unacquired:
+  title: >-
+    ${name}
+  description: >-
+    ${stars} • ${type} • ${series}
+
+
+    Not yet acquired in your card collection
+  image: >-
+    ${image}
+  color: >-
+    ${color}
+
+
+# /gacha view [NEW]
+# Message after selecting a card to view. (Global search, acquired by user)
+gacha_view_card_2_acquired:
+  title: >-
+    ${name}
+  description: >-
+    ${stars} • ${type} • ${series}
+
+
+    `${amount}` in your card collection
+
+    First acquired: <t:${first_acquired}:f>
   image: >-
     ${image}
   color: >-
@@ -346,7 +425,7 @@ gacha_give_self:
   title: >-
     Invalid target user
   description: >-
-    Selected yourself as target user - please select another user
+    You gave to yourself. Oh wait, you can't.
   color: *color_error
 
 
