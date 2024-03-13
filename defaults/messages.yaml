@@ -157,6 +157,7 @@ gacha_shards:
     ${currency_icon} ${shards}
   description: >-
     Amount held by ${target_user}
+  thumbnail   : ${target_usericon}
 
 
 # /gacha give
