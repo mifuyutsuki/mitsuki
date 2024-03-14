@@ -176,6 +176,22 @@ gacha_daily:
 
 
 # /gacha daily
+# Claim daily Shards. (Server booster bonus)
+# 
+# currency_icon : Gacha currency icon (Shards)
+# shards        : Number of daily Shards claimed
+# timestamp_r   : Dynamic timestamp showing time to next reset
+gacha_daily_premium:
+  title: >-
+    Claimed daily ${currency_icon} ${shards}
+  description: >-
+    **${guild_name} boost!**
+    
+    Next daily is available ${timestamp_r}
+  color: 0xe6bd37
+
+
+# /gacha daily
 # Message if daily Shards are already claimed.
 # 
 # timestamp_r   : Dynamic timestamp showing time to next reset

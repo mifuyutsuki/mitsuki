@@ -13,7 +13,6 @@
 from yaml import safe_load
 from typing import Dict, List, Optional, Any, Callable, TypeVar
 from random import SystemRandom
-from os import environ
 
 from .schema import SourceCard, SourceSettings
 from .userdata import add_cards, add_settings
@@ -33,6 +32,9 @@ class Gachaman:
   currency_name: str
   daily_shards: int
   daily_tz: int
+
+  premium_daily_shards: Optional[int]
+  premium_guilds: Optional[List[int]]
 
   of_rarity: Dict[int, SourceSettings]
   rarities: List[int]
@@ -146,6 +148,9 @@ class Gachaman:
     self.currency_name = _data.get("currency_name")
     self.daily_shards  = _data.get("daily_shards")
     self.daily_tz      = _data.get("daily_tz")
+
+    self.premium_daily_shards = _data.get("premium_daily_shards")
+    self.premium_guilds       = _data.get("premium_guilds")
 
     self.of_rarity = self._parse_settings(_data)
 

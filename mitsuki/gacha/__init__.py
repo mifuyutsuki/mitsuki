@@ -142,9 +142,6 @@ class MitsukiGacha(Extension):
     sub_cmd_description=f"Claim your gacha daily"
   )
   async def daily_cmd(self, ctx: SlashContext):
-    shards = gacha.daily_shards
-
-    # TODO: use global settings for daily reset
     daily_reset_time = settings.mitsuki.daily_reset
     
     # Timestamp for next daily
@@ -161,7 +158,6 @@ class MitsukiGacha(Extension):
       message = load_message(
         "gacha_daily_already_claimed",
         data={
-          "shards": shards,
           "timestamp_r": daily_timestamp_r,
           "timestamp_f": daily_timestamp_f,
           **currency_data()
@@ -171,16 +167,26 @@ class MitsukiGacha(Extension):
       await ctx.send(**message.to_dict())
       return
     
+    shards = gacha.daily_shards
+    is_premium = False
+    
+    if gacha.premium_guilds and gacha.premium_daily_shards:
+      if ctx.author.premium and (ctx.author.guild.id in gacha.premium_guilds):
+        shards = gacha.premium_daily_shards
+        is_premium = True
+        
     # Claim daily
     message = load_message(
-      "gacha_daily",
+      "gacha_daily_premium" if is_premium else "gacha_daily",
       data={
         "shards": shards,
         "timestamp_r": daily_timestamp_r,
         "timestamp_f": daily_timestamp_f,
+        "guild_name": ctx.author.guild.name,
         **currency_data()
       },
-      user=ctx.author
+      user=ctx.author,
+      escape_data_values=["guild_name"]
     )
 
     async with new_session() as session:
