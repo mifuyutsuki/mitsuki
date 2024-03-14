@@ -19,6 +19,15 @@ currency_icon: 💠
 # can then claim again after 00:00 on the timezone specified by daily_tz.
 daily_shards: 120
 
+# [FUTURE] Amount of claimable daily gacha currency for server boosters.
+# 
+# Valid servers are given by the premium_guilds list.
+premium_daily_shards: 210
+
+# [FUTURE] Servers (guild IDs) where premium shards are valid.
+premium_guilds:
+- 1
+
 # Timezone for daily reset of daily gacha currency.
 # 
 # [WARNING] This setting is now replaced by global setting mitsuki.daily_reset.
