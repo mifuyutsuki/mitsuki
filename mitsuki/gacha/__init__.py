@@ -530,11 +530,7 @@ class MitsukiGacha(Extension):
       except TimeoutError:
         select_menu.disabled = True
         try:
-          await select_msg.edit(
-            content=message.content,
-            embed=embed,
-            components=select_menu
-          )
+          await select_msg.edit(components=[])
         except HTTPException:
           # Case: message does not exist
           pass
