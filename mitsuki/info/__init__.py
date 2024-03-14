@@ -56,6 +56,7 @@ class MitsukiInfo(Extension):
       banner = None
     
     escapes = [
+      "target_globalname",
       "target_dispname",
       "target_nickname",
       "target_username",
@@ -63,8 +64,8 @@ class MitsukiInfo(Extension):
     ]
 
     data = {
-      "target_dispname": user.global_name,
-      "target_nickname": user.display_name,
+      "target_globalname": user.global_name or "-",
+      "target_dispname": user.display_name,
       "target_username": user.tag,
       "target_usericon": user.avatar_url,
       "target_user_id": user.id,
@@ -75,6 +76,7 @@ class MitsukiInfo(Extension):
       data |= {
         "guild_name": user.guild.name,
         "guild_id": user.guild.id,
+        "target_nickname": user.nickname or "-",
         "joined_at": user.joined_at.format("f"),
         "is_booster": "Yes" if user.premium else "No"
       }
