@@ -318,88 +318,6 @@ class MessageMan:
     return self._templates.get(name) or {}
 
 
-def _assign_data(
-  template: MessageTemplate,
-  data: Optional[dict] = None
-):
-  if data is None:
-    return template
-  if len(data) <= 0:
-    return template
-  assigned = deepcopy(template)
-
-  DEPTH = 1
-
-  def _recurse_assign(temp: Any, recursions: int = 0):
-    assigned_temp: MessageTemplate = {}
-
-    for key, value in temp.items():
-      if isinstance(value, Dict) and recursions < DEPTH:
-        assigned_value = _recurse_assign(value, recursions+1)
-      elif isinstance(value, str):
-        assigned_value = Template(value).safe_substitute(**data)
-      else:
-        assigned_value = value
-      assigned_temp[key] = assigned_value
-
-    return assigned_temp
-  
-  assigned = _recurse_assign(assigned)
-  return assigned
-
-
-def _create_embed(template: MessageTemplate):
-  title = template.get("title")
-  description = template.get("description")
-  color = int(template.get("color") or 0)
-  url = _valid_url_or_none(template.get("url"))
-
-  fields_get = template.get("fields") or []
-  fields = []
-  for field_get in fields_get:
-    if isinstance(field_get, Dict):
-      field = EmbedField(
-        name=field_get.get("name") or "",
-        value=field_get.get("value") or "",
-        inline=bool(field_get.get("inline"))
-      )
-      fields.append(field)
-
-  author_get = template.get("author")
-  author = EmbedAuthor(
-    name=author_get.get("name"),
-    url=_valid_url_or_none(author_get.get("url")),
-    icon_url=_valid_url_or_none(author_get.get("icon_url"))
-  ) if author_get else None
-
-  thumbnail = EmbedAttachment(url=_valid_url_or_none(template.get("thumbnail")))
-
-  image = EmbedAttachment(url=_valid_url_or_none(template.get("image")))
-  images = [image]
-
-  footer_get = template.get("footer")
-  footer = EmbedFooter(
-    text=footer_get.get("text") or "",
-    icon_url=_valid_url_or_none(footer_get.get("icon_url"))
-  ) if footer_get else None
-
-  return Embed(
-    title=title,
-    description=description,
-    color=color,
-    url=url,
-    fields=fields,
-    author=author,
-    thumbnail=thumbnail,
-    images=images,
-    footer=footer
-  )
-
-
-def _valid_url_or_none(url: str):
-  return url if _is_valid_url(url) else None
-
-
 # =============================================================================
 
 
@@ -566,268 +484,88 @@ def target_user_data(user: BaseUser):
 
 
 # =============================================================================
-# Legacy mitsuki.messages
-# =============================================================================
 
 
-def load(source_file: str):
-  global _messages
-  with open(source_file, encoding="UTF-8") as f:
-    _messages = safe_load(f)
-
-
-_messages: Optional[dict] = None
-
-
-def message(
-  message_name: str,
-  format: Optional[dict] = None,
-  user: Optional[BaseUser] = None,
-  **kwargs
+def _assign_data(
+  template: MessageTemplate,
+  data: Optional[dict] = None
 ):
-  _format = format or {}
-  _format = _assign_user_to_format(_format, user)
+  if data is None:
+    return template
+  if len(data) <= 0:
+    return template
+  assigned = deepcopy(template)
 
-  message_data = _init_message_data(
-    message_name,
-    format=_format,
-    user=user,
-    **kwargs
-  )
-  message_data = _assign_format(message_data, format=_format)
-  embed_data   = _process_message_data(message_data)
+  DEPTH = 1
+
+  def _recurse_assign(temp: Any, recursions: int = 0):
+    assigned_temp: MessageTemplate = {}
+
+    for key, value in temp.items():
+      if isinstance(value, Dict) and recursions < DEPTH:
+        assigned_value = _recurse_assign(value, recursions+1)
+      elif isinstance(value, str):
+        assigned_value = Template(value).safe_substitute(**data)
+      else:
+        assigned_value = value
+      assigned_temp[key] = assigned_value
+
+    return assigned_temp
   
-  return Embed(**embed_data)
+  assigned = _recurse_assign(assigned)
+  return assigned
 
 
-def message_with_pages(
-  message_name: str,
-  page_formats: List[dict],
-  base_format: Optional[dict] = None,
-  user: Optional[BaseUser] = None,
-  **kwargs
-):
-  base_message_data = _init_message_data(
-    message_name,
-    format=base_format,
-    **kwargs
-  )
-  
-  _base_format = base_format or {}
-  _base_format = _assign_user_to_format(_base_format, user)
+def _create_embed(template: MessageTemplate):
+  title = template.get("title")
+  description = template.get("description")
+  color = int(template.get("color") or 0)
+  url = _valid_url_or_none(template.get("url"))
 
-  embeds = []
-  pages  = len(page_formats)
-  for page, page_format in enumerate(page_formats, start=1):
-    # message_data may have nested dicts, use deepcopy
-    message_data = deepcopy(base_message_data)
-
-    format = _base_format.copy()
-    format.update({
-      "page": page,
-      "pages": pages
-    })
-    format.update(page_format)
-    
-    message_data = _assign_format(message_data, format=format)
-    embed_data   = _process_message_data(message_data)
-    embeds.append(Embed(**embed_data))
-  
-  return embeds
-
-
-def message_with_fields(
-  message_name: str,
-  field_formats: List[dict],
-  fields_per_embed: int = 6,
-  base_format: Optional[dict] = None,
-  user: Optional[BaseUser] = None,
-  **kwargs
-):
-  base_message_data = _init_message_data(
-    message_name,
-    format=base_format,
-    **kwargs
-  )
-
-  field_data = base_message_data.get("field")
-
-  _base_format = base_format or {}
-  _base_format = _assign_user_to_format(_base_format, user)
-
-  embeds = []
-  cursor = 0
-  page   = 1
-  pages  = (max(0, len(field_formats) - 1) // fields_per_embed) + 1
-
-  while cursor < len(field_formats):
-    # message_data may have nested dicts, use deepcopy
-    message_data = deepcopy(base_message_data)
-    format = _base_format.copy()
-    format.update(page=page, pages=pages)
-
-    fields = []
-    if isinstance(field_data, dict):
-      for idx in range(cursor, cursor + fields_per_embed):
-        try:
-          field_format = field_formats[idx]
-        except IndexError:
-          break
-
-        field_format.update(**format)
-        field = field_data.copy()
-        field = _assign_format(field, format=field_format)
-        fields.append(field)
-    
-    message_data["fields"] = fields
-    message_data = _assign_format(message_data, format=format)
-    embed_data   = _process_message_data(message_data)
-    embeds.append(Embed(**embed_data))
-    
-    cursor += fields_per_embed
-    page += 1
-
-  return embeds
-
-
-def username_from_user(user: BaseUser):
-  if user.discriminator == "0":
-    return user.username
-  else:
-    return f"{user.username}#{user.discriminator}"
-  
-
-def _init_message_data(
-  message_name: str,
-  format: Optional[dict] = None,
-  **kwargs  
-):
-  global _messages
-  _format = format if format else {}
-
-  # Get default
-  message_data_get: dict = _messages.get("default")
-  if isinstance(message_data_get, dict):
-    message_data = message_data_get.copy()
-  else:
-    message_data = {}
-  
-  # Get <message_name>
-  message_data_get = _messages.get(message_name)
-  if isinstance(message_data_get, dict):  
-    message_data.update(message_data_get)
-  else:
-    raise KeyError(
-      f"Message '{message_name}' not found or invalid"
-    )
-  
-  # Get overrides
-  message_data.update(**kwargs)
-  
-  # Assign format fields e.g. ${shards}
-  return message_data
-
-
-def _process_message_data(message_data: dict):
-  title       = message_data.get("title")
-  url         = message_data.get("url")
-  description = message_data.get("description")
-  color       = message_data.get("color")
-
-  url = url if _is_valid_url(url) else None
-  
-  _author_data = message_data.get("author")
-  author = None
-  if isinstance(_author_data, dict):
-    _url = _author_data.get("url")
-    _url = _url if _is_valid_url(_url) else None
-    _icon_url = _author_data.get("icon_url")
-    _icon_url = _icon_url if _is_valid_url(_icon_url) else None
-
-    author = EmbedAuthor(
-      name=_author_data.get("name"),
-      url=_url,
-      icon_url=_icon_url
-    )
-
-  _thumbnail_data = message_data.get("thumbnail")
-  thumbnail = None
-  if isinstance(_thumbnail_data, str):
-    if len(_thumbnail_data) > 0 and _is_valid_url(_thumbnail_data):
-      thumbnail = EmbedAttachment(url=_thumbnail_data)
-    
-  _image_data = message_data.get("image")
-  image = ""
-  if isinstance(_image_data, str):
-    if len(_image_data) > 0 and _is_valid_url(_image_data):
-      image = EmbedAttachment(url=_image_data)
-  images = [image] if image else []
-  
-  _footer_data = message_data.get("footer")
-  footer = None
-  if isinstance(_footer_data, dict):
-    _icon_url = _footer_data.get("icon_url")
-    _icon_url = _icon_url if _is_valid_url(_icon_url) else None
-
-    footer = EmbedFooter(
-      text=_footer_data.get("text"),
-      icon_url=_icon_url
-    )
-  
-  _fields_data = message_data.get("fields")
+  fields_get = template.get("fields") or []
   fields = []
-  if isinstance(_fields_data, list):
-    for field_data in _fields_data:
-      if isinstance(field_data, dict):
-        fields.append(EmbedField(
-          name=field_data.get("name"),
-          value=field_data.get("value"),
-          inline=field_data.get("inline")
-        ))
-  
-  return dict(
+  for field_get in fields_get:
+    if isinstance(field_get, Dict):
+      field = EmbedField(
+        name=field_get.get("name") or "",
+        value=field_get.get("value") or "",
+        inline=bool(field_get.get("inline"))
+      )
+      fields.append(field)
+
+  author_get = template.get("author")
+  author = EmbedAuthor(
+    name=author_get.get("name"),
+    url=_valid_url_or_none(author_get.get("url")),
+    icon_url=_valid_url_or_none(author_get.get("icon_url"))
+  ) if author_get else None
+
+  thumbnail = EmbedAttachment(url=_valid_url_or_none(template.get("thumbnail")))
+
+  image = EmbedAttachment(url=_valid_url_or_none(template.get("image")))
+  images = [image]
+
+  footer_get = template.get("footer")
+  footer = EmbedFooter(
+    text=footer_get.get("text") or "",
+    icon_url=_valid_url_or_none(footer_get.get("icon_url"))
+  ) if footer_get else None
+
+  return Embed(
     title=title,
     description=description,
     color=color,
     url=url,
-    images=images,
     fields=fields,
     author=author,
     thumbnail=thumbnail,
+    images=images,
     footer=footer
   )
 
 
-def _assign_format(
-  data: dict,
-  format: Optional[dict] = None,
-  recursion_level: int = 0
-):
-  if format is None:
-    return data
-  if len(format) <= 0:
-    return data
-  
-  formatted_data = data.copy()
-  for key, value in data.items():
-    if isinstance(value, dict) and recursion_level < 1:
-      formatted_value = _assign_format(value, format, recursion_level+1)
-    elif isinstance(value, str):
-      formatted_value = Template(value).safe_substitute(**format)
-    else:
-      formatted_value = value
-    formatted_data[key] = formatted_value
-  
-  return formatted_data
-
-
-def _assign_user_to_format(format: dict, user: Optional[BaseUser] = None):
-  _format = deepcopy(format)
-  
-  # Get username, usericon
-  if user is not None:
-    _format.update(username=username_from_user(user), usericon=user.avatar_url)
-  return _format
+def _valid_url_or_none(url: str):
+  return url if _is_valid_url(url) else None
 
 
 def _is_valid_url(url: Optional[str]):
