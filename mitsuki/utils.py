@@ -15,10 +15,15 @@ from interactions import (
 )
 from interactions.api.events import Component
 
-import re
+from rapidfuzz.utils import default_process
+
+import unicodedata
+import regex as re
 
 __all__ = (
   "escape_text",
+  "process_text",
+  "remove_accents",
   "is_caller",
 )
 
@@ -37,6 +42,14 @@ def escape_text(text: str):
   """
 
   return re.sub(r"[*_`.+(){}!#|:@<>~\-\[\]\\\/]", r"\\\g<0>", text)
+
+
+def process_text(text: str):
+  return default_process(remove_accents(text))
+
+
+def remove_accents(text: str):
+  return re.sub(r'\p{Mn}', '', unicodedata.normalize('NFKD', text))
 
 
 def is_caller(ctx: BaseContext):

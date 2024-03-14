@@ -5,3 +5,4 @@ sqlalchemy~=2.0.25
 discord-py-interactions>=5.11.0
 aiosqlite
 attrs
+regex

@@ -29,7 +29,7 @@ from interactions import (
 from interactions.api.events import Startup
 from interactions.client.errors import HTTPException
 from mitsuki.paginators import Paginator
-from rapidfuzz import fuzz, utils, process
+from rapidfuzz import fuzz, process
 from typing import Optional
 
 from mitsuki import bot
@@ -40,7 +40,7 @@ from mitsuki.messages import (
   load_multifield,
 )
 from mitsuki.core import system_command
-from mitsuki.utils import is_caller
+from mitsuki.utils import is_caller, process_text, remove_accents
 from mitsuki.userdata import new_session, initialize
 from mitsuki.gacha import userdata
 from mitsuki.gacha.gachaman import gacha
@@ -398,7 +398,7 @@ class MitsukiGacha(Extension):
     # Search cards
     # TODO: Search from all users instead of on a specific user
 
-    search_key = name
+    search_key = remove_accents(name)
     
     search_card_refs  = {}
     search_card_ids   = []
@@ -413,7 +413,7 @@ class MitsukiGacha(Extension):
       search_card_names,
       scorer=fuzz.WRatio,
       limit=6,
-      processor=utils.default_process,
+      processor=process_text,
       score_cutoff=50.0
     )
 
