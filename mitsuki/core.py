@@ -24,7 +24,6 @@ from functools import partial
 __all__ = (
   "help_command",
   "system_command",
-  "is_caller"
 )
 
 
@@ -38,17 +37,6 @@ system_command = partial(
   name="system",
   description="System commands (bot owner only)"
 )
-
-def is_caller(ctx: BaseContext):
-  async def check(component: Component):
-    c = component.ctx.author.id == ctx.author.id
-    if not is_caller:
-      await component.ctx.send(
-        "This interaction is not for you", 
-        ephemeral=True
-      )
-    return c
-  return check
 
 
 # =============================================================================

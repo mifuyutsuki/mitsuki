@@ -39,7 +39,8 @@ from mitsuki.messages import (
   load_multipage,
   load_multifield,
 )
-from mitsuki.core import system_command, is_caller
+from mitsuki.core import system_command
+from mitsuki.utils import is_caller
 from mitsuki.userdata import new_session, initialize
 from mitsuki.gacha import userdata
 from mitsuki.gacha.gachaman import gacha
