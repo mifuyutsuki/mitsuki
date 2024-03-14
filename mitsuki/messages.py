@@ -515,7 +515,7 @@ def _assign_data(
     return template
   assigned = deepcopy(template)
 
-  DEPTH = 1
+  DEPTH = 3
 
   escaped_data = data.copy()
   for key, value in data.items():
@@ -523,16 +523,34 @@ def _assign_data(
       escaped_data[key] = escape_text(value)
 
   def _recurse_assign(temp: Any, recursions: int = 0):
-    assigned_temp: MessageTemplate = {}
+    is_dict = isinstance(temp, Dict)
+    is_list = isinstance(temp, List)
+    assigned_temp = {} if is_dict else []
 
-    for key, value in temp.items():
-      if isinstance(value, Dict) and recursions < DEPTH:
+    if is_dict:
+      seq = temp.items()
+    elif is_list:
+      seq = temp
+    else:
+      seq = []
+    
+    for s in seq:
+      if is_dict:
+        key, value = s
+      else:
+        value = s
+      
+      if isinstance(value, (Dict, List)) and recursions < DEPTH:
         assigned_value = _recurse_assign(value, recursions+1)
       elif isinstance(value, str):
         assigned_value = Template(value).safe_substitute(**escaped_data)
       else:
         assigned_value = value
-      assigned_temp[key] = assigned_value
+      
+      if is_dict:
+        assigned_temp[key] = assigned_value
+      elif is_list:
+        assigned_temp.append(assigned_value)
 
     return assigned_temp
   
