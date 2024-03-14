@@ -280,13 +280,27 @@ class MitsukiGacha(Extension):
   )
   @slash_option(
     name="mode",
-    description="Card viewing mode (default: list)",
+    description="Card viewing mode, default: list",
     required=False,
     opt_type=OptionType.STRING,
     choices=[
       SlashCommandChoice(name="list", value="list"),
       SlashCommandChoice(name="deck", value="deck"),
     # SlashCommandChoice(name="compact", value="compact")
+    ]
+  )
+  @slash_option(
+    name="sort",
+    description="Card sorting mode, default: rarity (list mode), acquired (deck mode)",
+    required=False,
+    opt_type=OptionType.STRING,
+    choices=[
+      SlashCommandChoice(name="Rarity", value="rarity"),
+      SlashCommandChoice(name="Name", value="alpha"),
+      SlashCommandChoice(name="First acquired", value="date"),
+      SlashCommandChoice(name="Series", value="series"),
+      SlashCommandChoice(name="Number acquired", value="count"),
+      SlashCommandChoice(name="Card ID", value="id"),
     ]
   )
   @slash_option(
@@ -299,11 +313,20 @@ class MitsukiGacha(Extension):
     self,
     ctx: SlashContext,
     mode: Optional[str] = "list",
+    sort: Optional[str] = None,
     user: Optional[BaseUser] = None
   ):
     await ctx.defer()
+
+    if mode == "list":
+      sort = sort or "rarity"
+    elif mode == "deck":
+      sort = sort or "date"
+    else:
+      sort = sort or "rarity"
+
     target_user       = user or ctx.user
-    target_user_cards = await userdata.card_list(target_user.id)
+    target_user_cards = await userdata.card_list(target_user.id, sort=sort)
 
     # ---------------------------------------------------------------
     # User has no cards?

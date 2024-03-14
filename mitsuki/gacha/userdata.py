@@ -15,6 +15,7 @@ from time import time
 from datetime import datetime, timezone, timedelta
 from interactions import Snowflake
 from sqlalchemy import select, update
+from sqlalchemy.sql.functions import func
 from sqlalchemy.dialects.sqlite import insert as slinsert
 from sqlalchemy.dialects.postgresql import insert as pginsert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -131,7 +132,7 @@ async def card_get_user(user_id: int, card_id: str):
   return UserCard.create(result) if result else None
 
 
-async def card_list(user_id: Snowflake, sort: str = "rarity-date"):
+async def card_list(user_id: Snowflake, sort: str = "rarity"):
   statement = (
     select(Inventory, Card, Settings)
     .join(Card, Inventory.card_ref)
@@ -143,14 +144,16 @@ async def card_list(user_id: Snowflake, sort: str = "rarity-date"):
   sort = sort.lower()
   if sort == "rarity":
     statement = statement.order_by(Card.rarity.desc()).order_by(Inventory.first_acquired.desc())
-  elif sort == "rarity-date":
-    statement = statement.order_by(Card.rarity.desc()).order_by(Inventory.first_acquired.desc())
-  elif sort == "rarity-alpha":
-    statement = statement.order_by(Card.rarity.desc()).order_by(Card.name)
   elif sort == "alpha":
-    statement = statement.order_by(Card.name)
+    statement = statement.order_by(func.lower(Card.name))
   elif sort == "date":
     statement = statement.order_by(Inventory.first_acquired.desc())
+  elif sort == "series":
+    statement = statement.order_by(Card.type).order_by(Card.series).order_by(Card.rarity).order_by(Card.id)
+  elif sort == "count":
+    statement = statement.order_by(Inventory.count.desc()).order_by(Inventory.first_acquired.desc())
+  elif sort == "id":
+    statement = statement.order_by(Card.id)
   else:
     raise ValueError(f"Invalid sort setting '{sort}'")
   
@@ -160,16 +163,18 @@ async def card_list(user_id: Snowflake, sort: str = "rarity-date"):
   return UserCard.create_many(results)
 
 
-async def card_list_all(sort: str = "rarity-alpha"):
+async def card_list_all(sort: str = "id"):
   statement = select(Card, Settings).join(Settings, Card.rarity_ref)
   
   sort = sort.lower()
-  if sort == "rarity-alpha":
-    statement = statement.order_by(Card.rarity.desc()).order_by(Card.name)
+  if sort == "rarity":
+    statement = statement.order_by(Card.rarity.desc()).order_by(func.lower(Card.name))
   elif sort == "alpha":
-    statement = statement.order_by(Card.name)
-  elif sort == "type-series":
-    statement = statement.order_by(Card.type).order_by(Card.series)
+    statement = statement.order_by(func.lower(Card.name))
+  elif sort == "series":
+    statement = statement.order_by(Card.type).order_by(Card.series).order_by(Card.rarity).order_by(Card.id)
+  elif sort == "id":
+    statement = statement.order_by(Card.id)
   else:
     raise ValueError(f"Invalid sort setting '{sort}'")
 
@@ -179,7 +184,7 @@ async def card_list_all(sort: str = "rarity-alpha"):
   return RosterCard.from_db_many(results)
 
 
-async def card_list_all_obtained(sort: str = "rarity-alpha"):
+async def card_list_all_obtained(sort: str = "rarity"):
   statement = (
     select(Card, Settings)
     .join(Settings, Card.rarity_ref)
@@ -188,12 +193,14 @@ async def card_list_all_obtained(sort: str = "rarity-alpha"):
   )
   
   sort = sort.lower()
-  if sort == "rarity-alpha":
-    statement = statement.order_by(Card.rarity.desc()).order_by(Card.name)
+  if sort == "rarity":
+    statement = statement.order_by(Card.rarity.desc()).order_by(func.lower(Card.name))
   elif sort == "alpha":
-    statement = statement.order_by(Card.name)
-  elif sort == "type-series":
-    statement = statement.order_by(Card.type).order_by(Card.series)
+    statement = statement.order_by(func.lower(Card.name))
+  elif sort == "series":
+    statement = statement.order_by(Card.type).order_by(Card.series).order_by(Card.rarity).order_by(Card.id)
+  elif sort == "id":
+    statement = statement.order_by(Card.id)
   else:
     raise ValueError(f"Invalid sort setting '{sort}'")
 
