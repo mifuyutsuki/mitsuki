@@ -125,9 +125,11 @@ help_license:
 # Info about user, if User.
 info_user_user:
   title: >-
-    ${target_nickname} • ${target_username}
+    ${target_dispname}
   description: >-
-    User ID: ${target_user_id}
+    ${target_username} (${target_user_id})
+
+    Global name: ${target_globalname}
 
     Created at ${created_at}
   thumbnail   : ${target_usericon}
@@ -138,20 +140,26 @@ info_user_user:
 # Info about user, if Member.
 info_user_member:
   title: >-
-    ${target_nickname} • ${target_username}
+    ${target_dispname}
   description: >-
-    User ID: ${target_user_id}
+    ${target_username} (${target_user_id})
+
+    Global name: ${target_globalname}
 
     Created at ${created_at}
-
-
-    Member of **${guild_name}** (${guild_id})
-
-    Last joined: ${joined_at}
-
-    Server booster: ${is_booster}
   thumbnail   : ${target_usericon}
   image       : ${target_userbanner}
+  fields:
+  - name      : ${guild_name}
+    value     : >-
+      Guild ID: ${guild_id}
+
+      Nickname: ${target_nickname}
+
+      Last joined: ${joined_at}
+
+      Server booster: ${is_booster}
+    inline    : false # fields.inline
 
 
 # /gacha daily
