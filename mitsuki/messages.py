@@ -20,6 +20,7 @@ from interactions import (
 )
 from yaml import safe_load
 from mitsuki import settings
+from mitsuki.utils import escape_text
 from typing import (
   TypeAlias,
   Optional,
@@ -119,6 +120,7 @@ class MessageMan:
     data: Optional[dict] = None,
     user: Optional[BaseUser] = None,
     target_user: Optional[BaseUser] = None,
+    escape_data_values: List[str] = [],
     **template_kwargs
   ) -> Message:
     """
@@ -132,6 +134,7 @@ class MessageMan:
         data: Data to insert to the template
         user: User to include to data
         target_user: Target user to include to data
+        escape_data_values: Data entries to be Markdown-escaped
 
     Kwargs:
         template_kwargs: Template overrides
@@ -153,7 +156,7 @@ class MessageMan:
 
     template  = deepcopy(self._default)
     template |= self._load_template(template_name)
-    template  = _assign_data(template, data)
+    template  = _assign_data(template, data, escapes=escape_data_values)
     template |= template_kwargs
 
     content = template.get("content")
@@ -171,6 +174,7 @@ class MessageMan:
     base_data: Optional[dict] = None,
     user: Optional[BaseUser] = None,
     target_user: Optional[BaseUser] = None,
+    escape_data_values: List[str] = [],
     **template_kwargs
   ) -> Message:
     """
@@ -183,6 +187,7 @@ class MessageMan:
         base_data: Data to insert for all pages to the template
         user: User to include to data
         target_user: Target user to include to data
+        escape_data_values: Data entries to be Markdown-escaped
 
     Kwargs:
         template_kwargs: Template overrides for all pages
@@ -204,7 +209,7 @@ class MessageMan:
     
     base_template  = deepcopy(self._default)
     base_template |= self._load_template(template_name)
-    base_template  = _assign_data(base_template, base_data)
+    base_template  = _assign_data(base_template, base_data, escapes=escape_data_values)
     
     content = base_template.get("content")
 
@@ -215,7 +220,8 @@ class MessageMan:
       page_template  = deepcopy(base_template)
       page_template  = _assign_data(
         page_template,
-        page_data | {"page": page, "pages": pages}
+        page_data | {"page": page, "pages": pages},
+        escapes=escape_data_values
       )
       page_template |= template_kwargs
       embeds.append(_create_embed(page_template))
@@ -234,6 +240,7 @@ class MessageMan:
     user: Optional[BaseUser] = None,
     target_user: Optional[BaseUser] = None,
     fields_per_page: int = 6,
+    escape_data_values: List[str] = [],
     **template_kwargs
   ):
     """
@@ -247,6 +254,7 @@ class MessageMan:
         user: User to include to data
         target_user: Target user to include to data
         fields_per_page: Number of fields for each page
+        escape_data_values: Data entries to be Markdown-escaped
 
     Kwargs:
         template_kwargs: Template overrides for all pages
@@ -268,7 +276,7 @@ class MessageMan:
     
     base_template  = deepcopy(self._default)
     base_template |= self._load_template(template_name)
-    base_template  = _assign_data(base_template, base_data)
+    base_template  = _assign_data(base_template, base_data, escapes=escape_data_values)
     field_template = base_template.get("field")
 
     content = base_template.get("content")
@@ -287,11 +295,12 @@ class MessageMan:
       fields = []
       for field_data in fields_data[cursor : cursor + fields_per_page]:
         field_data = base_data | field_data
-        fields.append(_assign_data(field_template, field_data))     
+        fields.append(_assign_data(field_template, field_data, escapes=escape_data_values))     
 
       page_template = _assign_data(
         page_template | {"fields": fields},
-        base_data | {"page": page, "pages": pages}
+        base_data | {"page": page, "pages": pages},
+        escapes=escape_data_values
       )
       page_template |= template_kwargs
       embeds.append(_create_embed(page_template))
@@ -347,6 +356,7 @@ def load_message(
   data: Optional[dict] = None,
   user: Optional[BaseUser] = None,
   target_user: Optional[BaseUser] = None,
+  escape_data_values: List[str] = [],
   **template_kwargs
 ) -> Message:
   """
@@ -363,6 +373,7 @@ def load_message(
       data: Data to insert to the template
       user: User to include to data
       target_user: Target user to include to data
+      escape_data_values: Data entries to be Markdown-escaped
 
   Kwargs:
       template_kwargs: Template overrides
@@ -378,6 +389,7 @@ def load_message(
     data=data,
     user=user,
     target_user=target_user,
+    escape_data_values=escape_data_values,
     **template_kwargs
   )
 
@@ -388,6 +400,7 @@ def load_multipage(
   base_data: Optional[dict] = None,
   user: Optional[BaseUser] = None,
   target_user: Optional[BaseUser] = None,
+  escape_data_values: List[str] = [],
   **template_kwargs
 ) -> Message:
   """
@@ -403,6 +416,7 @@ def load_multipage(
       base_data: Data to insert for all pages to the template
       user: User to include to data
       target_user: Target user to include to data
+      escape_data_values: Data entries to be Markdown-escaped
 
   Kwargs:
       template_kwargs: Template overrides for all pages
@@ -419,6 +433,7 @@ def load_multipage(
     base_data=base_data,
     user=user,
     target_user=target_user,
+    escape_data_values=escape_data_values,
     **template_kwargs
   )
 
@@ -430,6 +445,7 @@ def load_multifield(
   user: Optional[BaseUser] = None,
   target_user: Optional[BaseUser] = None,
   fields_per_page: int = 6,
+  escape_data_values: List[str] = [],
   **template_kwargs
 ):
   """
@@ -446,6 +462,7 @@ def load_multifield(
       user: User to include to data
       target_user: Target user to include to data
       fields_per_page: Number of fields for each page
+      escape_data_values: Data entries to be Markdown-escaped
 
   Kwargs:
       template_kwargs: Template overrides for all pages
@@ -463,6 +480,7 @@ def load_multifield(
     user=user,
     target_user=target_user,
     fields_per_page=fields_per_page,
+    escape_data_values=escape_data_values,
     **template_kwargs
   )
 
@@ -488,7 +506,8 @@ def target_user_data(user: BaseUser):
 
 def _assign_data(
   template: MessageTemplate,
-  data: Optional[dict] = None
+  data: Optional[Dict[str, Any]] = None,
+  escapes: List[str] = []
 ):
   if data is None:
     return template
@@ -498,6 +517,11 @@ def _assign_data(
 
   DEPTH = 1
 
+  escaped_data = data.copy()
+  for key, value in data.items():
+    if key in escapes and isinstance(value, str):
+      escaped_data[key] = escape_text(value)
+
   def _recurse_assign(temp: Any, recursions: int = 0):
     assigned_temp: MessageTemplate = {}
 
@@ -505,7 +529,7 @@ def _assign_data(
       if isinstance(value, Dict) and recursions < DEPTH:
         assigned_value = _recurse_assign(value, recursions+1)
       elif isinstance(value, str):
-        assigned_value = Template(value).safe_substitute(**data)
+        assigned_value = Template(value).safe_substitute(**escaped_data)
       else:
         assigned_value = value
       assigned_temp[key] = assigned_value

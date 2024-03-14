@@ -15,9 +15,28 @@ from interactions import (
 )
 from interactions.api.events import Component
 
+import re
+
 __all__ = (
+  "escape_text",
   "is_caller",
 )
+
+
+def escape_text(text: str):
+  """
+  Escape Discord markdown special characters in a text.
+
+  For example, `*murasaki_park*` is converted into `\\*murasaki\\_park\\*`.
+
+  Args:
+      text: String to be escaped
+  
+  Returns:
+      Discord markdown-escaped string
+  """
+
+  return re.sub(r"[*_`.+(){}!#|:@<>~\-\[\]\\\/]", r"\\\g<0>", text)
 
 
 def is_caller(ctx: BaseContext):

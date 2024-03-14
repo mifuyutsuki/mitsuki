@@ -54,8 +54,16 @@ class MitsukiInfo(Extension):
       banner = fetched.banner.as_url() if fetched.banner else None
     except Exception:
       banner = None
+    
+    escapes = [
+      "target_dispname",
+      "target_nickname",
+      "target_username",
+      "guild_name",
+    ]
 
     data = {
+      "target_dispname": user.global_name,
       "target_nickname": user.display_name,
       "target_username": user.tag,
       "target_usericon": user.avatar_url,
@@ -70,8 +78,18 @@ class MitsukiInfo(Extension):
         "joined_at": user.joined_at.format("f"),
         "is_booster": "Yes" if user.premium else "No"
       }
-      message = load_message("info_user_member", data=data, user=ctx.author)
+      message = load_message(
+        "info_user_member",
+        data=data,
+        user=ctx.author,
+        escape_data_values=escapes
+      )
     else:
-      message = load_message("info_user_user", data=data, user=ctx.author)
+      message = load_message(
+        "info_user_user",
+        data=data,
+        user=ctx.author,
+        escape_data_values=escapes
+      )
     
     await ctx.send(**message.to_dict())
