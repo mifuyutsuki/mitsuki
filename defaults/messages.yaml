@@ -229,6 +229,7 @@ gacha_give:
     ${shards} ${currency} sent
   description: >-
     Sent to ${target_user}
+  thumbnail   : ${target_usericon}
   content: >-
     ${target_user}
 
