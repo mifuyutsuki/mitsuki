@@ -74,7 +74,7 @@ dupe_shards:
 # 
 # The colors are used for the color of the embed showing the rolled item.
 colors:
-  s1: 0x216edb # blue
+  s1: 0x46a1eb # blue
   s2: 0x8e30db # purple
   s3: 0xe6bd37 # orange
   # s4: 0xf0386c # rose

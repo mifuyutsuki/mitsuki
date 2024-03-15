@@ -1,8 +1,8 @@
 # Base colors
 _colors:
-  ok      : &color_ok      0x237feb
-  warning : &color_warning 0xc2b41d
-  error   : &color_error   0xc31d1d
+  ok      : &color_ok      0x344ae1 # blue
+  warning : &color_warning 0xc2b41d # yellow
+  error   : &color_error   0xc31d1d # crimson red
 
 
 # Template for reference
