@@ -23,10 +23,10 @@ class Rolls(Base):
 
   id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
   user: Mapped[int]
-  card: Mapped[str] = mapped_column(ForeignKey("gacha_cards.id"))
+  card: Mapped[str]
   time: Mapped[float]
 
-  card_ref: Mapped["Card"] = relationship()
+  # card_ref: Mapped["Card"] = relationship(primaryjoin="foreign(Card.id) == Rolls.card", viewonly=True)
 
   def __repr__(self):
     return (
@@ -53,11 +53,11 @@ class Inventory(Base):
   __tablename__ = "gacha_inventory"
 
   user: Mapped[int] = mapped_column(primary_key=True)
-  card: Mapped[str] = mapped_column(ForeignKey("gacha_cards.id"), primary_key=True)
+  card: Mapped[str] = mapped_column(primary_key=True)
   count: Mapped[int]
   first_acquired: Mapped[Optional[float]]
 
-  card_ref: Mapped["Card"] = relationship()
+  # card_ref: Mapped["Card"] = relationship(primaryjoin="foreign(Card.id) == Inventory.card", viewonly=True)
 
   def __repr__(self):
     return (
@@ -67,6 +67,7 @@ class Inventory(Base):
     )
 
 
+# Legacy table, replaced by Pity2
 class Pity(Base):
   __tablename__ = "gacha_pity"
 
@@ -100,10 +101,10 @@ class Pity2(Base):
   __tablename__ = "gacha_pity2"
 
   user: Mapped[int] = mapped_column(primary_key=True)
-  rarity: Mapped[int] = mapped_column(ForeignKey("gacha_settings.rarity"), primary_key=True)
+  rarity: Mapped[int] = mapped_column(primary_key=True)
   count: Mapped[int]
 
-  rarity_ref: Mapped["Settings"] = relationship()
+  # rarity_ref: Mapped["Settings"] = relationship(primaryjoin="foreign(Settings.rarity) == Pity2.rarity", viewonly=True)
 
   def __repr__(self) -> str:
     return (
@@ -122,7 +123,7 @@ class Card(Base):
   series: Mapped[str]
   image: Mapped[Optional[str]]
 
-  rarity_ref: Mapped["Settings"] = relationship()
+  # rarity_ref: Mapped["Settings"] = relationship()
 
   def __repr__(self):
     return (

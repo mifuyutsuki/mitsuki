@@ -119,8 +119,8 @@ async def card_count(user_id: int, card_id: str):
 async def card_get_user(user_id: int, card_id: str):
   statement = (
     select(Inventory, Card, Settings)
-    .join(Card, Inventory.card_ref)
-    .join(Settings, Card.rarity_ref)
+    .join(Card, Inventory.card == Card.id)
+    .join(Settings, Card.rarity == Settings.rarity)
     # Sneaky letter case!
     .where(Inventory.card == card_id)
     .where(Inventory.user == user_id)
@@ -135,8 +135,8 @@ async def card_get_user(user_id: int, card_id: str):
 async def card_list(user_id: Snowflake, sort: str = "rarity"):
   statement = (
     select(Inventory, Card, Settings)
-    .join(Card, Inventory.card_ref)
-    .join(Settings, Card.rarity_ref)
+    .join(Card, Inventory.card == Card.id)
+    .join(Settings, Card.rarity == Settings.rarity)
     .where(Inventory.card == Card.id)
     .where(Inventory.user == user_id)
   )
@@ -164,7 +164,7 @@ async def card_list(user_id: Snowflake, sort: str = "rarity"):
 
 
 async def card_list_all(sort: str = "id"):
-  statement = select(Card, Settings).join(Settings, Card.rarity_ref)
+  statement = select(Card, Settings).join(Settings, Card.rarity == Settings.rarity)
   
   sort = sort.lower()
   if sort == "rarity":
@@ -187,7 +187,7 @@ async def card_list_all(sort: str = "id"):
 async def card_list_all_obtained(sort: str = "rarity"):
   statement = (
     select(Card, Settings)
-    .join(Settings, Card.rarity_ref)
+    .join(Settings, Card.rarity == Settings.rarity)
     .join(Inventory, Card.id == Inventory.card)
     .group_by(Card.id)
   )
