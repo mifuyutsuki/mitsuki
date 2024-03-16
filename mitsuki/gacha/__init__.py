@@ -190,8 +190,9 @@ class MitsukiGacha(Extension):
     )
 
     async with new_session() as session:
-      await userdata.daily_give(session, ctx.user.id, shards)
       try:
+        await userdata.daily_give(session, ctx.user.id, shards)
+
         await ctx.send(**message.to_dict())
       except Exception:
         await session.rollback()
@@ -263,12 +264,12 @@ class MitsukiGacha(Extension):
     # ---------------------------------------------------------------
     # Update userdata
     
-    async with new_session() as session:
-      await userdata.shards_update(session, user.id, dupe_shards - cost)
-      await userdata.card_give(session, user.id, rolled.id)
-      await userdata.pity_update(session, user.id, rolled.rarity, gacha.pity)
-      
+    async with new_session() as session:      
       try:
+        await userdata.shards_update(session, user.id, dupe_shards - cost)
+        await userdata.card_give(session, user.id, rolled.id)
+        await userdata.pity_update(session, user.id, rolled.rarity, gacha.pity)
+
         await ctx.send(**message.to_dict())
       except Exception:
         await session.rollback()
@@ -645,8 +646,9 @@ class MitsukiGacha(Extension):
     )
 
     async with new_session() as session:
-      await userdata.shards_exchange(session, user.id, target_user.id, shards)
       try:
+        await userdata.shards_exchange(session, user.id, target_user.id, shards)
+
         await ctx.send(**message.to_dict())
       except Exception:
         await session.rollback()
@@ -699,9 +701,9 @@ class MitsukiGacha(Extension):
     )
 
     async with new_session() as session:
-      await userdata.shards_give(session, target_user.id, shards)
-
       try:
+        await userdata.shards_give(session, target_user.id, shards)
+
         await ctx.send(**message.to_dict(), ephemeral=True)
       except Exception:
         await session.rollback()
