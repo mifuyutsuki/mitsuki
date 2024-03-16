@@ -223,6 +223,7 @@ class RosterCard:
   image: Optional[str] = field(default=None)
 
   card: str = field(init=False)
+  card_id: str = field(init=False)
 
   @classmethod
   def from_db(cls, result: Row):
@@ -242,7 +243,8 @@ class RosterCard:
     return [cls.from_db(result) for result in results]
 
   def __attrs_post_init__(self):
-    self.card = self.id  # Used by /gacha view
+    self.card = self.id    # Used by /gacha view
+    self.card_id = self.id # Used by /system gacha cards
 
   def asdict(self):
     return _asdict(self)
