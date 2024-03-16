@@ -80,11 +80,19 @@ class MitsukiInfo(Extension):
         "joined_at": user.joined_at.format("f"),
         "is_booster": "Yes" if user.premium else "No"
       }
+      color = None
+      pos = 0
+      for role in user.roles:
+        if role.color != "#000000" and role.position > pos:
+          color = role.color.value
+          pos = role.position
+      
       message = load_message(
         "info_user_member",
         data=data,
         user=ctx.author,
-        escape_data_values=escapes
+        escape_data_values=escapes,
+        color=color
       )
     else:
       message = load_message(
