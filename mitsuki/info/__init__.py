@@ -19,6 +19,8 @@ from interactions import (
   BaseUser,
   Member,
   User,
+  cooldown,
+  Buckets,
 )
 
 from mitsuki import bot
@@ -38,6 +40,7 @@ class MitsukiInfo(Extension):
     sub_cmd_name="user",
     sub_cmd_description="Information about yourself or another user"
   )
+  @cooldown(Buckets.USER, 1, 5.0)
   @slash_option(
     name="user",
     description="User to view, defaults to self",

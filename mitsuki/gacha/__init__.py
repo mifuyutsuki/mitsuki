@@ -25,6 +25,8 @@ from interactions import (
   is_owner,
   auto_defer,
   listen,
+  cooldown,
+  Buckets,
 )
 from interactions.api.events import Startup
 from interactions.client.errors import HTTPException
@@ -112,6 +114,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="shards",
     sub_cmd_description="View your or another user's amount of Shards"
   )
+  @cooldown(Buckets.USER, 1, 5.0)
   @slash_option(
     name="user",
     description="User to view",
@@ -141,6 +144,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="daily",
     sub_cmd_description=f"Claim your gacha daily"
   )
+  @cooldown(Buckets.USER, 1, 5.0)
   async def daily_cmd(self, ctx: SlashContext):
     daily_reset_time = settings.mitsuki.daily_reset
     
@@ -208,6 +212,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="roll",
     sub_cmd_description="Roll gacha once using Shards"
   )
+  @cooldown(Buckets.USER, 1, 5.0)
   async def roll_cmd(self, ctx: SlashContext):
     user   = ctx.user
     shards = await userdata.shards(user.id)
@@ -287,6 +292,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="cards",
     sub_cmd_description="View your or another user's collected cards"
   )
+  @cooldown(Buckets.USER, 1, 15.0)
   @slash_option(
     name="mode",
     description="Card viewing mode, default: list",
@@ -388,6 +394,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="view",
     sub_cmd_description="View an obtained card"
   )
+  @cooldown(Buckets.USER, 1, 5.0)
   @slash_option(
     name="name",
     description="Card name to search",
@@ -589,6 +596,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="give",
     sub_cmd_description="Give Shards to another user"
   )
+  @cooldown(Buckets.USER, 1, 5.0)
   @slash_option(
     name="target_user",
     description="User to give Shards to",
