@@ -18,7 +18,6 @@ logging.basicConfig(
   format="%(asctime)s [%(levelname)s] %(name)s:%(lineno)d: %(message)s",
   level=logging.WARNING
 )
-import traceback
 
 from interactions import (
   Status,
@@ -44,7 +43,9 @@ from interactions.client.errors import (
 from interactions.client.const import CLIENT_FEATURE_FLAGS
 from interactions.client.mixins.send import SendMixin
 from os import environ
+from os.path import dirname, abspath
 from datetime import datetime, timezone
+import traceback
 import asyncio
 
 from mitsuki import settings
@@ -114,14 +115,48 @@ class Bot(Client):
       )
       ephemeral = True
     else:
+      # traceback.print_exception(event.error)
+
+      # Look for the Mitsuki source
+      tb = event.error.__traceback__
+      use_tb = tb
+      mitsuki_tb = None
+      while tb is not None:
+        if dirname(abspath(__file__)) in tb.tb_frame.f_code.co_filename:
+          mitsuki_tb = tb
+        use_tb = mitsuki_tb or tb
+        tb = tb.tb_next
+      
+      if mitsuki_tb:
+        e_path = (
+          use_tb.tb_frame.f_code.co_filename
+          .replace(dirname(abspath(__file__)), "mitsuki")
+          .replace("\\", ".")
+          .replace("/", ".")
+          .rsplit(".", maxsplit=1)[0]
+          .replace(".__init__", "")
+        ) if mitsuki_tb else ""
+        e_coname = use_tb.tb_frame.f_code.co_name
+        e_lineno = use_tb.tb_lineno
+        error_repr = (
+          f"{e_path}:{e_coname}:{e_lineno}: "
+          f"{type(event.error).__name__}: "
+          f"{str(event.error)}"
+        )
+      else:
+        error_repr = (
+          f"{type(event.error).__name__}: "
+          f"{str(event.error)}"
+        ) if use_tb else repr(event.error)
+
+      logger.error(error_repr)
+      
       message = load_message(
         "error",
-        data={"error_repr": repr(event.error)},
+        data={"error_repr": error_repr},
         user=event.ctx.author
       )
       ephemeral = False
-    
-    logger.exception(event.error)
     
     if isinstance(event.ctx, SendMixin):
       await event.ctx.send(**message.to_dict(), ephemeral=ephemeral)
@@ -190,6 +225,6 @@ def run():
   bot.load_extension("mitsuki.gacha")
 
   # fixes image loading issues?
-  CLIENT_FEATURE_FLAGS["FOLLOWUP_INTERACTIONS_FOR_IMAGES"] = True
+  # CLIENT_FEATURE_FLAGS["FOLLOWUP_INTERACTIONS_FOR_IMAGES"] = True
 
   bot.start(token)
