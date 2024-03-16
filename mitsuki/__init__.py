@@ -16,7 +16,7 @@ load_dotenv(override=True)
 import logging
 logging.basicConfig(
   format="%(asctime)s [%(levelname)s] %(name)s:%(lineno)d: %(message)s",
-  level=logging.INFO
+  level=logging.WARNING
 )
 import traceback
 
@@ -34,10 +34,14 @@ from interactions.api.events import (
   Ready,
   CommandError,
   CommandCompletion,
-  ComponentCompletion
+  ComponentCompletion,
+)
+from interactions.client.errors import (
+  CommandCheckFailure,
+  CommandOnCooldown,
+  MaxConcurrencyReached,
 )
 from interactions.client.const import CLIENT_FEATURE_FLAGS
-from interactions.client.errors import CommandCheckFailure
 from interactions.client.mixins.send import SendMixin
 from os import environ
 from datetime import datetime, timezone
@@ -65,7 +69,8 @@ class Bot(Client):
         type = ActivityType.PLAYING
       )
     )
-    self.intents  = Intents.DEFAULT
+    self.intents = Intents.DEFAULT
+    self.send_command_tracebacks = False
     asyncio.run(initialize())
 
 
@@ -83,20 +88,43 @@ class Bot(Client):
         type=ActivityType.PLAYING
       )
     )
-    logger.info(f"Ready: {self.user.tag} ({self.user.id})")
+    print(f"Ready: {self.user.tag} ({self.user.id})")
     
 
   @listen(CommandError, disable_default_listeners=True)
   async def on_command_error(self, event: CommandError):
-    if isinstance(event.error, CommandCheckFailure):
-      message = load_message("error_command_perms", user=event.ctx.author)
+    if isinstance(event.error, CommandOnCooldown):
+      cooldown_seconds = int(event.error.cooldown.get_cooldown_time())
+      message = load_message(
+        "error_cooldown",
+        data={"cooldown_seconds": cooldown_seconds},
+        user=event.ctx.author
+      )
+      ephemeral = True
+    elif isinstance(event.error, MaxConcurrencyReached):
+      message = load_message(
+        "error_concurrency",
+        user=event.ctx.author
+      )
+      ephemeral = True
+    elif isinstance(event.error, CommandCheckFailure):
+      message = load_message(
+        "error_command_perms",
+        user=event.ctx.author
+      )
+      ephemeral = True
     else:
-      traceback.print_exception(event.error)
-      logger.exception(event.error)
-      message = load_message("error", data={"error_repr": repr(event.error)}, user=event.ctx.author)
+      message = load_message(
+        "error",
+        data={"error_repr": repr(event.error)},
+        user=event.ctx.author
+      )
+      ephemeral = False
+    
+    logger.exception(event.error)
     
     if isinstance(event.ctx, SendMixin):
-      await event.ctx.send(**message.to_dict())
+      await event.ctx.send(**message.to_dict(), ephemeral=ephemeral)
   
 
   @listen(CommandCompletion)

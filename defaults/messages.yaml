@@ -63,12 +63,30 @@ error:
   color: *color_error
 
 
-# Message if a command check (almost always a permissions check) has occured.
-error_command_perms:
+# Message if a command is on cooldown.
+error_cooldown:
+  title: >-
+    Command on Cooldown
+  description: >-
+    Try again in ${cooldown_seconds} seconds
+  color: *color_error
+
+
+# Message if the application reached max concurrency.
+error_concurrency:
   title: >-
     Application Error
   description: >-
-    You do not have permissions to run this command.
+    Maximum concurrent application usage reached, please try again later
+  color: *color_error
+  
+
+# Message if a command check (almost always a permissions check) has occured.
+error_command_perms:
+  title: >-
+    Permission Error
+  description: >-
+    You do not have permissions to run this command
   color: *color_error
 
 
