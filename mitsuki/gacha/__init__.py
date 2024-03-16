@@ -209,7 +209,6 @@ class MitsukiGacha(Extension):
     sub_cmd_description="Roll gacha once using Shards"
   )
   async def roll_cmd(self, ctx: SlashContext):
-    await ctx.defer()
     user   = ctx.user
     shards = await userdata.shards(user.id)
     cost   = gacha.cost
@@ -228,6 +227,9 @@ class MitsukiGacha(Extension):
         user=user)
       await ctx.send(**message.to_dict())
       return
+    
+    # Checks complete, start deferring
+    await ctx.defer()
   
     # ---------------------------------------------------------------
     # Roll
@@ -323,14 +325,15 @@ class MitsukiGacha(Extension):
     sort: Optional[str] = None,
     user: Optional[BaseUser] = None
   ):
-    await ctx.defer()
-
     if mode == "list":
       sort = sort or "rarity"
     elif mode == "deck":
       sort = sort or "date"
     else:
       sort = sort or "rarity"
+
+    # Fetching large list, deferring
+    await ctx.defer()
 
     target_user       = user or ctx.user
     target_user_cards = await userdata.card_list(target_user.id, sort=sort)
@@ -353,7 +356,7 @@ class MitsukiGacha(Extension):
 
     # ---------------------------------------------------------------
     # Generate message
-
+    
     if mode == "list":
       message = load_multifield(
         "gacha_cards",
@@ -406,6 +409,7 @@ class MitsukiGacha(Extension):
     user: Optional[BaseUser] = None
   ):
     await ctx.defer()
+
     target_user  = user
     if target_user:
       search_cards = await userdata.card_list(target_user.id)
@@ -634,6 +638,9 @@ class MitsukiGacha(Extension):
 
     # ---------------------------------------------------------------
     # Generate message & give funds
+    
+    # Checks complete, start deferring
+    await ctx.defer()
 
     message = load_message(
       "gacha_give",
@@ -687,6 +694,8 @@ class MitsukiGacha(Extension):
   ):
     shards_before = await userdata.shards(target_user.id)
     shards_after  = shards_before + shards
+
+    await ctx.defer()
 
     message = load_message(
       "gacha_give",
