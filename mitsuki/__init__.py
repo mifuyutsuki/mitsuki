@@ -60,6 +60,8 @@ __all__ = (
 
 logger = logging.getLogger(__name__)
 
+init_event = asyncio.Event()
+
 
 class Bot(Client):
   def __init__(self):
@@ -72,12 +74,12 @@ class Bot(Client):
     )
     self.intents = Intents.DEFAULT
     self.send_command_tracebacks = False
-    asyncio.run(initialize())
 
 
   @listen(Startup)
   async def on_startup(self):
-    pass
+    await initialize()
+    init_event.set()
 
 
   @listen(Ready)

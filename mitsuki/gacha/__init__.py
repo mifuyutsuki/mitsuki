@@ -34,7 +34,7 @@ from mitsuki.paginators import Paginator
 from rapidfuzz import fuzz, process
 from typing import Optional
 
-from mitsuki import bot
+from mitsuki import bot, init_event
 from mitsuki import settings
 from mitsuki.messages import (
   load_message,
@@ -90,12 +90,8 @@ def card_data(card: SourceCard):
 class MitsukiGacha(Extension):
   @listen(Startup)
   async def on_startup(self):
-    try:
-      await gacha.sync_db()
-    except Exception:
-      # uninitialized DB?
-      await initialize()
-      await gacha.sync_db()
+    await init_event.wait()
+    await gacha.sync_db()
 
 
   @slash_command(
