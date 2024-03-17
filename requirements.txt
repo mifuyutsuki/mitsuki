@@ -7,3 +7,4 @@ jurigged
 aiosqlite
 attrs
 regex
+sentry-sdk

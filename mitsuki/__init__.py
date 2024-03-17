@@ -205,6 +205,13 @@ def run():
   print(f"Current time in UTC: {curr_time}")
   print("")
   
+  sentry_dsn = environ.get("SENTRY_DSN")
+  sentry_env = environ.get("SENTRY_ENV") or "dev"
+  if sentry_dsn:
+    bot.load_extension("interactions.ext.sentry", token=sentry_dsn, enable_tracing=True, environment=sentry_env)
+  else:
+    logger.warning("Env variable SENTRY_DSN is not set. Sentry logging is off")
+
   if dev_mode:
     bot.load_extension("interactions.ext.jurigged")
     print("Running in dev mode. Jurigged is active")
