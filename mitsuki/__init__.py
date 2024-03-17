@@ -164,31 +164,31 @@ class Bot(Client):
       await event.ctx.send(**message.to_dict(), ephemeral=ephemeral)
   
 
-  @listen(CommandCompletion)
-  async def on_command_completion(self, event: CommandCompletion):
-    if isinstance(event.ctx, InteractionContext):
-      command_name = event.ctx.invoke_target
-      logger.info(f"Command emitted: {command_name}")
-      # if len(event.ctx.args) > 0:
-      #   args = [str(v) for v in event.ctx.args]
-      #   logger.info(f"args: {args}")
-      if len(event.ctx.kwargs) > 0:
-        kwargs = {k: str(v) for k, v in event.ctx.kwargs.items()}
-        logger.info(f"kwargs: {kwargs}")
+  # @listen(CommandCompletion)
+  # async def on_command_completion(self, event: CommandCompletion):
+  #   if isinstance(event.ctx, InteractionContext):
+  #     command_name = event.ctx.invoke_target
+  #     logger.info(f"Command emitted: {command_name}")
+  #     # if len(event.ctx.args) > 0:
+  #     #   args = [str(v) for v in event.ctx.args]
+  #     #   logger.info(f"args: {args}")
+  #     if len(event.ctx.kwargs) > 0:
+  #       kwargs = {k: str(v) for k, v in event.ctx.kwargs.items()}
+  #       logger.info(f"kwargs: {kwargs}")
   
 
-  @listen(ComponentCompletion)
-  async def on_component_completion(self, event: ComponentCompletion):
-    command_name = event.ctx.invoke_target
-    try:
-      component_name = event.ctx.custom_id.split("|")[1]
-    except Exception:
-      component_name = event.ctx.custom_id
+  # @listen(ComponentCompletion)
+  # async def on_component_completion(self, event: ComponentCompletion):
+  #   command_name = event.ctx.invoke_target
+  #   try:
+  #     component_name = event.ctx.custom_id.split("|")[1]
+  #   except Exception:
+  #     component_name = event.ctx.custom_id
     
-    logger.info(f"Component emitted: {command_name}: {component_name}")
-    if len(event.ctx.values) > 0:
-      values = [str(v) for v in event.ctx.args]
-      logger.info(f"values: {values}")
+  #   logger.info(f"Component emitted: {command_name}: {component_name}")
+  #   if len(event.ctx.values) > 0:
+  #     values = [str(v) for v in event.ctx.args]
+  #     logger.info(f"values: {values}")
 
 
 bot = Bot()
