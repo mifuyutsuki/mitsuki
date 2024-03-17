@@ -101,7 +101,7 @@ class Bot(Client):
     print(f"Ready: {self.user.tag} ({self.user.id})")
   
 
-  @Task.create(IntervalTrigger(seconds=min(60, settings.mitsuki.status_cycle)))
+  @Task.create(IntervalTrigger(seconds=max(60, settings.mitsuki.status_cycle)))
   async def cycle_status(self):
     await self.next_status()
   
