@@ -11,6 +11,7 @@
 # GNU Affero General Public License for more details.
 
 from interactions import (
+  AllowedMentions,
   Extension,
   slash_command,
   slash_option,
@@ -682,8 +683,8 @@ class MitsukiGacha(Extension):
     # ---------------------------------------------------------------
     # Generate message & give funds
     
-    # Checks complete, start deferring
-    await ctx.defer()
+    # Deferring causes the ping to fail
+    # await ctx.defer()
 
     message = load_message(
       "gacha_give",
@@ -699,7 +700,7 @@ class MitsukiGacha(Extension):
       try:
         await userdata.shards_exchange(session, user.id, target_user.id, shards)
 
-        await ctx.send(**message.to_dict())
+        await ctx.send(**message.to_dict(), allowed_mentions=AllowedMentions.all())
       except Exception:
         await session.rollback()
         raise
