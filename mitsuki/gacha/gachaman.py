@@ -36,6 +36,8 @@ class Gachaman:
   premium_daily_shards: Optional[int]
   premium_guilds: Optional[List[int]]
 
+  first_time_shards: Optional[int]
+
   of_rarity: Dict[int, SourceSettings]
   rarities: List[int]
 
@@ -151,6 +153,7 @@ class Gachaman:
 
     self.premium_daily_shards = _data.get("premium_daily_shards")
     self.premium_guilds       = _data.get("premium_guilds")
+    self.first_time_shards    = _data.get("first_time_shards")
 
     self.of_rarity = self._parse_settings(_data)
 

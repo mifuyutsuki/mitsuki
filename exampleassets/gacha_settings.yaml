@@ -19,14 +19,20 @@ currency_icon: 💠
 # can then claim again after 00:00 on the timezone specified by daily_tz.
 daily_shards: 120
 
-# [FUTURE] Amount of claimable daily gacha currency for server boosters.
+# Amount of claimable daily gacha currency for server boosters.
 # 
 # Valid servers are given by the premium_guilds list.
+# Set premium_guilds to a blank list to disable this feature. 
 premium_daily_shards: 210
 
-# [FUTURE] Servers (guild IDs) where premium shards are valid.
+# Servers (guild IDs) where premium shards are valid.
+# 
+# Set the below setting to blank to disable this feature. 
 premium_guilds:
-- 1
+- 
+
+# Amount of claimable first-timer daily gacha currency.
+first_time_shards: 600
 
 # Timezone for daily reset of daily gacha currency.
 # 

@@ -125,9 +125,9 @@ class MitsukiGacha(Extension):
     is_premium = False
     guild_name = None
     if gacha.premium_guilds and gacha.premium_daily_shards and isinstance(target_user, Member):
+      guild_name = target_user.guild.name
       if target_user.premium and (target_user.guild.id in gacha.premium_guilds):
         is_premium = True
-        guild_name = target_user.guild.name
 
     message = load_message(
       "gacha_shards_premium" if is_premium else "gacha_shards",
@@ -159,12 +159,10 @@ class MitsukiGacha(Extension):
     daily_timestamp_r = f"<t:{int(daily_timestamp)}:R>"
     daily_timestamp_f = f"<t:{int(daily_timestamp)}:f>"
 
-    # TODO: extra daily shards for server boosters
-
     # ---------------------------------------------------------------
     # Check if daily is already claimed
 
-    if not await userdata.daily_check(ctx.user.id, daily_reset_time):
+    if not await userdata.daily_check(ctx.author.id, daily_reset_time):
       message = load_message(
         "gacha_daily_already_claimed",
         data={
@@ -178,21 +176,32 @@ class MitsukiGacha(Extension):
       return
     
     shards = gacha.daily_shards
-    is_premium = False
-    
-    if gacha.premium_guilds and gacha.premium_daily_shards:
+    use_message = "gacha_daily"
+    guild_name = None
+
+    # Premium check
+    if gacha.premium_guilds and gacha.premium_daily_shards and isinstance(ctx.author, Member):
+      guild_name = ctx.author.guild.name
       if ctx.author.premium and (ctx.author.guild.id in gacha.premium_guilds):
         shards = gacha.premium_daily_shards
-        is_premium = True
+        use_message = "gacha_daily_premium"
+    
+    # First-timer check (overrides premium)
+    first = False
+    if gacha.first_time_shards:
+      if await userdata.daily_first_check(ctx.author.id):
+        first = True
+        shards = gacha.first_time_shards
+        use_message = "gacha_daily_first"
         
     # Claim daily
     message = load_message(
-      "gacha_daily_premium" if is_premium else "gacha_daily",
+      use_message,
       data={
         "shards": shards,
         "timestamp_r": daily_timestamp_r,
         "timestamp_f": daily_timestamp_f,
-        "guild_name": ctx.author.guild.name,
+        "guild_name": guild_name,
         **currency_data()
       },
       user=ctx.author,
@@ -201,7 +210,7 @@ class MitsukiGacha(Extension):
 
     async with new_session() as session:
       try:
-        await userdata.daily_give(session, ctx.user.id, shards)
+        await userdata.daily_give(session, ctx.author.id, shards, first=first)
 
         await ctx.send(**message.to_dict())
       except Exception:
@@ -220,7 +229,7 @@ class MitsukiGacha(Extension):
   )
   @cooldown(Buckets.USER, 1, 5.0)
   async def roll_cmd(self, ctx: SlashContext):
-    user   = ctx.user
+    user   = ctx.author
     shards = await userdata.shards(user.id)
     cost   = gacha.cost
 
@@ -347,7 +356,7 @@ class MitsukiGacha(Extension):
     # Fetching large list, deferring
     await ctx.defer()
 
-    target_user       = user or ctx.user
+    target_user       = user or ctx.author
     target_user_cards = await userdata.card_list(target_user.id, sort=sort)
 
     # ---------------------------------------------------------------

@@ -64,8 +64,8 @@ async def shards_check(user_id: Snowflake, amount: int):
 # Daily functions
 
 
-async def daily_give(session: AsyncSession, user_id: Snowflake, amount: int):
-  await _daily_add(session, user_id, amount)
+async def daily_give(session: AsyncSession, user_id: Snowflake, amount: int, first: bool = False):
+  await _daily_add(session, user_id, amount, first=first)
 
 
 async def daily_check(user_id: Snowflake, reset_time: str = "00:00+0000"):
@@ -81,6 +81,15 @@ async def daily_last(user_id: Snowflake):
 
   async with new_session() as session:
     return await session.scalar(statement)
+
+
+async def daily_first_check(user_id: Snowflake):
+  statement = select(Currency.first_daily).where(Currency.user == user_id)
+
+  async with new_session() as session:
+    result = await session.scalar(statement)
+  
+  return not bool(result)
   
 
 def daily_next(from_time: Optional[float] = None, reset_time: str = "00:00+0000"):
@@ -311,19 +320,22 @@ async def _shards_set(
   session: AsyncSession,
   user_id: Snowflake,
   amount: int,
-  daily: bool = False
+  daily: bool = False,
+  first: bool = False
 ):
   if amount < 0:
     raise ValueError(f"Invalid set amount of '{amount}' shards")
-
-  assign_last_daily = {"last_daily": time()} if daily else {}
+  
+  current_time = time()
+  assign_last_daily = {"last_daily": current_time} if daily else {}
+  assign_first_daily = {"first_daily": current_time} if first else {}
   
   statement = (
     insert(Currency)
-    .values(user=user_id, amount=amount, **assign_last_daily)
+    .values(user=user_id, amount=amount, **assign_last_daily, **assign_first_daily)
     .on_conflict_do_update(
       index_elements=['user'],
-      set_=dict(amount=amount, **assign_last_daily)
+      set_=dict(amount=amount, **assign_last_daily, **assign_first_daily)
     )
   )
   await session.execute(statement)
@@ -343,11 +355,11 @@ async def _shards_sub(session: AsyncSession, user_id: Snowflake, amount: int):
   await _shards_set(session, user_id, new_amount, daily=False)
 
 
-async def _daily_add(session: AsyncSession, user_id: Snowflake, amount: int):
+async def _daily_add(session: AsyncSession, user_id: Snowflake, amount: int, first: bool = False):
   current_amount = await _shards_get(user_id)
   new_amount = current_amount + amount
 
-  await _shards_set(session, user_id, new_amount, daily=True)
+  await _shards_set(session, user_id, new_amount, daily=True, first=first)
 
 
 async def _daily_last(user_id: Snowflake):
@@ -355,14 +367,6 @@ async def _daily_last(user_id: Snowflake):
 
   async with new_session() as session:
     return await session.scalar(statement)
-
-
-async def _daily_check(user_id: Snowflake, reset_time: str = "00:00+0000"):
-  last_daily_data = await _daily_last(user_id)
-  if last_daily_data is None:
-    return True
-   
-  return datetime.now().timestamp() > _daily_next(last_daily_data, reset_time)
 
 
 def _daily_next(last_daily: float, reset_time: str = "00:00+0000"):

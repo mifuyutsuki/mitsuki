@@ -41,11 +41,12 @@ class Currency(Base):
   user: Mapped[int] = mapped_column(primary_key=True)
   amount: Mapped[int]
   last_daily: Mapped[Optional[float]]
+  first_daily: Mapped[Optional[float]]
   
   def __repr__(self):
     return (
       f"Currency(user={self.user!r}, amount{self.amount!r}, "
-      f"last_daily={self.last_daily!r})"
+      f"last_daily={self.last_daily!r}, first_daily={self.first_daily!r})"
     )
 
 

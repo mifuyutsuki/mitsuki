@@ -196,6 +196,7 @@ gacha_daily:
 
 # /gacha daily
 # Claim daily Shards. (Server booster bonus)
+# This message is only shown in a guild with premium shards enabled.
 # 
 # currency_icon : Gacha currency icon (Shards)
 # shards        : Number of daily Shards claimed
@@ -204,7 +205,23 @@ gacha_daily_premium:
   title: >-
     Claimed daily ${currency_icon} ${shards}
   description: >-
-    **$'{guild_name}' boost!**
+    **'${guild_name}' boost!**
+    
+    Next daily is available ${timestamp_r}
+  color: *color_gold
+
+
+# /gacha daily
+# Claim daily Shards. (First-time bonus)
+# 
+# currency_icon : Gacha currency icon (Shards)
+# shards        : Number of daily Shards claimed
+# timestamp_r   : Dynamic timestamp showing time to next reset
+gacha_daily_first:
+  title: >-
+    Claimed daily ${currency_icon} ${shards}
+  description: >-
+    **First-time bonus!**
     
     Next daily is available ${timestamp_r}
   color: *color_gold
@@ -238,6 +255,7 @@ gacha_shards:
 
 # /gacha shards
 # Show Shards amount held by a target user. (Server booster)
+# This message is only shown in a guild with premium shards enabled.
 # 
 # currency_icon : Gacha currency icon (Shards)
 # target_user   : Target user (mention), defaults to self
