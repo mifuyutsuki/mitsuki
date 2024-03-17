@@ -20,6 +20,7 @@ from interactions import (
   StringSelectMenu,
   OptionType,
   BaseUser,
+  Member,
   Permissions,
   check,
   is_owner,
@@ -118,17 +119,26 @@ class MitsukiGacha(Extension):
     opt_type=OptionType.USER
   )
   async def shards_cmd(self, ctx: SlashContext, user: Optional[BaseUser] = None):
-    target_user = user or ctx.user
+    target_user = user or ctx.author
     shards      = await userdata.shards(target_user.id)
 
+    is_premium = False
+    guild_name = None
+    if gacha.premium_guilds and gacha.premium_daily_shards and isinstance(target_user, Member):
+      if target_user.premium and (target_user.guild.id in gacha.premium_guilds):
+        is_premium = True
+        guild_name = target_user.guild.name
+
     message = load_message(
-      "gacha_shards",
+      "gacha_shards_premium" if is_premium else "gacha_shards",
       data={
         "shards": shards,
+        "guild_name": guild_name,
         **currency_data()
       },
       user=ctx.author,
-      target_user=target_user
+      target_user=target_user,
+      escape_data_values=["guild_name"]
     )
     await ctx.send(**message.to_dict())
 
