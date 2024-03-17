@@ -112,7 +112,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="shards",
     sub_cmd_description="View your or another user's amount of Shards"
   )
-  @cooldown(Buckets.USER, 1, 5.0)
+  @cooldown(Buckets.USER, 1, 3.0)
   @slash_option(
     name="user",
     description="User to view",
@@ -151,7 +151,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="daily",
     sub_cmd_description=f"Claim your gacha daily"
   )
-  @cooldown(Buckets.USER, 1, 5.0)
+  @cooldown(Buckets.USER, 1, 3.0)
   async def daily_cmd(self, ctx: SlashContext):
     daily_reset_time = settings.mitsuki.daily_reset
     
@@ -228,7 +228,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="roll",
     sub_cmd_description="Roll gacha once using Shards"
   )
-  @cooldown(Buckets.USER, 1, 5.0)
+  @cooldown(Buckets.USER, 1, 3.0)
   async def roll_cmd(self, ctx: SlashContext):
     user   = ctx.author
     shards = await userdata.shards(user.id)
@@ -414,7 +414,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="view",
     sub_cmd_description="View an obtained card"
   )
-  @cooldown(Buckets.USER, 1, 5.0)
+  @cooldown(Buckets.USER, 1, 15.0)
   @slash_option(
     name="name",
     description="Card name to search",
@@ -621,7 +621,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="give",
     sub_cmd_description="Give Shards to another user"
   )
-  @cooldown(Buckets.USER, 1, 5.0)
+  @cooldown(Buckets.USER, 1, 15.0)
   @slash_option(
     name="target_user",
     description="User to give Shards to",
@@ -729,6 +729,7 @@ class MitsukiGacha(Extension):
   )
   @slash_default_member_permission(Permissions.ADMINISTRATOR)
   @check(is_owner())
+  @auto_defer(ephemeral=True)
   async def system_give_cmd(
     self,
     ctx: SlashContext,
@@ -737,8 +738,6 @@ class MitsukiGacha(Extension):
   ):
     shards_before = await userdata.shards(target_user.id)
     shards_after  = shards_before + shards
-
-    await ctx.defer(ephemeral=True)
 
     message = load_message(
       "gacha_give",
