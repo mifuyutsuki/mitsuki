@@ -11,7 +11,7 @@
 # GNU Affero General Public License for more details.
 
 from yaml import safe_load
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from attrs import frozen
 from os import environ
 
@@ -46,6 +46,9 @@ class BaseSettings:
         daily_reset=d_mitsuki.get("daily_reset"),
         db_use=d_mitsuki.get("db_use"),
         db_path=d_mitsuki.get("db_path"),
+        status=d_mitsuki.get("status"),
+        status_cycle=d_mitsuki.get("status_cycle"),
+        status_randomize=bool(d_mitsuki.get("status_randomize")),
         messages=d_mitsuki.get("messages")
       ),
       dev=DevSettings(
@@ -65,6 +68,9 @@ class MitsukiSettings:
   daily_reset: str
   db_use: str
   db_path: str
+  status: List[str]
+  status_cycle: int
+  status_randomize: bool
   messages: Optional[str] = None
 
 

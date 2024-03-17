@@ -25,8 +25,10 @@ from interactions import (
   ActivityType,
   Client,
   Intents,
-  listen,
   InteractionContext,
+  IntervalTrigger,
+  listen,
+  Task,
 )
 from interactions.api.events import (
   Startup,
@@ -45,6 +47,9 @@ from interactions.client.mixins.send import SendMixin
 from os import environ
 from os.path import dirname, abspath
 from datetime import datetime, timezone
+from typing import List
+from random import Random
+
 import traceback
 import asyncio
 
@@ -64,6 +69,9 @@ init_event = asyncio.Event()
 
 
 class Bot(Client):
+  status_index: int 
+  arona: Random
+  
   def __init__(self):
     super().__init__(
       status=Status.DND,
@@ -75,24 +83,55 @@ class Bot(Client):
     self.intents = Intents.DEFAULT
     self.send_command_tracebacks = False
 
+    self.status_index = 0
+    self.arona = Random()
+
 
   @listen(Startup)
   async def on_startup(self):
     await initialize()
+    self.cycle_status.start()
+
     init_event.set()
 
 
   @listen(Ready)
   async def on_ready(self):
+    await self.next_status()
+    print(f"Ready: {self.user.tag} ({self.user.id})")
+  
+
+  @Task.create(IntervalTrigger(seconds=min(60, settings.mitsuki.status_cycle)))
+  async def cycle_status(self):
+    await self.next_status()
+  
+  
+  async def next_status(self):
+    if len(settings.mitsuki.status) == 0:
+      await self.change_presence(
+        status=Status.ONLINE,
+        activity=None
+      )
+      return
+    
     await self.change_presence(
       status=Status.ONLINE,
       activity=Activity(
-        name=f"Magical Mitsuki",
+        name=settings.mitsuki.status[self.status_index],
         type=ActivityType.PLAYING
       )
     )
-    print(f"Ready: {self.user.tag} ({self.user.id})")
     
+    if settings.mitsuki.status_randomize:
+      new_index = self.arona.randrange(len(settings.mitsuki.status))
+      new_index = new_index + 1 if self.status_index == new_index else new_index
+    else:
+      new_index += 1
+    
+    if new_index >= len(settings.mitsuki.status):
+      new_index = 0
+    self.status_index = new_index
+
 
   @listen(CommandError, disable_default_listeners=True)
   async def on_command_error(self, event: CommandError):

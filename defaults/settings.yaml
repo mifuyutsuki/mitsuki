@@ -35,6 +35,9 @@ mitsuki:
   # Note:
   #   The cycle resets after a bot restart.
   status_cycle: 300
+  
+  # Whether the status cycle should be randomized.
+  status_randomize: false
 
   # Type of database to use.
   # 
