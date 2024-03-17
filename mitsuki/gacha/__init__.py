@@ -271,7 +271,8 @@ class MitsukiGacha(Extension):
           **card_data(rolled),
           **currency_data()
         },
-        user=ctx.author
+        user=ctx.author,
+        escape_data_values=["name", "type", "series"]
       )
     else:
       message = load_message(
@@ -280,7 +281,8 @@ class MitsukiGacha(Extension):
           **card_data(rolled),
           **currency_data()
         },
-        user=ctx.author
+        user=ctx.author,
+        escape_data_values=["name", "type", "series"]
       )
 
     # ---------------------------------------------------------------
@@ -384,7 +386,8 @@ class MitsukiGacha(Extension):
         cards,
         base_data={"total_cards": total_cards},
         user=ctx.author,
-        target_user=target_user
+        target_user=target_user,
+        escape_data_values=["name", "type", "series"]
       )
     elif mode == "deck":
       message = load_multipage(
@@ -392,7 +395,8 @@ class MitsukiGacha(Extension):
         cards,
         base_data={"total_cards": total_cards},
         user=ctx.author,
-        target_user=target_user
+        target_user=target_user,
+        escape_data_values=["name", "type", "series"]
       )
     else:
       raise ValueError(f"Unsupported viewing mode '{mode}'")
@@ -484,7 +488,8 @@ class MitsukiGacha(Extension):
           "total_cards": total_cards,
         },
         user=ctx.author,
-        target_user=target_user
+        target_user=target_user,
+        escape_data_values=["search_key"]
       )
       await ctx.send(**message.to_dict())
       return
@@ -542,7 +547,8 @@ class MitsukiGacha(Extension):
           "total_cards": total_cards,
         },
         user=ctx.author,
-        target_user=target_user
+        target_user=target_user,
+        escape_data_values=["search_key", "name", "type", "series"]
       )
       embed = message.embeds[0]
       select_msg = await ctx.send(
@@ -582,7 +588,8 @@ class MitsukiGacha(Extension):
         "gacha_view_card",
         data=selected_card.asdict(),
         user=ctx.author,
-        target_user=target_user
+        target_user=target_user,
+        escape_data_values=["name", "type", "series"]
       )
     else:
       selected_card_user = await userdata.card_get_user(ctx.author.id, selected_card.card)
@@ -591,14 +598,16 @@ class MitsukiGacha(Extension):
           "gacha_view_card_2_acquired",
           data=selected_card_user.asdict(),
           user=ctx.author,
-          target_user=target_user
+          target_user=target_user,
+          escape_data_values=["name", "type", "series"]
         )
       else:
         message = load_message(
           "gacha_view_card_2_unacquired",
           data=selected_card.asdict(),
           user=ctx.author,
-          target_user=target_user
+          target_user=target_user,
+          escape_data_values=["name", "type", "series"]
         )
 
     await send(**message.to_dict(), components=[])
@@ -792,7 +801,8 @@ class MitsukiGacha(Extension):
       base_data={
         "total_cards": len(cards)
       },
-      user=ctx.author
+      user=ctx.author,
+      escape_data_values=["name", "type", "series"]
     )
     paginator = Paginator.create_from_embeds(bot, *message.embeds)
     paginator.show_select_menu = True
