@@ -20,6 +20,7 @@ from interactions import (
   StringSelectMenu,
   OptionType,
   BaseUser,
+  User,
   Member,
   Permissions,
   check,
@@ -642,18 +643,28 @@ class MitsukiGacha(Extension):
   ):
     user       = ctx.author
     own_shards = await userdata.shards(user.id)
-
+    
     # ---------------------------------------------------------------
-    # Self-give?
-
+    # Check invalids
+    
     if user.id == target_user.id:
-      message = load_message("gacha_give_self", user=user)
+      message = load_message("gacha_give_self", user=ctx.author)
       await ctx.send(**message.to_dict())
       return
-
+    
+    if target_user.bot:
+      message = load_message("gacha_give_bot", user=ctx.author)
+      await ctx.send(**message.to_dict())
+      return
+    
+    if isinstance(target_user, User):
+      message = load_message("gacha_give_nonmember", user=ctx.author)
+      await ctx.send(**message.to_dict())
+      return
+    
     # ---------------------------------------------------------------
     # Insufficient funds?
-
+    
     if own_shards < shards:
       message = load_message(
         "gacha_insufficient_funds",
@@ -667,7 +678,7 @@ class MitsukiGacha(Extension):
       )
       await ctx.send(**message.to_dict())
       return
-
+    
     # ---------------------------------------------------------------
     # Generate message & give funds
     
@@ -727,7 +738,7 @@ class MitsukiGacha(Extension):
     shards_before = await userdata.shards(target_user.id)
     shards_after  = shards_before + shards
 
-    await ctx.defer()
+    await ctx.defer(ephemeral=True)
 
     message = load_message(
       "gacha_give",

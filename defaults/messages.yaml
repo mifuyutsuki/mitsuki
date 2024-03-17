@@ -272,7 +272,7 @@ gacha_shards_premium:
 
 
 # /gacha give
-# /gacha admin give
+# /system gacha give
 # Give an amount of Shards to another user.
 # 
 # currency    : Gacha currency, shown with icon
@@ -544,6 +544,26 @@ gacha_give_self:
   color: *color_error
 
 
+# /gacha give
+# Message if user supplied a bot user as target user.
+gacha_give_bot:
+  title: >-
+    Invalid target user
+  description: >-
+    Target user is a bot.
+  color: *color_error
+
+
+# /gacha give
+# Message if user supplied a bot user as target user.
+gacha_give_nonmember:
+  title: >-
+    Invalid target user
+  description: >-
+    Target user is not a member of the current server.
+  color: *color_error
+
+
 # /gacha roll
 # Message if user rolled a new card.
 # 
@@ -599,7 +619,7 @@ gacha_get_dupe_card:
     ${color}
 
 
-# /admin gacha reload
+# /system gacha reload
 gacha_reload:
   title: >-
     Reloaded gacha configuration
@@ -607,7 +627,7 @@ gacha_reload:
     Cards in roster: ${cards}
 
 
-# /admin gacha cards
+# /system gacha cards
 # Similar to /gacha cards, but list all cards currently in roster.
 gacha_cards_admin:
   title: >-
