@@ -236,7 +236,6 @@ bot = Bot()
 def run():
   global bot
 
-  dev_mode = environ.get("ENABLE_DEV_MODE") == "1"
   curr_time = datetime.now(tz=timezone.utc).isoformat(sep=" ")
 
   print(f"Mitsuki v{__version__}")
@@ -244,14 +243,12 @@ def run():
   print(f"Current time in UTC: {curr_time}")
   print("")
   
+  dev_mode = environ.get("ENABLE_DEV_MODE") == "1"
   sentry_dsn = environ.get("SENTRY_DSN")
   sentry_env = environ.get("SENTRY_ENV") or "dev"
-  if sentry_dsn:
-    bot.load_extension("interactions.ext.sentry", token=sentry_dsn, enable_tracing=True, environment=sentry_env)
-  else:
-    logger.warning("Env variable SENTRY_DSN is not set. Sentry logging is off")
 
   if dev_mode:
+    # Activate Jurigged integration with dev-mode (run.py dev)
     bot.load_extension("interactions.ext.jurigged")
     print("Running in dev mode. Jurigged is active")
     
@@ -263,6 +260,13 @@ def run():
     bot.debug_scope = settings.dev.scope
     token = environ.get("DEV_BOT_TOKEN")
   else:
+    # Activate Sentry integration with no dev-mode (run.py)
+    if sentry_dsn:
+      bot.load_extension("interactions.ext.sentry", token=sentry_dsn, enable_tracing=True, environment=sentry_env)
+      print("Sentry logging is active")
+    else:
+      logger.warning("Env variable SENTRY_DSN is not set. Sentry logging is off")
+      
     token = environ.get("BOT_TOKEN")
   
   if not token:
