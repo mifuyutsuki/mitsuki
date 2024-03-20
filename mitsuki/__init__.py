@@ -156,8 +156,6 @@ class Bot(Client):
       )
       ephemeral = True
     else:
-      # traceback.print_exception(event.error)
-
       # Look for the Mitsuki source
       tb = event.error.__traceback__
       use_tb = tb
@@ -190,7 +188,7 @@ class Bot(Client):
           f"{str(event.error)}"
         ) if use_tb else repr(event.error)
 
-      logger.exception(error_repr)
+      logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
       
       message = load_message(
         "error",
