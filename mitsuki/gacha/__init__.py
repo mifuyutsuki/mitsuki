@@ -585,6 +585,8 @@ class MitsukiGacha(Extension):
           # Case: message does not exist
           pass
         return
+      else:
+        await used_component.ctx.defer(edit_origin=True)
       
       selected_value    = used_component.ctx.values[0]
       selected_card_idx = results_card_selects.index(selected_value)
