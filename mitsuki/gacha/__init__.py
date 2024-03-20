@@ -113,6 +113,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="shards",
     sub_cmd_description="View your or another user's amount of Shards"
   )
+  @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 3.0)
   @slash_option(
     name="user",
@@ -152,6 +153,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="daily",
     sub_cmd_description=f"Claim your gacha daily"
   )
+  @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 3.0)
   async def daily_cmd(self, ctx: SlashContext):
     daily_reset_time = settings.mitsuki.daily_reset
@@ -229,6 +231,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="roll",
     sub_cmd_description="Roll gacha once using Shards"
   )
+  @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 3.0)
   async def roll_cmd(self, ctx: SlashContext):
     user   = ctx.author
@@ -250,9 +253,10 @@ class MitsukiGacha(Extension):
       await ctx.send(**message.to_dict())
       return
     
-    # Checks complete, start deferring
-    await ctx.defer()
-  
+    # Checks complete. Hard defer this command
+    if not ctx.deferred:
+      await ctx.defer()
+      
     # ---------------------------------------------------------------
     # Roll
 
@@ -311,6 +315,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="cards",
     sub_cmd_description="View your or another user's collected cards"
   )
+  @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 15.0)
   @slash_option(
     name="mode",
@@ -357,9 +362,6 @@ class MitsukiGacha(Extension):
     else:
       sort = sort or "rarity"
 
-    # Fetching large list, deferring
-    await ctx.defer()
-
     target_user       = user or ctx.author
     target_user_cards = await userdata.card_list(target_user.id, sort=sort)
 
@@ -371,6 +373,10 @@ class MitsukiGacha(Extension):
       message = load_message("gacha_cards_no_cards", user=ctx.author, target_user=target_user)
       await ctx.send(**message.to_dict())
       return
+
+    # Checks complete. Hard defer this command
+    if not ctx.deferred:
+      await ctx.defer()
 
     # ---------------------------------------------------------------
     # List cards
@@ -415,6 +421,7 @@ class MitsukiGacha(Extension):
     sub_cmd_name="view",
     sub_cmd_description="View an obtained card"
   )
+  @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 15.0)
   @slash_option(
     name="name",
@@ -436,8 +443,6 @@ class MitsukiGacha(Extension):
     name: str,
     user: Optional[BaseUser] = None
   ):
-    await ctx.defer()
-
     target_user  = user
     if target_user:
       search_cards = await userdata.card_list(target_user.id)
@@ -495,6 +500,10 @@ class MitsukiGacha(Extension):
       )
       await ctx.send(**message.to_dict())
       return
+    
+    # Initial checks complete. Hard defer this command
+    if not ctx.deferred:
+      await ctx.defer()
 
     # ---------------------------------------------------------------
     # Parse search results
@@ -644,6 +653,8 @@ class MitsukiGacha(Extension):
   ):
     user       = ctx.author
     own_shards = await userdata.shards(user.id)
+
+    # NOTE: don't defer, otherwise the cmd fails to ping the target user
     
     # ---------------------------------------------------------------
     # Check invalids
@@ -682,9 +693,6 @@ class MitsukiGacha(Extension):
     
     # ---------------------------------------------------------------
     # Generate message & give funds
-    
-    # Deferring causes the ping to fail
-    # await ctx.defer()
 
     message = load_message(
       "gacha_give",
