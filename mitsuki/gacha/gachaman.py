@@ -22,8 +22,6 @@ T = TypeVar("T")
 
 
 class Gachaman:
-  random: SystemRandom
-
   of_rarity: Dict[int, SourceSettings]
   rarities: List[int]
 
@@ -73,8 +71,6 @@ class Gachaman:
     self._load_settings(settings_yaml)
     self._load_roster(roster_yaml)
     
-    self.random = SystemRandom()
-    
     self._settings_yaml = settings_yaml
     self._roster_yaml = roster_yaml
   
@@ -100,8 +96,9 @@ class Gachaman:
 
   def roll(self, min_rarity: Optional[int] = None):
     rates = self.rates
-    roll  = self.random.random
-    pick  = self.random.choice
+    arona = SystemRandom()
+    roll  = arona.random
+    pick  = arona.choice
 
     # TODO: Replace min_rarity arg with dict of pity counter (soft pity?)
 
@@ -109,15 +106,15 @@ class Gachaman:
     rarity_1   = rarities[0]
     rarity_min = max(min_rarity, rarity_1) if min_rarity else rarity_1
 
-    rarity_get = rarity_min
-    arona      = roll()
+    rarity_get  = rarity_min
+    arona_value = roll()
 
     for rarity in rarities:
-      arona -= rates[rarity]
+      arona_value -= rates[rarity]
       if rarity < rarity_min:
         continue
 
-      if arona < 0.0:
+      if arona_value < 0.0:
         rarity_get = rarity
         break
 
@@ -128,10 +125,6 @@ class Gachaman:
 
     picked = pick(available_picks)
     return self.cards[picked]
-
-
-  def refresh_random(self):
-    self.random = SystemRandom()
   
 
   @property
