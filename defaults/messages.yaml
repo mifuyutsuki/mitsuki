@@ -493,6 +493,11 @@ gacha_view_card_2_unacquired:
     ${stars} • ${type} • ${series}
 
 
+    `${rolled}` rolled by `${users}` users
+
+    First acquired by <@${first_user}>: <t:${first_user_acquired}:f>
+
+
     Not yet acquired in your card collection
   image: >-
     ${image}
@@ -507,6 +512,11 @@ gacha_view_card_2_acquired:
     ${name}
   description: >-
     ${stars} • ${type} • ${series}
+
+
+    `${rolled}` rolled by `${users}` users
+
+    First acquired by <@${first_user}>: <t:${first_user_acquired}:f>
 
 
     `${amount}` in your card collection
