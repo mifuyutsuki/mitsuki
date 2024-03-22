@@ -152,14 +152,15 @@ class UserCard:
   user: int
   amount: int
   first_acquired: int
+
   card: str
   name: str
   rarity: int
   type: str
   series: str
+  
   color: int = field(repr=False)
   stars: str = field(repr=False)
-  
   image: Optional[str] = field(default=None)
   
   mention: str = field(init=False)
@@ -170,14 +171,16 @@ class UserCard:
       user=result.Inventory.user,
       amount=result.Inventory.count,
       first_acquired=int(result.Inventory.first_acquired),
+
       card=result.Inventory.card,
       name=result.Card.name,
       rarity=result.Card.rarity,
       type=result.Card.type,
       series=result.Card.series,
+      image=result.Card.image,
+      
       color=result.Settings.color,
-      stars=result.Settings.stars,
-      image=result.Card.image
+      stars=result.Settings.stars
     )
   
   @classmethod
@@ -219,6 +222,7 @@ class RosterCard:
   rarity: int
   type: str
   series: str
+
   color: int
   stars: str
   image: Optional[str] = field(default=None)
@@ -252,12 +256,65 @@ class RosterCard:
 
 
 @define
+class StatsCard:
+  id: str
+  name: str
+  rarity: int
+  type: str
+  series: str
+
+  users: int  
+  rolled: int
+  first_user_acquired: float  # avoids confusion with self's first_acquired
+  first_user: int
+
+  color: int
+  stars: str
+  image: Optional[str] = field(default=None)
+
+  card: str = field(init=False)
+  card_id: str = field(init=False)
+
+  @classmethod
+  def from_db(cls, result: Row):
+    return cls(
+      id=result.id,
+      name=result.name,
+      rarity=result.rarity,
+      type=result.type,
+      series=result.series,
+      image=result.image,
+      
+      users=result.users,
+      rolled=result.rolled,
+      first_user_acquired=int(result.first_user_acquired),
+      first_user=result.first_user,
+      
+      color=result.color,
+      stars=result.stars
+    )
+  
+  @classmethod
+  def from_db_many(cls, results: List[Row]):
+    return [cls.from_db(result) for result in results]
+
+  def __attrs_post_init__(self):
+    self.card = self.id    # Used by /gacha view
+    self.card_id = self.id # Used by /system gacha cards
+
+  def asdict(self):
+    return _asdict(self)
+
+
+
+@define
 class SourceCard:
   id: str
   name: str
   rarity: int
   type: str
   series: str
+
   image: Optional[str] = field(default=None)
   
   def asdict(self):

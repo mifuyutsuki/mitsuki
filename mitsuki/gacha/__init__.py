@@ -585,6 +585,9 @@ class MitsukiGacha(Extension):
           # Case: message does not exist
           pass
         return
+      else:
+        if not used_component.ctx.deferred:
+          await used_component.ctx.defer(edit_origin=True)
       
       selected_value    = used_component.ctx.values[0]
       selected_card_idx = results_card_selects.index(selected_value)
@@ -607,7 +610,7 @@ class MitsukiGacha(Extension):
       if selected_card_user:
         message = load_message(
           "gacha_view_card_2_acquired",
-          data=selected_card_user.asdict(),
+          data=selected_card_user.asdict() | selected_card.asdict(),
           user=ctx.author,
           target_user=target_user,
           escape_data_values=["name", "type", "series"]

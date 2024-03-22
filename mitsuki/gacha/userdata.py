@@ -194,29 +194,48 @@ async def card_list_all(sort: str = "id"):
 
 
 async def card_list_all_obtained(sort: str = "rarity"):
-  statement = (
-    select(Card, Settings)
+  # To prevent bare columns, the statement is this long
+  subq_counts = (
+    select(
+      Inventory.card.label("card"),
+      func.count(Inventory.count).label("users"),
+      func.sum(Inventory.count).label("rolled"),
+      func.min(Inventory.first_acquired).label("first_user_acquired")
+    )
+    .group_by(Inventory.card)
+    .subquery()
+  )
+  subq_info = (
+    select(subq_counts, Card, Settings)
+    .join(Card, subq_counts.c.card == Card.id)
     .join(Settings, Card.rarity == Settings.rarity)
-    .join(Inventory, Card.id == Inventory.card)
-    .group_by(Card.id)
+    .subquery()
+  )
+  card = subq_info.c
+  statement = (
+    select(
+      subq_info,
+      Inventory.user.label("first_user")
+    )
+    .join(Inventory, Inventory.first_acquired == card.first_user_acquired)
   )
   
   sort = sort.lower()
   if sort == "rarity":
-    statement = statement.order_by(Card.rarity.desc()).order_by(func.lower(Card.name))
+    statement = statement.order_by(card.rarity.desc()).order_by(func.lower(card.name))
   elif sort == "alpha":
-    statement = statement.order_by(func.lower(Card.name))
+    statement = statement.order_by(func.lower(card.name))
   elif sort == "series":
-    statement = statement.order_by(Card.type).order_by(Card.series).order_by(Card.rarity).order_by(Card.id)
+    statement = statement.order_by(card.type).order_by(card.series).order_by(card.rarity).order_by(card.id)
   elif sort == "id":
-    statement = statement.order_by(Card.id)
+    statement = statement.order_by(card.id)
   else:
     raise ValueError(f"Invalid sort setting '{sort}'")
 
   async with new_session() as session:
     results = (await session.execute(statement)).all()
 
-  return RosterCard.from_db_many(results)
+  return StatsCard.from_db_many(results)
 
 
 async def card_give(session: AsyncSession, user_id: Snowflake, card_id: str):
