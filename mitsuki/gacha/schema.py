@@ -13,7 +13,8 @@
 from mitsuki.userdata import Base
 from sqlalchemy import ForeignKey, Row
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from typing import Optional, List
+from rapidfuzz import fuzz
+from typing import Optional, List, Callable
 from attrs import define, field
 from attrs import asdict as _asdict
 
@@ -213,6 +214,42 @@ class UserPity:
 
 
 # =============================================================================
+  
+
+@define
+class SearchCard:
+  id: str
+  search: str
+  score: float = field(default=0.0)
+  
+  @classmethod
+  def from_db(
+    cls,
+    result: Row,
+    search_key: str,
+    ratio: Callable[[str, str], float] = fuzz.token_ratio,
+    **ratio_kwargs
+  ):
+    return cls(
+      id=result.id,
+      search=result.search,
+      score=ratio(search_key, result.search, **ratio_kwargs)
+    )
+
+  @classmethod
+  def from_db_many(
+    cls,
+    results: List[Row],
+    search_key: str,
+    cutoff: float = 0.0,
+    ratio: Callable[[str, str], float] = fuzz.token_ratio,
+    **ratio_kwargs
+  ):
+    li = [
+      cls.from_db(result, search_key, ratio, **ratio_kwargs) for result in results
+    ]
+    li.sort(key=lambda c: c.score, reverse=True)
+    return [i for i in li if i.score >= cutoff]
 
 
 @define
@@ -263,17 +300,20 @@ class StatsCard:
   type: str
   series: str
 
-  users: int  
-  rolled: int
-  first_user_acquired: float  # avoids confusion with self's first_acquired
-  first_user: int
-
   color: int
   stars: str
   image: Optional[str] = field(default=None)
+  
+  users: int = field(default=0)
+  rolled: int = field(default=0)
+  first_user_acquired_float: Optional[float] = field(default=None)
+  first_user: Optional[int] = field(default=None)
 
   card: str = field(init=False)
   card_id: str = field(init=False)
+
+  first_user_acquired: Optional[int] = field(init=False)
+  first_user_acquired_f: str = field(init=False)
 
   @classmethod
   def from_db(cls, result: Row):
@@ -287,7 +327,7 @@ class StatsCard:
       
       users=result.users,
       rolled=result.rolled,
-      first_user_acquired=int(result.first_user_acquired),
+      first_user_acquired_float=result.first_user_acquired,
       first_user=result.first_user,
       
       color=result.color,
@@ -299,6 +339,16 @@ class StatsCard:
     return [cls.from_db(result) for result in results]
 
   def __attrs_post_init__(self):
+    self.first_user_acquired = (
+      int(self.first_user_acquired_float)
+      if self.first_user_acquired_float
+      else None
+    )
+    self.first_user_acquired_f = (
+      f"<t:{self.first_user_acquired}:f>"
+      if self.first_user_acquired
+      else "-"
+    )
     self.card = self.id    # Used by /gacha view
     self.card_id = self.id # Used by /system gacha cards
 
