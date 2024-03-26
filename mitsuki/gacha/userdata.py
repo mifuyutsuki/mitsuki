@@ -175,11 +175,11 @@ async def card_list(user_id: Snowflake, sort: str = "rarity"):
   return UserCard.create_many(results)
 
 
-async def card_list_count(user_id: Optional[Snowflake] = None, obtained_only: bool = True):
+async def card_list_count(user_id: Optional[Snowflake] = None, unobtained: bool = False):
   if user_id:
     statement = select(func.count(Inventory.card)).where(Inventory.user == user_id)
-  elif obtained_only:
-    obtained = select(Inventory.card.distinct()).subquery()
+  elif not unobtained:
+    obtained = select(Inventory.card.distinct().label("card")).subquery()
     statement = select(func.count(obtained.c.card))
   else:
     statement = select(func.count(Card.id))
