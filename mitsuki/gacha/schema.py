@@ -165,6 +165,7 @@ class UserCard:
   image: Optional[str] = field(default=None)
   
   mention: str = field(init=False)
+  first_acquired_f: str = field(init=False)
 
   @classmethod
   def create(cls, result: Row):
@@ -190,6 +191,7 @@ class UserCard:
   
   def __attrs_post_init__(self):
     self.mention = f"<@{self.user}>"
+    self.first_acquired_f = f"<t:{self.first_acquired}:f>"
 
   def asdict(self):
     return _asdict(self)
@@ -312,6 +314,7 @@ class StatsCard:
   card: str = field(init=False)
   card_id: str = field(init=False)
 
+  first_user_mention: Optional[str] = field(init=False)
   first_user_acquired: Optional[int] = field(init=False)
   first_user_acquired_f: str = field(init=False)
 
@@ -339,6 +342,11 @@ class StatsCard:
     return [cls.from_db(result) for result in results]
 
   def __attrs_post_init__(self):
+    self.first_user_mention = (
+      f"<@{self.first_user}>"
+      if self.first_user
+      else "-"
+    )
     self.first_user_acquired = (
       int(self.first_user_acquired_float)
       if self.first_user_acquired_float
