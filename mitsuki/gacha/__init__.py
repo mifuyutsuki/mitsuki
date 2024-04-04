@@ -69,6 +69,14 @@ def currency_data():
   }
 
 
+def bot_data():
+  return {
+    "bot_user": bot.user.mention,
+    "bot_username": bot.user.display_name,
+    "bot_usericon": bot.user.avatar_url
+  }
+
+
 def card_data(card: SourceCard):
   stars       = gacha.stars[card.rarity]
   color       = gacha.colors[card.rarity]
@@ -632,6 +640,7 @@ class MitsukiGacha(Extension):
     sub_cmd_description="Give Shards to another user"
   )
   @cooldown(Buckets.USER, 1, 15.0)
+  @auto_defer(time_until_defer=2.0)
   @slash_option(
     name="target_user",
     description="User to give Shards to",
@@ -653,8 +662,6 @@ class MitsukiGacha(Extension):
   ):
     user       = ctx.author
     own_shards = await userdata.shards(user.id)
-
-    # NOTE: don't defer, otherwise the cmd fails to ping the target user
     
     # ---------------------------------------------------------------
     # Check invalids
@@ -694,7 +701,7 @@ class MitsukiGacha(Extension):
     # ---------------------------------------------------------------
     # Generate message & give funds
 
-    message = load_message(
+    sender_message = load_message(
       "gacha_give",
       data={
         "shards": shards,
@@ -704,11 +711,23 @@ class MitsukiGacha(Extension):
       target_user=target_user
     )
 
+    receiver_message = load_message(
+      "gacha_give_notification",
+      data={
+        "shards": shards,
+        **currency_data(),
+        **bot_data()
+      },
+      user=user,
+      target_user=target_user
+    )
+
     async with new_session() as session:
       try:
         await userdata.shards_exchange(session, user.id, target_user.id, shards)
 
-        await ctx.send(**message.to_dict(), allowed_mentions=AllowedMentions.all())
+        await ctx.send(**sender_message.to_dict(), ephemeral=True)
+        await ctx.channel.send(**receiver_message.to_dict(), allowed_mentions=AllowedMentions.all())
       except Exception:
         await session.rollback()
         raise

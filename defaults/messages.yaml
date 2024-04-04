@@ -283,9 +283,23 @@ gacha_give:
     ${shards} ${currency} sent
   description: >-
     Sent to ${target_user}
-  thumbnail   : ${target_usericon}
+
+
+# /gacha give
+# Notification for the target user.
+gacha_give_notification:
+  title: >-
+    ${username} gave you ${shards} ${currency}!
+  description: >-
+    Sent by ${user}
+  thumbnail   : ${usericon}
   content: >-
     ${target_user}
+  footer      : 
+    text      : >-
+      Bot system message
+    icon_url  : >-
+      ${bot_usericon}
 
 
 # /gacha cards
