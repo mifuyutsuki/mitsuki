@@ -385,7 +385,7 @@ gacha_view_search_results:
   field       :
     name      : ${stars} ${name}
     value     : >-
-      `${amount}` • ${type} • ${series} • <t:${first_acquired}:f>
+      ${type} • ${series}
     inline    : false
 
 
