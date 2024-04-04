@@ -488,7 +488,7 @@ def load_multifield(
 def user_data(user: BaseUser):
   return {
     "username": user.tag,
-    "usericon": user.avatar_url,
+    "usericon": user.display_avatar.url,
     "user": user.mention
   }
 
@@ -496,7 +496,7 @@ def user_data(user: BaseUser):
 def target_user_data(user: BaseUser):
   return {
     "target_username": user.tag,
-    "target_usericon": user.avatar_url,
+    "target_usericon": user.display_avatar.url,
     "target_user": user.mention
   }
 
