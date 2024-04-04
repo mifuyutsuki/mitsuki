@@ -49,6 +49,7 @@ class BaseSettings:
         status=d_mitsuki.get("status"),
         status_cycle=d_mitsuki.get("status_cycle"),
         status_randomize=bool(d_mitsuki.get("status_randomize")),
+        log_info=bool(d_mitsuki.get("log_info")),
         messages=d_mitsuki.get("messages")
       ),
       dev=DevSettings(
@@ -71,6 +72,7 @@ class MitsukiSettings:
   status: List[str]
   status_cycle: int
   status_randomize: bool
+  log_info: Optional[bool] = False
   messages: Optional[str] = None
 
 
