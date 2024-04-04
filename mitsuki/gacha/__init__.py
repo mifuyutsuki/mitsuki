@@ -12,6 +12,7 @@
 
 from interactions import (
   AllowedMentions,
+  AutocompleteContext,
   Extension,
   slash_command,
   slash_option,
@@ -424,17 +425,18 @@ class MitsukiGacha(Extension):
   
   # ===========================================================================
   # ===========================================================================
-    
+
   @gacha_cmd.subcommand(
     sub_cmd_name="view",
     sub_cmd_description="View an obtained card"
   )
   @auto_defer(time_until_defer=2.0)
-  @cooldown(Buckets.USER, 1, 15.0)
+  @cooldown(Buckets.USER, 1, 5.0)
   @slash_option(
     name="name",
     description="Card name to search",
     required=True,
+    # autocomplete=True,
     opt_type=OptionType.STRING,
     min_length=3,
     max_length=128
@@ -452,15 +454,11 @@ class MitsukiGacha(Extension):
     user: Optional[BaseUser] = None
   ):
     target_user  = user
-    if target_user:
-      search_cards = await userdata.card_list(target_user.id)
-    else:
-      search_cards = await userdata.card_list_all_obtained()
     
     # ---------------------------------------------------------------
     # User has no cards?
     
-    total_cards = len(search_cards)
+    total_cards = await userdata.card_list_count(target_user.id if target_user else None)
     if total_cards <= 0:
       if target_user:
         message = load_message("gacha_view_no_cards", user=ctx.author, target_user=target_user)
@@ -471,26 +469,20 @@ class MitsukiGacha(Extension):
     
     # ---------------------------------------------------------------
     # Search cards
-    # TODO: Search from all users instead of on a specific user
 
-    search_key = remove_accents(name)
-    
-    search_card_refs  = {}
-    search_card_ids   = []
-    search_card_names = []
-    for search_card in search_cards:
-      search_card_refs[search_card.card] = search_card
-      search_card_ids.append(search_card.card)
-      search_card_names.append(search_card.name)
-    
-    search_results = process.extract(
+    search_key     = name
+    search_results = await userdata.card_search(
       search_key,
-      search_card_names,
-      scorer=fuzz.WRatio,
+      target_user.id if target_user else None,
+      search_by="name",
+      sort="match",
       limit=6,
-      processor=process_text,
-      score_cutoff=50.0
+      cutoff=55.0,
+      strong_cutoff=90.0,
+      ratio=fuzz.token_ratio,
+      processor=process_text
     )
+    search_data = {"search_key": search_key, "total_cards": total_cards}
 
     # ---------------------------------------------------------------
     # No search results?
@@ -498,10 +490,7 @@ class MitsukiGacha(Extension):
     if len(search_results) <= 0:
       message = load_message(
         "gacha_view_no_results",
-        data={
-          "search_key": search_key,
-          "total_cards": total_cards,
-        },
+        data=search_data,
         user=ctx.author,
         target_user=target_user,
         escape_data_values=["search_key"]
@@ -515,76 +504,39 @@ class MitsukiGacha(Extension):
 
     # ---------------------------------------------------------------
     # Parse search results
-
-    cards = []
-    results_card_selects = []
-    results_card_ids     = []
-    strong_match_ids     = []
-
-    for _, score, idx in search_results:
-      results_card_ids.append(search_card_ids[idx])
-
-      # Strong match handling
-      if score >= 90.0:
-        strong_match_ids.append(search_card_ids[idx])
       
-      # Dupe name handling
-      repeat_no = 2
-      results_card_select = search_card_names[idx]
-      while results_card_select in results_card_selects:
-        results_card_select = f"{search_card_names[idx]} ({repeat_no})"
+    selection = []
+    for card in search_results:
+      selection_name = card.name
+      repeat_no = 1
+      while selection_name in selection:
+        selection_name = f"{selection_name} ({repeat_no})"
         repeat_no += 1
-
-      results_card_selects.append(results_card_select)
-    
-    results_cards = [search_card_refs[results_card_id] for results_card_id in results_card_ids]
-    for results_card in results_cards:
-      cards.append(results_card.asdict())
+      selection.append(selection_name)
 
     # ---------------------------------------------------------------
     # Select or prompt select a card
     
-    if len(strong_match_ids) == 1:
-      # Unambiguous strong match
-      selected_card = search_card_refs[strong_match_ids[0]]
+    if len(selection) == 1:
+      selected_card = search_results[0]
       send = ctx.send
     else:
-      # Ambiguous and/or weak match(es)
-      select_menu = StringSelectMenu(
-        *results_card_selects,
-        placeholder="Card to view from search results",
-        min_values=1,
-        max_values=1
-      )
+      select_menu = StringSelectMenu(*selection, placeholder="Card to view from search results")
       message = load_multifield(
-        "gacha_view_search_results"
-        if target_user else
-        "gacha_view_search_results_2",
-        cards,
-        base_data={
-          "search_key": search_key,
-          "total_cards": total_cards,
-        },
+        "gacha_view_search_results" if target_user else "gacha_view_search_results_2",
+        [card.asdict() for card in search_results],
+        base_data=search_data,
         user=ctx.author,
         target_user=target_user,
         escape_data_values=["search_key", "name", "type", "series"]
       )
-      embed = message.embeds[0]
-      select_msg = await ctx.send(
-        content=message.content,
-        embed=embed,
-        components=select_menu
-      )
+      select_msg = await ctx.send(content=message.content, embed=message.embeds[0], components=select_menu)
 
       # -------------------------------------------------------------
       # Wait for response
       
       try:
-        used_component = await bot.wait_for_component(
-          components=select_menu,
-          check=is_caller(ctx),
-          timeout=45
-        )
+        selected = await bot.wait_for_component(components=select_menu, check=is_caller(ctx), timeout=45)
       except TimeoutError:
         select_menu.disabled = True
         try:
@@ -593,36 +545,40 @@ class MitsukiGacha(Extension):
           # Case: message does not exist
           pass
         return
+      else:
+        if not selected.ctx.deferred:
+          await selected.ctx.defer(edit_origin=True)
       
-      selected_value    = used_component.ctx.values[0]
-      selected_card_idx = results_card_selects.index(selected_value)
-      selected_card     = results_cards[selected_card_idx]
-      send = used_component.ctx.edit_origin
+      selected_value = selected.ctx.values[0]
+      selected_card  = search_results[selection.index(selected_value)]
+      send = selected.ctx.edit_origin
 
     # ---------------------------------------------------------------
     # Show card
     
     if target_user:
+      selected_card_user = await userdata.card_get_user(target_user.id, selected_card.card)
       message = load_message(
         "gacha_view_card",
-        data=selected_card.asdict(),
+        data=selected_card_user.asdict() | selected_card.asdict(),
         user=ctx.author,
         target_user=target_user,
         escape_data_values=["name", "type", "series"]
       )
     else:
+      one_owner = selected_card.users == 1
       selected_card_user = await userdata.card_get_user(ctx.author.id, selected_card.card)
       if selected_card_user:
         message = load_message(
-          "gacha_view_card_2_acquired",
-          data=selected_card_user.asdict(),
+          "gacha_view_card_2_acquired_one_owner" if one_owner else "gacha_view_card_2_acquired",
+          data=selected_card_user.asdict() | selected_card.asdict(),
           user=ctx.author,
           target_user=target_user,
           escape_data_values=["name", "type", "series"]
         )
       else:
         message = load_message(
-          "gacha_view_card_2_unacquired",
+          "gacha_view_card_2_unacquired_one_owner" if one_owner else "gacha_view_card_2_unacquired",
           data=selected_card.asdict(),
           user=ctx.author,
           target_user=target_user,
@@ -630,6 +586,29 @@ class MitsukiGacha(Extension):
         )
 
     await send(**message.to_dict(), components=[])
+
+
+  # @view_cmd.autocomplete("name")
+  # async def view_cmd_autocomplete(self, ctx: AutocompleteContext):
+  #   search_key     = ctx.input_text
+  #   if len(search_key) < 3:
+  #     return await ctx.send([])
+    
+  #   search_results = await userdata.card_search(
+  #     search_key,
+  #     search_by="name",
+  #     sort="match",
+  #     limit=6,
+  #     cutoff=55.0,
+  #     strong_cutoff=None,
+  #     ratio=fuzz.token_ratio,
+  #     processor=process_text
+  #   )
+    
+  #   await ctx.send([
+  #     {"name": f"{card.name} • {card.type} • {card.series}", "value": card.name}
+  #     for card in search_results
+  #   ])
 
 
   # ===========================================================================
