@@ -329,9 +329,16 @@ async def card_search(
     .where(card.id.in_(card_ids))
     .subquery()
   )
-  result_statement = (
-    select(subq_first, Inventory.user.label("last_user"))
+  subq_last = (
+    select(subq_info, Inventory.user.label("last_user"))
     .join(Inventory, Inventory.first_acquired == card.last_user_acquired, isouter=unobtained)
+    .where(card.id.in_(card_ids))
+    .subquery()
+  )
+  result_statement = (
+    select(subq_info, subq_first, subq_last)
+    .join(subq_first, subq_first.c.id == card.id)
+    .join(subq_last, subq_last.c.id == card.id)
     .where(card.id.in_(card_ids))
   )
   
