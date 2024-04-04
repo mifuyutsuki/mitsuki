@@ -283,9 +283,23 @@ gacha_give:
     ${shards} ${currency} sent
   description: >-
     Sent to ${target_user}
-  thumbnail   : ${target_usericon}
+
+
+# /gacha give
+# Notification for the target user.
+gacha_give_notification:
+  title: >-
+    ${username} gave you ${shards} ${currency}!
+  description: >-
+    Sent by ${user}
+  thumbnail   : ${usericon}
   content: >-
     ${target_user}
+  footer      : 
+    text      : >-
+      Bot system message
+    icon_url  : >-
+      ${bot_usericon}
 
 
 # /gacha cards
@@ -385,7 +399,7 @@ gacha_view_search_results:
   field       :
     name      : ${stars} ${name}
     value     : >-
-      `${amount}` • ${type} • ${series} • <t:${first_acquired}:f>
+      ${type} • ${series}
     inline    : false
 
 
@@ -493,6 +507,34 @@ gacha_view_card_2_unacquired:
     ${stars} • ${type} • ${series}
 
 
+    `${rolled}` rolled by `${users}` users
+
+    First acquired by ${first_user_mention}: ${first_user_acquired_f}
+
+    Last acquired by ${last_user_mention}: ${last_user_acquired_f}
+
+
+    Not yet acquired in your card collection
+  image: >-
+    ${image}
+  color: >-
+    ${color}
+
+
+# /gacha view [NEW]
+# Message after selecting a card to view. (Global search, unacquired by user, one owner)
+gacha_view_card_2_unacquired_one_owner:
+  title: >-
+    ${name}
+  description: >-
+    ${stars} • ${type} • ${series}
+
+
+    `${rolled}` rolled by `${users}` users
+
+    First acquired by ${first_user_mention}: ${first_user_acquired_f}
+
+
     Not yet acquired in your card collection
   image: >-
     ${image}
@@ -507,6 +549,36 @@ gacha_view_card_2_acquired:
     ${name}
   description: >-
     ${stars} • ${type} • ${series}
+
+
+    `${rolled}` rolled by `${users}` users
+
+    First acquired by ${first_user_mention}: ${first_user_acquired_f}
+
+    Last acquired by ${last_user_mention}: ${last_user_acquired_f}
+
+
+    `${amount}` in your card collection
+
+    First acquired: <t:${first_acquired}:f>
+  image: >-
+    ${image}
+  color: >-
+    ${color}
+
+
+# /gacha view [NEW]
+# Message after selecting a card to view. (Global search, acquired by user)
+gacha_view_card_2_acquired_one_owner:
+  title: >-
+    ${name}
+  description: >-
+    ${stars} • ${type} • ${series}
+
+
+    `${rolled}` rolled by `${users}` users
+
+    First acquired by ${first_user_mention}: ${first_user_acquired_f}
 
 
     `${amount}` in your card collection

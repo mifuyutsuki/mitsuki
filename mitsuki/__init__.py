@@ -13,12 +13,6 @@
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
-import logging
-logging.basicConfig(
-  format="%(asctime)s [%(levelname)s] %(name)s:%(lineno)d: %(message)s",
-  level=logging.WARNING
-)
-
 from interactions import (
   Status,
   Activity,
@@ -52,6 +46,7 @@ from random import Random
 
 import traceback
 import asyncio
+import logging
 
 from mitsuki import settings
 from mitsuki.messages import load_message
@@ -63,6 +58,10 @@ __all__ = (
   "run",
 )
 
+logging.basicConfig(
+  format="%(asctime)s [%(levelname)s] %(name)s:%(lineno)d: %(message)s",
+  level=logging.INFO if settings.mitsuki.log_info else logging.WARNING
+)
 logger = logging.getLogger(__name__)
 
 init_event = asyncio.Event()
@@ -156,8 +155,6 @@ class Bot(Client):
       )
       ephemeral = True
     else:
-      # traceback.print_exception(event.error)
-
       # Look for the Mitsuki source
       tb = event.error.__traceback__
       use_tb = tb
@@ -190,7 +187,7 @@ class Bot(Client):
           f"{str(event.error)}"
         ) if use_tb else repr(event.error)
 
-      logger.error(error_repr)
+      logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
       
       message = load_message(
         "error",
@@ -203,31 +200,31 @@ class Bot(Client):
       await event.ctx.send(**message.to_dict(), ephemeral=ephemeral)
   
 
-  # @listen(CommandCompletion)
-  # async def on_command_completion(self, event: CommandCompletion):
-  #   if isinstance(event.ctx, InteractionContext):
-  #     command_name = event.ctx.invoke_target
-  #     logger.info(f"Command emitted: {command_name}")
-  #     # if len(event.ctx.args) > 0:
-  #     #   args = [str(v) for v in event.ctx.args]
-  #     #   logger.info(f"args: {args}")
-  #     if len(event.ctx.kwargs) > 0:
-  #       kwargs = {k: str(v) for k, v in event.ctx.kwargs.items()}
-  #       logger.info(f"kwargs: {kwargs}")
+  @listen(CommandCompletion)
+  async def on_command_completion(self, event: CommandCompletion):
+    if isinstance(event.ctx, InteractionContext):
+      command_name = event.ctx.invoke_target
+      logger.info(f"Command emitted: {command_name}")
+      # if len(event.ctx.args) > 0:
+      #   args = [str(v) for v in event.ctx.args]
+      #   logger.info(f"args: {args}")
+      if len(event.ctx.kwargs) > 0:
+        kwargs = {k: str(v) for k, v in event.ctx.kwargs.items()}
+        logger.info(f"kwargs: {kwargs}")
   
 
-  # @listen(ComponentCompletion)
-  # async def on_component_completion(self, event: ComponentCompletion):
-  #   command_name = event.ctx.invoke_target
-  #   try:
-  #     component_name = event.ctx.custom_id.split("|")[1]
-  #   except Exception:
-  #     component_name = event.ctx.custom_id
+  @listen(ComponentCompletion)
+  async def on_component_completion(self, event: ComponentCompletion):
+    command_name = event.ctx.invoke_target
+    try:
+      component_name = event.ctx.custom_id.split("|")[1]
+    except Exception:
+      component_name = event.ctx.custom_id
     
-  #   logger.info(f"Component emitted: {command_name}: {component_name}")
-  #   if len(event.ctx.values) > 0:
-  #     values = [str(v) for v in event.ctx.args]
-  #     logger.info(f"values: {values}")
+    logger.info(f"Component emitted: {command_name}: {component_name}")
+    if len(event.ctx.values) > 0:
+      values = [str(v) for v in event.ctx.args]
+      logger.info(f"values: {values}")
 
 
 bot = Bot()
@@ -236,7 +233,6 @@ bot = Bot()
 def run():
   global bot
 
-  dev_mode = environ.get("ENABLE_DEV_MODE") == "1"
   curr_time = datetime.now(tz=timezone.utc).isoformat(sep=" ")
 
   print(f"Mitsuki v{__version__}")
@@ -244,14 +240,12 @@ def run():
   print(f"Current time in UTC: {curr_time}")
   print("")
   
+  dev_mode = environ.get("ENABLE_DEV_MODE") == "1"
   sentry_dsn = environ.get("SENTRY_DSN")
   sentry_env = environ.get("SENTRY_ENV") or "dev"
-  if sentry_dsn:
-    bot.load_extension("interactions.ext.sentry", token=sentry_dsn, enable_tracing=True, environment=sentry_env)
-  else:
-    logger.warning("Env variable SENTRY_DSN is not set. Sentry logging is off")
 
   if dev_mode:
+    # Activate Jurigged integration with dev-mode (run.py dev)
     bot.load_extension("interactions.ext.jurigged")
     print("Running in dev mode. Jurigged is active")
     
@@ -263,6 +257,13 @@ def run():
     bot.debug_scope = settings.dev.scope
     token = environ.get("DEV_BOT_TOKEN")
   else:
+    # Activate Sentry integration with no dev-mode (run.py)
+    if sentry_dsn:
+      bot.load_extension("interactions.ext.sentry", token=sentry_dsn, enable_tracing=True, environment=sentry_env)
+      print("Sentry logging is active")
+    else:
+      logger.warning("Env variable SENTRY_DSN is not set. Sentry logging is off")
+      
     token = environ.get("BOT_TOKEN")
   
   if not token:

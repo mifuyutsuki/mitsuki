@@ -60,6 +60,11 @@ mitsuki:
   #   configured in .env.
   db_path: "data/db.sqlite3"
 
+  # Emit INFO messages.
+  # 
+  # When turned off, only WARNING and ERROR messages are emitted in the terminal.
+  log_info: false
+
 
 # [FUTURE] Dev mode (run.py dev) settings.
 dev:

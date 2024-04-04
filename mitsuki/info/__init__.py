@@ -52,9 +52,10 @@ class MitsukiInfo(Extension):
     user = user or ctx.author
 
     # Obtaining the user banner is not stable, skipping relevant exception
+    # Currently, there's no known way to fetch a user's server profile banner.
     try:
       fetched = await bot.fetch_user(user.id, force=True)
-      banner = fetched.banner.as_url() if fetched.banner else None
+      banner = fetched.banner.url if fetched and fetched.banner else None
     except Exception:
       banner = None
     
@@ -70,10 +71,10 @@ class MitsukiInfo(Extension):
       "target_globalname": user.global_name or "-",
       "target_dispname": user.display_name,
       "target_username": user.tag,
-      "target_usericon": user.avatar_url,
+      "target_usericon": user.display_avatar.url,
       "target_user_id": user.id,
-      "created_at": user.created_at.format("f"),
-      "target_userbanner": banner
+      "target_userbanner": banner,
+      "created_at": user.created_at.format("f")
     }
     if isinstance(user, Member):
       data |= {
