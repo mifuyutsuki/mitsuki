@@ -12,6 +12,7 @@
 
 from interactions import (
   AllowedMentions,
+  AutocompleteContext,
   Extension,
   slash_command,
   slash_option,
@@ -416,7 +417,7 @@ class MitsukiGacha(Extension):
   
   # ===========================================================================
   # ===========================================================================
-    
+
   @gacha_cmd.subcommand(
     sub_cmd_name="view",
     sub_cmd_description="View an obtained card"
@@ -427,6 +428,7 @@ class MitsukiGacha(Extension):
     name="name",
     description="Card name to search",
     required=True,
+    # autocomplete=True,
     opt_type=OptionType.STRING,
     min_length=3,
     max_length=128
@@ -576,6 +578,29 @@ class MitsukiGacha(Extension):
         )
 
     await send(**message.to_dict(), components=[])
+
+
+  # @view_cmd.autocomplete("name")
+  # async def view_cmd_autocomplete(self, ctx: AutocompleteContext):
+  #   search_key     = ctx.input_text
+  #   if len(search_key) < 3:
+  #     return await ctx.send([])
+    
+  #   search_results = await userdata.card_search(
+  #     search_key,
+  #     search_by="name",
+  #     sort="match",
+  #     limit=6,
+  #     cutoff=55.0,
+  #     strong_cutoff=None,
+  #     ratio=fuzz.token_ratio,
+  #     processor=process_text
+  #   )
+    
+  #   await ctx.send([
+  #     {"name": f"{card.name} • {card.type} • {card.series}", "value": card.name}
+  #     for card in search_results
+  #   ])
 
 
   # ===========================================================================
