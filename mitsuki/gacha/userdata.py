@@ -10,15 +10,18 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from typing import Dict, List
+from typing import Dict, List, Callable, Any, Union
 from time import time
 from datetime import datetime, timezone, timedelta
 from interactions import Snowflake
 from sqlalchemy import select, update
+from sqlalchemy.orm import load_only
 from sqlalchemy.sql.functions import func
+from sqlalchemy.sql.expression import case
 from sqlalchemy.dialects.sqlite import insert as slinsert
 from sqlalchemy.dialects.postgresql import insert as pginsert
 from sqlalchemy.ext.asyncio import AsyncSession
+from rapidfuzz import fuzz
 
 from mitsuki.userdata import engine, new_session
 from mitsuki.gacha.schema import *
@@ -172,6 +175,21 @@ async def card_list(user_id: Snowflake, sort: str = "rarity"):
   return UserCard.create_many(results)
 
 
+async def card_list_count(user_id: Optional[Snowflake] = None, unobtained: bool = False):
+  if user_id:
+    statement = select(func.count(Inventory.card)).where(Inventory.user == user_id)
+  elif not unobtained:
+    obtained = select(Inventory.card.distinct().label("card")).subquery()
+    statement = select(func.count(obtained.c.card))
+  else:
+    statement = select(func.count(Card.id))
+  
+  async with new_session() as session:
+    result = (await session.scalar(statement))
+
+  return result or 0
+
+
 async def card_list_all(sort: str = "id"):
   statement = select(Card, Settings).join(Settings, Card.rarity == Settings.rarity)
   
@@ -200,7 +218,8 @@ async def card_list_all_obtained(sort: str = "rarity"):
       Inventory.card.label("card"),
       func.count(Inventory.count).label("users"),
       func.sum(Inventory.count).label("rolled"),
-      func.min(Inventory.first_acquired).label("first_user_acquired")
+      func.min(Inventory.first_acquired).label("first_user_acquired"),
+      func.max(Inventory.first_acquired).label("last_user_acquired")
     )
     .group_by(Inventory.card)
     .subquery()
@@ -215,9 +234,11 @@ async def card_list_all_obtained(sort: str = "rarity"):
   statement = (
     select(
       subq_info,
-      Inventory.user.label("first_user")
+      Inventory.user.label("first_user"),
+      Inventory.user.label("last_user")
     )
     .join(Inventory, Inventory.first_acquired == card.first_user_acquired)
+    .join(Inventory, Inventory.first_acquired == card.last_user_acquired)
   )
   
   sort = sort.lower()
@@ -236,6 +257,157 @@ async def card_list_all_obtained(sort: str = "rarity"):
     results = (await session.execute(statement)).all()
 
   return StatsCard.from_db_many(results)
+
+
+async def card_search(
+  search_key: str,
+  user_id: Optional[Snowflake] = None,
+  *,
+  unobtained: bool = False,
+  search_by: str = "name",
+  sort: str = "match",
+  limit: Optional[int] = None,
+  cutoff: float = 60.0,
+  strong_cutoff: Optional[float] = None,
+  ratio: Callable[[str, str], str] = fuzz.WRatio,
+  processor: Optional[Callable[[str], str]] = None,
+) -> List[StatsCard]:
+  cards = await card_key_search(
+    search_key,
+    user_id,
+    unobtained=unobtained,
+    search_by=search_by,
+    cutoff=cutoff,
+    ratio=ratio,
+    processor=processor
+  )
+
+  # If strong_cutoff is set, card_ids will only have one result if only one result has score >= strong_cutoff
+  # SearchCard is already sorted by match so just check the first two
+
+  if len(cards) <= 0:
+    return []
+  elif len(cards) >= 2 and strong_cutoff:
+    if cards[0].score >= strong_cutoff > cards[1].score:
+      card_ids = [cards[0].id]
+    else:
+      card_ids = [c.id for c in cards]
+  else:
+    card_ids = [c.id for c in cards]
+
+  # -----
+
+  # To prevent bare columns, the statement is this long
+  subq_counts = (
+    select(
+      Inventory.card.label("card"),
+      func.count(Inventory.count).label("users"),
+      func.sum(Inventory.count).label("rolled"),
+      func.min(Inventory.first_acquired).label("first_user_acquired"),
+      func.max(Inventory.first_acquired).label("last_user_acquired")
+    )
+    .group_by(Inventory.card)
+    .subquery()
+  )
+  subq_info = (
+    select(
+      Card,
+      Settings,
+      func.coalesce(subq_counts.c.users, 0).label("users"),
+      func.coalesce(subq_counts.c.rolled, 0).label("rolled"),
+      subq_counts.c.first_user_acquired.label("first_user_acquired"),
+      subq_counts.c.last_user_acquired.label("last_user_acquired")
+    )
+    .join(subq_counts, Card.id == subq_counts.c.card, isouter=unobtained)
+    .join(Settings, Card.rarity == Settings.rarity)
+    .subquery()
+  )
+  card = subq_info.c
+  subq_first = (
+    select(subq_info, Inventory.user.label("first_user"))
+    .join(Inventory, Inventory.first_acquired == card.first_user_acquired, isouter=unobtained)
+    .where(card.id.in_(card_ids))
+    .subquery()
+  )
+  subq_last = (
+    select(subq_info, Inventory.user.label("last_user"))
+    .join(Inventory, Inventory.first_acquired == card.last_user_acquired, isouter=unobtained)
+    .where(card.id.in_(card_ids))
+    .subquery()
+  )
+  result_statement = (
+    select(subq_info, subq_first, subq_last)
+    .join(subq_first, subq_first.c.id == card.id)
+    .join(subq_last, subq_last.c.id == card.id)
+    .where(card.id.in_(card_ids))
+  )
+  
+  if len(card_ids) > 1:
+    match sort.lower():
+      case "match":
+        result_statement = result_statement.order_by(_insertion_order(card.id, card_ids))
+      case "rarity":
+        result_statement = result_statement.order_by(card.rarity.desc()).order_by(func.lower(card.name))
+      case "alpha":
+        result_statement = result_statement.order_by(func.lower(card.name))
+      case "name":
+        result_statement = result_statement.order_by(func.lower(card.name))
+      case "series":
+        result_statement = result_statement.order_by(card.type).order_by(card.series).order_by(card.rarity).order_by(card.id)
+      case "id":
+        result_statement = result_statement.order_by(card.id)
+      case _:
+        raise ValueError(f"Invalid sort setting '{sort}'")
+
+    result_statement = result_statement.limit(limit)
+
+  async with new_session() as session:
+    results = (await session.execute(result_statement)).all()
+
+  return StatsCard.from_db_many(results)
+
+
+async def card_key_search(
+  search_key: str,
+  user_id: Optional[Snowflake] = None,
+  *,
+  unobtained: bool = False,
+  search_by: str = "name",
+  cutoff: float = 60.0,
+  ratio: Callable[[str, str], str] = fuzz.token_ratio,
+  processor: Optional[Callable[[str], str]] = None,
+):
+  processor = processor or (lambda s: s)
+
+  match search_by.lower():
+    case "name":
+      search_column = Card.name
+    case "type":
+      search_column = Card.type
+    case "series":
+      search_column = Card.series
+    case _:
+      raise ValueError(f"Invalid search-by setting '{search_by}'")
+  
+  search_column = search_column.label("search")
+
+  if user_id:
+    subq_filter = select(Inventory.card.label("card")).where(Inventory.user == user_id).subquery()
+  elif not unobtained:
+    subq_filter = select(Inventory.card.distinct().label("card")).subquery()
+  else:
+    subq_filter = select(Card.id.label("card")).subquery()
+
+  search_statement = (
+    select(Card.id, search_column, subq_filter)
+    .join(subq_filter, Card.id == subq_filter.c.card)
+    .order_by(func.lower(search_column))
+  )
+
+  async with new_session() as session:
+    card_names = (await session.execute(search_statement)).all()
+
+  return SearchCard.from_db_many(card_names, search_key, cutoff=cutoff, ratio=ratio, processor=processor)
 
 
 async def card_give(session: AsyncSession, user_id: Snowflake, card_id: str):
@@ -401,6 +573,17 @@ def _daily_next(last_daily: float, reset_time: str = "00:00+0000"):
     next_daily_dt = next_daily_dt + timedelta(days=1)
 
   return next_daily_dt.timestamp()
+
+
+# ===================================================================
+# Query helper functions
+
+
+def _insertion_order(column, items: List[Any]):
+  return case(
+    {item: idx for idx, item in enumerate(items)},
+    value=column
+  )
 
 
 # ===================================================================
