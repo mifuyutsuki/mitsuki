@@ -218,7 +218,8 @@ async def card_list_all_obtained(sort: str = "rarity"):
       Inventory.card.label("card"),
       func.count(Inventory.count).label("users"),
       func.sum(Inventory.count).label("rolled"),
-      func.min(Inventory.first_acquired).label("first_user_acquired")
+      func.min(Inventory.first_acquired).label("first_user_acquired"),
+      func.max(Inventory.first_acquired).label("last_user_acquired")
     )
     .group_by(Inventory.card)
     .subquery()
@@ -233,9 +234,11 @@ async def card_list_all_obtained(sort: str = "rarity"):
   statement = (
     select(
       subq_info,
-      Inventory.user.label("first_user")
+      Inventory.user.label("first_user"),
+      Inventory.user.label("last_user")
     )
     .join(Inventory, Inventory.first_acquired == card.first_user_acquired)
+    .join(Inventory, Inventory.first_acquired == card.last_user_acquired)
   )
   
   sort = sort.lower()
@@ -300,7 +303,8 @@ async def card_search(
       Inventory.card.label("card"),
       func.count(Inventory.count).label("users"),
       func.sum(Inventory.count).label("rolled"),
-      func.min(Inventory.first_acquired).label("first_user_acquired")
+      func.min(Inventory.first_acquired).label("first_user_acquired"),
+      func.max(Inventory.first_acquired).label("last_user_acquired")
     )
     .group_by(Inventory.card)
     .subquery()
@@ -311,16 +315,23 @@ async def card_search(
       Settings,
       func.coalesce(subq_counts.c.users, 0).label("users"),
       func.coalesce(subq_counts.c.rolled, 0).label("rolled"),
-      subq_counts.c.first_user_acquired.label("first_user_acquired")
+      subq_counts.c.first_user_acquired.label("first_user_acquired"),
+      subq_counts.c.last_user_acquired.label("last_user_acquired")
     )
     .join(subq_counts, Card.id == subq_counts.c.card, isouter=unobtained)
     .join(Settings, Card.rarity == Settings.rarity)
     .subquery()
   )
   card = subq_info.c
-  result_statement = (
+  subq_first = (
     select(subq_info, Inventory.user.label("first_user"))
     .join(Inventory, Inventory.first_acquired == card.first_user_acquired, isouter=unobtained)
+    .where(card.id.in_(card_ids))
+    .subquery()
+  )
+  result_statement = (
+    select(subq_first, Inventory.user.label("last_user"))
+    .join(Inventory, Inventory.first_acquired == card.last_user_acquired, isouter=unobtained)
     .where(card.id.in_(card_ids))
   )
   

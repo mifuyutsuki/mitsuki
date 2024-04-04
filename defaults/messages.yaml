@@ -495,7 +495,30 @@ gacha_view_card_2_unacquired:
 
     `${rolled}` rolled by `${users}` users
 
-    First acquired by <@${first_user}>: <t:${first_user_acquired}:f>
+    First acquired by ${first_user_mention}: ${first_user_acquired_f}
+
+    Last acquired by ${last_user_mention}: ${last_user_acquired_f}
+
+
+    Not yet acquired in your card collection
+  image: >-
+    ${image}
+  color: >-
+    ${color}
+
+
+# /gacha view [NEW]
+# Message after selecting a card to view. (Global search, unacquired by user, one owner)
+gacha_view_card_2_unacquired_one_owner:
+  title: >-
+    ${name}
+  description: >-
+    ${stars} • ${type} • ${series}
+
+
+    `${rolled}` rolled by `${users}` users
+
+    First acquired by ${first_user_mention}: ${first_user_acquired_f}
 
 
     Not yet acquired in your card collection
@@ -516,7 +539,32 @@ gacha_view_card_2_acquired:
 
     `${rolled}` rolled by `${users}` users
 
-    First acquired by <@${first_user}>: <t:${first_user_acquired}:f>
+    First acquired by ${first_user_mention}: ${first_user_acquired_f}
+
+    Last acquired by ${last_user_mention}: ${last_user_acquired_f}
+
+
+    `${amount}` in your card collection
+
+    First acquired: <t:${first_acquired}:f>
+  image: >-
+    ${image}
+  color: >-
+    ${color}
+
+
+# /gacha view [NEW]
+# Message after selecting a card to view. (Global search, acquired by user)
+gacha_view_card_2_acquired_one_owner:
+  title: >-
+    ${name}
+  description: >-
+    ${stars} • ${type} • ${series}
+
+
+    `${rolled}` rolled by `${users}` users
+
+    First acquired by ${first_user_mention}: ${first_user_acquired_f}
 
 
     `${amount}` in your card collection

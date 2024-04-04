@@ -556,10 +556,11 @@ class MitsukiGacha(Extension):
         escape_data_values=["name", "type", "series"]
       )
     else:
+      one_owner = selected_card.users == 1
       selected_card_user = await userdata.card_get_user(ctx.author.id, selected_card.card)
       if selected_card_user:
         message = load_message(
-          "gacha_view_card_2_acquired",
+          "gacha_view_card_2_acquired_one_owner" if one_owner else "gacha_view_card_2_acquired",
           data=selected_card_user.asdict() | selected_card.asdict(),
           user=ctx.author,
           target_user=target_user,
@@ -567,7 +568,7 @@ class MitsukiGacha(Extension):
         )
       else:
         message = load_message(
-          "gacha_view_card_2_unacquired",
+          "gacha_view_card_2_unacquired_one_owner" if one_owner else "gacha_view_card_2_unacquired",
           data=selected_card.asdict(),
           user=ctx.author,
           target_user=target_user,
