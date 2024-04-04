@@ -422,7 +422,7 @@ class MitsukiGacha(Extension):
     sub_cmd_description="View an obtained card"
   )
   @auto_defer(time_until_defer=2.0)
-  @cooldown(Buckets.USER, 1, 15.0)
+  @cooldown(Buckets.USER, 1, 5.0)
   @slash_option(
     name="name",
     description="Card name to search",
