@@ -243,9 +243,9 @@ class MitsukiGacha(Extension):
   @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 3.0)
   async def roll_cmd(self, ctx: SlashContext):
-    user   = ctx.author
-    shards = await userdata.shards(user.id)
-    cost   = gacha.cost
+    user       = ctx.author
+    shards     = await userdata.shards(user.id)
+    cost       = gacha.cost
 
     # ---------------------------------------------------------------
     # Insufficient funds?
@@ -275,30 +275,21 @@ class MitsukiGacha(Extension):
     rolled      = gacha.roll(min_rarity=min_rarity)
     is_new_card = not await userdata.card_has(user.id, rolled.id)
     dupe_shards = 0 if is_new_card else gacha.dupe_shards[rolled.rarity]
+    new_shards  = shards + dupe_shards - cost
 
     # ---------------------------------------------------------------
     # Generate embed
-
-    if is_new_card:
-      message = load_message(
-        "gacha_get_new_card",
-        data={
-          **card_data(rolled),
-          **currency_data()
-        },
-        user=ctx.author,
-        escape_data_values=["name", "type", "series"]
-      )
-    else:
-      message = load_message(
-        "gacha_get_dupe_card",
-        data={
-          **card_data(rolled),
-          **currency_data()
-        },
-        user=ctx.author,
-        escape_data_values=["name", "type", "series"]
-      )
+    
+    message = load_message(
+      "gacha_get_new_card" if is_new_card else "gacha_get_dupe_card",
+      data={
+        **card_data(rolled),
+        **currency_data(),
+        "new_shards": new_shards
+      },
+      user=ctx.author,
+      escape_data_values=["name", "type", "series"]
+    )
 
     # ---------------------------------------------------------------
     # Update userdata

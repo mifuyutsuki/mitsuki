@@ -656,6 +656,8 @@ gacha_get_new_card:
     
 
     ✨ **New!**
+
+    You now have ${currency_icon} **${new_shards}**
   image: >-
     ${image}
   color: >-
@@ -685,6 +687,8 @@ gacha_get_dupe_card:
 
 
     **${currency}** +${dupe_shards}
+
+    You now have ${currency_icon} **${new_shards}**
   image: >-
     ${image}
   color: >-
