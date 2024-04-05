@@ -489,7 +489,7 @@ class MitsukiGacha(Extension):
 
     if len(search_results) <= 0:
       message = load_message(
-        "gacha_view_no_results",
+        "gacha_view_no_results" if target_user else "gacha_view_no_results_2",
         data=search_data,
         user=ctx.author,
         target_user=target_user,
