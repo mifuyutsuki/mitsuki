@@ -707,7 +707,7 @@ class MitsukiGacha(Extension):
       try:
         await userdata.shards_exchange(session, user.id, target_user.id, shards)
 
-        await ctx.send(**sender_message.to_dict(), ephemeral=True)
+        await ctx.send(**sender_message.to_dict())
         await ctx.channel.send(**receiver_message.to_dict(), allowed_mentions=AllowedMentions.all())
       except Exception:
         await session.rollback()
