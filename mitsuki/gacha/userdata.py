@@ -282,19 +282,23 @@ async def card_search(
     processor=processor
   )
 
-  # If strong_cutoff is set, card_ids will only have one result if only one result has score >= strong_cutoff
   # SearchCard is already sorted by match so just check the first two
 
   if len(cards) <= 0:
     return []
-  elif len(cards) >= 2 and strong_cutoff:
-    if cards[0].score >= strong_cutoff > cards[1].score:
+  if len(cards) >= 2 and strong_cutoff:
+    if cards[0].score >= strong_cutoff > cards[1].score:   # Only 1 is over strong_cutoff
+      card_ids = [cards[0].id]
+    elif cards[0].score > cards[1].score >= strong_cutoff: # 2+ are over strong_cutoff
       card_ids = [cards[0].id]
     else:
       card_ids = [c.id for c in cards]
   else:
     card_ids = [c.id for c in cards]
-
+  
+  if limit:
+    card_ids = card_ids[:limit]
+  
   # -----
 
   subq_counts = (
@@ -356,7 +360,9 @@ async def card_search(
       case "name":
         result_statement = result_statement.order_by(func.lower(card.name))
       case "series":
-        result_statement = result_statement.order_by(card.type).order_by(card.series).order_by(card.rarity).order_by(card.id)
+        result_statement = (
+          result_statement.order_by(card.type).order_by(card.series).order_by(card.rarity).order_by(card.id)
+        )
       case "id":
         result_statement = result_statement.order_by(card.id)
       case _:
@@ -377,7 +383,7 @@ async def card_key_search(
   unobtained: bool = False,
   search_by: str = "name",
   cutoff: float = 60.0,
-  ratio: Callable[[str, str], str] = fuzz.token_ratio,
+  ratio: Callable[[str, str], str] = fuzz.WRatio,
   processor: Optional[Callable[[str], str]] = None,
 ):
   processor = processor or (lambda s: s)

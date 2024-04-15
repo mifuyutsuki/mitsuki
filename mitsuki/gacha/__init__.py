@@ -477,9 +477,8 @@ class MitsukiGacha(Extension):
       search_by="name",
       sort="match",
       limit=6,
-      cutoff=55.0,
+      cutoff=65.0,
       strong_cutoff=90.0,
-      ratio=fuzz.token_ratio,
       processor=process_text
     )
     search_data = {"search_key": search_key, "total_cards": total_cards}
