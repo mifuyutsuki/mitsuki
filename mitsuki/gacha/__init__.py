@@ -468,9 +468,8 @@ class MitsukiGacha(Extension):
       search_by="name",
       sort="match",
       limit=6,
-      cutoff=55.0,
+      cutoff=65.0,
       strong_cutoff=90.0,
-      ratio=fuzz.token_ratio,
       processor=process_text
     )
     search_data = {"search_key": search_key, "total_cards": total_cards}
@@ -691,14 +690,15 @@ class MitsukiGacha(Extension):
         **bot_data()
       },
       user=user,
-      target_user=target_user
+      target_user=target_user,
+      escape_data_values=["username", "target_username"]
     )
 
     async with new_session() as session:
       try:
         await userdata.shards_exchange(session, user.id, target_user.id, shards)
 
-        await ctx.send(**sender_message.to_dict(), ephemeral=True)
+        await ctx.send(**sender_message.to_dict())
         await ctx.channel.send(**receiver_message.to_dict(), allowed_mentions=AllowedMentions.all())
       except Exception:
         await session.rollback()

@@ -282,65 +282,72 @@ async def card_search(
     processor=processor
   )
 
-  # If strong_cutoff is set, card_ids will only have one result if only one result has score >= strong_cutoff
   # SearchCard is already sorted by match so just check the first two
 
   if len(cards) <= 0:
     return []
-  elif len(cards) >= 2 and strong_cutoff:
-    if cards[0].score >= strong_cutoff > cards[1].score:
+  if len(cards) >= 2 and strong_cutoff:
+    if cards[0].score >= strong_cutoff > cards[1].score:   # Only 1 is over strong_cutoff
+      card_ids = [cards[0].id]
+    elif cards[0].score > cards[1].score >= strong_cutoff: # 2+ are over strong_cutoff
       card_ids = [cards[0].id]
     else:
       card_ids = [c.id for c in cards]
   else:
     card_ids = [c.id for c in cards]
-
+  
+  if limit:
+    card_ids = card_ids[:limit]
+  
   # -----
 
-  # To prevent bare columns, the statement is this long
   subq_counts = (
     select(
       Inventory.card.label("card"),
       func.count(Inventory.count).label("users"),
-      func.sum(Inventory.count).label("rolled"),
-      func.min(Inventory.first_acquired).label("first_user_acquired"),
-      func.max(Inventory.first_acquired).label("last_user_acquired")
+      func.sum(Inventory.count).label("rolled")
     )
     .group_by(Inventory.card)
     .subquery()
   )
-  subq_info = (
+  subq_history = (
+    select(
+      Rolls.card.label("card"),
+      func.min(Rolls.time).label("first_user_acquired"),
+      func.max(Rolls.time).label("last_user_acquired")
+    )
+    .group_by(Rolls.card)
+    .subquery()
+  )
+  subq_first = (
+    select(subq_history, Rolls.user.label("first_user"))
+    .where(subq_history.c.first_user_acquired == Rolls.time)
+    .subquery()
+  )
+  subq_last = (
+    select(subq_history, Rolls.user.label("last_user"))
+    .where(subq_history.c.last_user_acquired == Rolls.time)
+    .subquery()
+  )
+  subq_cards = (
     select(
       Card,
       Settings,
       func.coalesce(subq_counts.c.users, 0).label("users"),
       func.coalesce(subq_counts.c.rolled, 0).label("rolled"),
-      subq_counts.c.first_user_acquired.label("first_user_acquired"),
-      subq_counts.c.last_user_acquired.label("last_user_acquired")
+      subq_first.c.first_user_acquired.label("first_user_acquired"),
+      subq_first.c.first_user.label("first_user"),
+      subq_last.c.last_user_acquired.label("last_user_acquired"),
+      subq_last.c.last_user.label("last_user"),
     )
     .join(subq_counts, Card.id == subq_counts.c.card, isouter=unobtained)
+    .join(subq_first, Card.id == subq_first.c.card, isouter=unobtained)
+    .join(subq_last, Card.id == subq_last.c.card, isouter=unobtained)
     .join(Settings, Card.rarity == Settings.rarity)
     .subquery()
   )
-  card = subq_info.c
-  subq_first = (
-    select(subq_info, Inventory.user.label("first_user"))
-    .join(Inventory, Inventory.first_acquired == card.first_user_acquired, isouter=unobtained)
-    .where(card.id.in_(card_ids))
-    .subquery()
-  )
-  subq_last = (
-    select(subq_info, Inventory.user.label("last_user"))
-    .join(Inventory, Inventory.first_acquired == card.last_user_acquired, isouter=unobtained)
-    .where(card.id.in_(card_ids))
-    .subquery()
-  )
-  result_statement = (
-    select(subq_info, subq_first, subq_last)
-    .join(subq_first, subq_first.c.id == card.id)
-    .join(subq_last, subq_last.c.id == card.id)
-    .where(card.id.in_(card_ids))
-  )
+  result_statement = select(subq_cards).where(subq_cards.c.id.in_(card_ids))
+  card = subq_cards.c
   
   if len(card_ids) > 1:
     match sort.lower():
@@ -353,7 +360,9 @@ async def card_search(
       case "name":
         result_statement = result_statement.order_by(func.lower(card.name))
       case "series":
-        result_statement = result_statement.order_by(card.type).order_by(card.series).order_by(card.rarity).order_by(card.id)
+        result_statement = (
+          result_statement.order_by(card.type).order_by(card.series).order_by(card.rarity).order_by(card.id)
+        )
       case "id":
         result_statement = result_statement.order_by(card.id)
       case _:
@@ -374,7 +383,7 @@ async def card_key_search(
   unobtained: bool = False,
   search_by: str = "name",
   cutoff: float = 60.0,
-  ratio: Callable[[str, str], str] = fuzz.token_ratio,
+  ratio: Callable[[str, str], str] = fuzz.WRatio,
   processor: Optional[Callable[[str], str]] = None,
 ):
   processor = processor or (lambda s: s)
