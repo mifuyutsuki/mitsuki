@@ -699,7 +699,8 @@ class MitsukiGacha(Extension):
         **bot_data()
       },
       user=user,
-      target_user=target_user
+      target_user=target_user,
+      escape_data_values=["username", "target_username"]
     )
 
     async with new_session() as session:
