@@ -12,6 +12,11 @@
 
 from interactions import (
   BaseContext,
+  InteractionContext,
+)
+from interactions.client.errors import (
+  AlreadyDeferred,
+  HTTPException,
 )
 from interactions.api.events import Component
 
@@ -19,12 +24,14 @@ from rapidfuzz.utils import default_process
 
 import unicodedata
 import regex as re
+import contextlib
 
 __all__ = (
   "escape_text",
   "process_text",
   "remove_accents",
   "is_caller",
+  "suppressed_defer",
 )
 
 
@@ -75,3 +82,19 @@ def is_caller(ctx: BaseContext):
       )
     return c
   return check
+
+
+async def suppressed_defer(ctx: InteractionContext, ephemeral: bool = False):
+  """
+  Defer a command without emitting an error.
+
+  Note: This option is to be added builtin to interactions.py in a future
+  interactions.py version.
+
+  Args:
+      ctx: Interaction context object
+  """
+
+  # TODO: replace with ipy defer(suppress_errors=True) when available
+  with contextlib.suppress(AlreadyDeferred, HTTPException):
+    await ctx.defer(ephemeral=ephemeral)

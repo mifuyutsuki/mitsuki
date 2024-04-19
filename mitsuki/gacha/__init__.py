@@ -46,7 +46,7 @@ from mitsuki.messages import (
   load_multifield,
 )
 from mitsuki.core import system_command
-from mitsuki.utils import is_caller, process_text, remove_accents
+from mitsuki.utils import is_caller, process_text, suppressed_defer
 from mitsuki.userdata import new_session, initialize
 from mitsuki.gacha import userdata
 from mitsuki.gacha.gachaman import gacha
@@ -263,9 +263,8 @@ class MitsukiGacha(Extension):
       return
     
     # Checks complete. Hard defer this command
-    if not ctx.deferred:
-      await ctx.defer()
-      
+    await suppressed_defer(ctx)
+
     # ---------------------------------------------------------------
     # Roll
 
@@ -375,8 +374,7 @@ class MitsukiGacha(Extension):
       return
 
     # Checks complete. Hard defer this command
-    if not ctx.deferred:
-      await ctx.defer()
+    await suppressed_defer(ctx)
 
     # ---------------------------------------------------------------
     # List cards
@@ -489,8 +487,7 @@ class MitsukiGacha(Extension):
       return
     
     # Initial checks complete. Hard defer this command
-    if not ctx.deferred:
-      await ctx.defer()
+    await suppressed_defer(ctx)
 
     # ---------------------------------------------------------------
     # Parse search results
