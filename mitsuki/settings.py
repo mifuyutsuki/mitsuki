@@ -42,7 +42,6 @@ class BaseSettings:
 
     return cls(
       mitsuki=MitsukiSettings(
-        messages_default=d_mitsuki.get("messages_default"),
         daily_reset=d_mitsuki.get("daily_reset"),
         db_use=d_mitsuki.get("db_use"),
         db_path=d_mitsuki.get("db_path"),
@@ -50,22 +49,24 @@ class BaseSettings:
         status_cycle=d_mitsuki.get("status_cycle"),
         status_randomize=bool(d_mitsuki.get("status_randomize")),
         log_info=bool(d_mitsuki.get("log_info")),
-        messages=d_mitsuki.get("messages")
+        messages_default=d_mitsuki.get("messages_default"),
+        messages_dir=d_mitsuki.get("messages_dir"),
+        messages_custom_dir=d_mitsuki.get("messages_custom_dir"),
+        messages=d_mitsuki.get("messages"),
       ),
       dev=DevSettings(
         scope=d_dev.get("scope"),
-        db_path=d_dev.get("db_path")
+        db_path=d_dev.get("db_path"),
       ),
       gacha=GachaSettings(
         settings=d_gacha.get("settings"),
-        roster=d_gacha.get("roster")
+        roster=d_gacha.get("roster"),
       )
     )
 
 
 @frozen
 class MitsukiSettings:
-  messages_default: str
   daily_reset: str
   db_use: str
   db_path: str
@@ -74,6 +75,9 @@ class MitsukiSettings:
   status_randomize: bool
   log_info: Optional[bool] = False
   messages: Optional[str] = None
+  messages_default: Optional[str] = None
+  messages_dir: Optional[str] = None
+  messages_custom_dir: Optional[str] = None
 
 
 @frozen

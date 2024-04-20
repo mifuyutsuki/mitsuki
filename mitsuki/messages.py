@@ -33,6 +33,7 @@ from string import Template
 from urllib.parse import urlparse
 from copy import deepcopy
 from os import PathLike
+from pathlib import Path
 
 
 import logging
@@ -72,15 +73,27 @@ class Message:
 
 
 class MessageMan:
-  _templates: Dict[str, MessageTemplate]
-  _default: MessageTemplate
+  _templates: Dict[str, MessageTemplate] = {}
+  _default: Optional[MessageTemplate] = None
 
 
   def __init__(self, template_file: Optional[FileName] = None):
     if template_file:
       self.load(template_file)
 
-  
+
+  @classmethod
+  def from_file(cls, template_file: FileName):
+    return cls(template_file)
+
+
+  @classmethod
+  def from_dir(cls, template_dir: FileName):
+    base = cls()
+    base.load_dir(template_dir)
+    return base
+
+
   def load(self, template_file: FileName):
     """
     Load or reload a message templates file (YAML).
@@ -88,13 +101,50 @@ class MessageMan:
     Args:
         template_file: Name of YAML template file.
     """
+    self._clear()
     self._templates = self._load(template_file)
-    self._default   = self._load_template("default")
+    if "default" in self._templates.keys():
+      self._default = self._load_template("default")
 
     logger.debug(
       f"Loaded {len(self._templates)} message templates from file: '{template_file}'"
     )
-  
+
+
+  def load_dir(self, template_dir: FileName, modify: bool = False):
+    """
+    Load or reload message template files in a given directory.
+
+    Args:
+        template_dir: Path to directory containing template files.
+        modify: Whether to modify existing templates or load anew
+    """
+    p = Path(template_dir)
+
+    default_template_path = None
+    if not modify:
+      if (p / "defaults.yaml").exists():
+        default_template_path = p / "defaults.yaml"
+      elif (p / "messages.yaml").exists():
+        default_template_path = p / "messages.yaml"
+      
+      if default_template_path:
+        self.load(str(default_template_path))
+      else:
+        self._clear()
+
+    for template_path in [f for f in p.rglob("*") if f.suffix.lower() in {".yaml", ".yml"}]:
+      if default_template_path and template_path == default_template_path:
+        continue
+      try:
+        self.modify(str(template_path))
+      except OSError:
+        logger.exception(f"Unable to open template file '{str(template_path)}'")
+        continue
+      except Exception:
+        logger.exception(f"Cannot load template file '{str(template_path)}'")
+        continue
+
 
   def modify(self, template_file: FileName):
     """
@@ -108,11 +158,13 @@ class MessageMan:
     """
     templates = self._load(template_file)
     self._templates.update(templates)
+    if "default" in templates.keys():
+      self._default = self._load_template("default")
 
     logger.debug(
       f"Added/modified {len(templates)} message templates from file: '{template_file}'"
     )
-  
+
 
   def message(
     self,
@@ -154,7 +206,7 @@ class MessageMan:
     if target_user:
       data |= target_user_data(target_user)
 
-    template  = deepcopy(self._default)
+    template  = deepcopy(self._default) if self._default else {}
     template |= self._load_template(template_name)
     template  = _assign_data(template, data, escapes=escape_data_values)
     template |= template_kwargs
@@ -207,7 +259,7 @@ class MessageMan:
     if target_user:
       base_data |= target_user_data(target_user)
     
-    base_template  = deepcopy(self._default)
+    base_template  = deepcopy(self._default) if self._default else {}
     base_template |= self._load_template(template_name)
     base_template  = _assign_data(base_template, base_data, escapes=escape_data_values)
     
@@ -274,7 +326,7 @@ class MessageMan:
     if target_user:
       base_data |= target_user_data(target_user)
     
-    base_template  = deepcopy(self._default)
+    base_template  = deepcopy(self._default) if self._default else {}
     base_template |= self._load_template(template_name)
     base_template  = _assign_data(base_template, base_data, escapes=escape_data_values)
     field_template = base_template.get("field")
@@ -325,26 +377,45 @@ class MessageMan:
 
   def _load_template(self, name: str):
     return self._templates.get(name) or {}
+  
+
+  def _clear(self):
+    self._templates = {}
+    self._default = None
 
 
 # =============================================================================
 
 
+def _defined(s: Optional[str]):
+  return s is not None and len(s.strip()) > 0
+
 BASE_MESSAGES_YAML = settings.mitsuki.messages_default
-MESSAGES_YAML = settings.mitsuki.messages
+CUSTOM_MESSAGES_YAML = settings.mitsuki.messages
+BASE_MESSAGES_DIR = settings.mitsuki.messages_dir
+CUSTOM_MESSAGES_DIR = settings.mitsuki.messages_custom_dir
 
 root = MessageMan()
 
-# For logging reasons, use load() on first instead of two modify() calls
-if BASE_MESSAGES_YAML:
+if _defined(BASE_MESSAGES_DIR):
+  # messages_dir specified
+  root.load_dir(BASE_MESSAGES_DIR)
+  if _defined(CUSTOM_MESSAGES_DIR):
+    root.load_dir(CUSTOM_MESSAGES_DIR, modify=True)
+
+elif _defined(BASE_MESSAGES_YAML):
+  # messages_dir unspecified, messages_default specified
   root.load(BASE_MESSAGES_YAML)
-  if MESSAGES_YAML:
-    root.modify(MESSAGES_YAML)
-elif MESSAGES_YAML:
-  root.load(MESSAGES_YAML)
+  if _defined(CUSTOM_MESSAGES_YAML):
+    root.modify(CUSTOM_MESSAGES_YAML)
+
+elif _defined(CUSTOM_MESSAGES_YAML):
+  # messages_dir and messages_default unspecified, messages specified
+  root.load(CUSTOM_MESSAGES_YAML)
+
 else:
   logger.warning(
-    "No MESSAGES_YAML found, initializing root MessageMan with no templates"
+    "Message template settings not set, initializing root MessageMan with no templates"
   )
 
 

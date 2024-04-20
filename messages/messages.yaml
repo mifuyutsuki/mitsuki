@@ -7,7 +7,7 @@ _colors:
 
 
 # Template for reference
-template:
+_template:
   author      :       # author
     name      : >-    # author.name
       
@@ -38,7 +38,7 @@ template:
   - name      :       # fields.name
     value     :       # fields.value
     inline    : false # fields.inline
-    
+
 
 # Default, used as base by all other messages
 default:

@@ -9,7 +9,26 @@ mitsuki:
   #   To avoid issues when updating Mitsuki from repository, avoid modifying
   #   the defaults file directly. Instead, create another messages.yaml file
   #   in a gitignored path, such as ./assets and ./settings.
+  #
+  #   Superseded by messages_dir. If specified, Mitsuki will load from
+  #   messages_dir instead of messages_default.
   messages_default: "defaults/messages.yaml"
+
+  # Path to messages directory.
+  #   This directory is recursively checked for all .yaml and .yml (YAML) files
+  #   to be loaded as message templates. Supersedes messages_default.
+  #
+  #   The directory must contain a defaults.yaml or messages.yaml for use as
+  #   the default or base message templates file.
+  messages_dir: "messages"
+
+  # Path to custom messages directory.
+  #   This directory is recursively checked for all .yaml and .yml (YAML) files
+  #   to be loaded as message templates.
+  #
+  #   Templates defined by template files in this directory overwrite templates
+  #   defined through messages_dir.
+  messages_custom_dir: 
 
   # Path to custom messages file.
   #   Templates in this file will overwrite defaults in messages_default.
