@@ -12,7 +12,7 @@
 
 from yaml import safe_load
 from typing import Optional, Dict, Any, List
-from attrs import frozen
+from attrs import frozen, field
 from os import environ
 
 import logging
@@ -36,33 +36,14 @@ class BaseSettings:
     with open(filename) as f:
       d: Dict[str, Dict[str, Any]] = safe_load(f)
 
-    d_mitsuki = d["mitsuki"]
-    d_dev     = d["dev"]
-    d_gacha   = d["gacha"]
-
-    return cls(
-      mitsuki=MitsukiSettings(
-        daily_reset=d_mitsuki.get("daily_reset"),
-        db_use=d_mitsuki.get("db_use"),
-        db_path=d_mitsuki.get("db_path"),
-        status=d_mitsuki.get("status"),
-        status_cycle=d_mitsuki.get("status_cycle"),
-        status_randomize=bool(d_mitsuki.get("status_randomize")),
-        log_info=bool(d_mitsuki.get("log_info")),
-        messages_default=d_mitsuki.get("messages_default"),
-        messages_dir=d_mitsuki.get("messages_dir"),
-        messages_custom_dir=d_mitsuki.get("messages_custom_dir"),
-        messages=d_mitsuki.get("messages"),
-      ),
-      dev=DevSettings(
-        scope=d_dev.get("scope"),
-        db_path=d_dev.get("db_path"),
-      ),
-      gacha=GachaSettings(
-        settings=d_gacha.get("settings"),
-        roster=d_gacha.get("roster"),
+    try:
+      return cls(
+        mitsuki=MitsukiSettings(**d["mitsuki"]),
+        dev=DevSettings(**d["dev"]),
+        gacha=GachaSettings(**d["gacha"])
       )
-    )
+    except KeyError as e:
+      raise KeyError(f"Missing settings tree: {str(e)}") from None
 
 
 @frozen
@@ -72,18 +53,18 @@ class MitsukiSettings:
   db_path: str
   status: List[str]
   status_cycle: int
-  status_randomize: bool
-  log_info: Optional[bool] = False
-  messages: Optional[str] = None
-  messages_default: Optional[str] = None
-  messages_dir: Optional[str] = None
-  messages_custom_dir: Optional[str] = None
+  status_randomize: bool = field(converter=bool)
+  log_info: bool = field(default=False, converter=bool)
+  messages: Optional[str] = field(default=None)
+  messages_default: Optional[str] = field(default=None)
+  messages_dir: Optional[str] = field(default=None)
+  messages_custom_dir: Optional[str] = field(default=None)
 
 
 @frozen
 class DevSettings:
-  scope: Optional[int] = None
-  db_path: Optional[str] = None
+  scope: Optional[int] = field(default=None)
+  db_path: Optional[str] = field(default=None)
 
 
 @frozen
