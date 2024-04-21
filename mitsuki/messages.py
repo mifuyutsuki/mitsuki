@@ -17,6 +17,7 @@ from interactions import (
   EmbedAttachment,
   EmbedField,
   EmbedFooter,
+  process_color,
 )
 from yaml import safe_load
 from mitsuki import settings
@@ -34,6 +35,7 @@ from urllib.parse import urlparse
 from copy import deepcopy
 from os import PathLike
 from pathlib import Path
+from contextlib import suppress
 
 
 import logging
@@ -75,6 +77,7 @@ class Message:
 class MessageMan:
   _templates: Dict[str, MessageTemplate] = {}
   _default: Optional[MessageTemplate] = None
+  colors: Dict[str, int] = {}
 
 
   def __init__(self, template_file: Optional[FileName] = None):
@@ -105,6 +108,8 @@ class MessageMan:
     self._templates = self._load(template_file)
     if "default" in self._templates.keys():
       self._default = self._load_template("default")
+    if "_colors" in self._templates.keys():
+      self.colors = self._templates["_colors"]
 
     logger.debug(
       f"Loaded {len(self._templates)} message templates from file: '{template_file}'"
@@ -215,7 +220,7 @@ class MessageMan:
 
     return Message(
       content=str(content) if content else None,
-      embed=_create_embed(template)
+      embed=_create_embed(template, color_data=self.colors)
     )
   
 
@@ -276,7 +281,7 @@ class MessageMan:
         escapes=escape_data_values
       )
       page_template |= template_kwargs
-      embeds.append(_create_embed(page_template))
+      embeds.append(_create_embed(page_template, color_data=self.colors))
     
     return Message(
       content=str(content) if content else None,
@@ -355,7 +360,7 @@ class MessageMan:
         escapes=escape_data_values
       )
       page_template |= template_kwargs
-      embeds.append(_create_embed(page_template))
+      embeds.append(_create_embed(page_template, color_data=self.colors))
 
       cursor += fields_per_page
       page += 1
@@ -629,10 +634,23 @@ def _assign_data(
   return assigned
 
 
-def _create_embed(template: MessageTemplate):
+def _create_embed(template: MessageTemplate, color_data: Optional[Dict[str, int]] = None):
   title = template.get("title")
   description = template.get("description")
-  color = int(template.get("color") or 0)
+
+  color_get = template.get("color")
+  color = None
+  if isinstance(color_get, int):
+    color = color_get
+  elif isinstance(color_get, str) and not color_get.strip().startswith("$"):
+    if color_get.isnumeric():
+      color = int(color_get)
+    elif color_data:
+      color = color_data.get(color_get.strip())
+    if color is None:
+      with suppress(ValueError):
+        color = process_color(color_get.strip())
+
   url = _valid_url_or_none(template.get("url"))
 
   fields_get = template.get("fields") or []
