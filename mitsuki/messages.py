@@ -211,8 +211,13 @@ class MessageMan:
     if target_user:
       data |= target_user_data(target_user)
 
-    template  = deepcopy(self._default) if self._default else {}
-    template |= self._load_template(template_name)
+    loaded = self._load_template(template_name)
+    if isinstance(loaded.get("base_template"), str):
+      default = self._load_template(loaded["base_template"], copy=True)
+    else:
+      default = self._load_template("default", copy=True)
+    
+    template  = default | loaded
     template  = _assign_data(template, data, escapes=escape_data_values)
     template |= template_kwargs
 
@@ -263,10 +268,15 @@ class MessageMan:
       base_data |= user_data(user)
     if target_user:
       base_data |= target_user_data(target_user)
+
+    loaded = self._load_template(template_name)
+    if isinstance(loaded.get("base_template"), str):
+      default = self._load_template(loaded["base_template"], copy=True)
+    else:
+      default = self._load_template("default", copy=True)
     
-    base_template  = deepcopy(self._default) if self._default else {}
-    base_template |= self._load_template(template_name)
-    base_template  = _assign_data(base_template, base_data, escapes=escape_data_values)
+    base_template = default | loaded
+    base_template = _assign_data(base_template, base_data, escapes=escape_data_values)
     
     content = base_template.get("content")
 
@@ -330,9 +340,14 @@ class MessageMan:
       base_data |= user_data(user)
     if target_user:
       base_data |= target_user_data(target_user)
-    
-    base_template  = deepcopy(self._default) if self._default else {}
-    base_template |= self._load_template(template_name)
+
+    loaded = self._load_template(template_name)
+    if isinstance(loaded.get("base_template"), str):
+      default = self._load_template(loaded["base_template"], copy=True)
+    else:
+      default = self._load_template("default", copy=True)
+
+    base_template  = default | loaded
     base_template  = _assign_data(base_template, base_data, escapes=escape_data_values)
     field_template = base_template.get("field")
 
@@ -380,8 +395,12 @@ class MessageMan:
     return templates
 
 
-  def _load_template(self, name: str):
-    return self._templates.get(name) or {}
+  def _load_template(self, name: str, copy: bool = False):
+    get = self._templates.get(name)
+    if copy:
+      return deepcopy(get) if get else {}
+    else:
+      return get or {}
   
 
   def _clear(self):
