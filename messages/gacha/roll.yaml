@@ -46,7 +46,7 @@ new_card:
     ${color}
 
 # Duplicate card
-gacha_get_dupe_card:
+dupe_card:
   author:
     name: >-
       Obtained card!
