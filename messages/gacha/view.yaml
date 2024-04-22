@@ -49,7 +49,7 @@ gs_results: &search_results_2
 
     To find more results, further specify the card name.
     If you can't find the card, the card might have not been
-    obtained by the user or doesn't exist.
+    obtained by a user or doesn't exist.
   field       :
     name      : ${stars} ${name}
     value     : >-
@@ -66,7 +66,7 @@ gs_no_results: &no_results_2
 
     To find more results, further specify the card name.
     If you can't find the card, the card might have not been
-    obtained by the user or doesn't exist.
+    obtained by a user or doesn't exist.
   color: error
 
 # No obtained cards to view
