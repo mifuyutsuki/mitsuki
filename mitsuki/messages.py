@@ -388,9 +388,19 @@ class MessageMan:
 
   def _load(self, template_file: FileName):
     with open(template_file, encoding="UTF-8") as f:
-      templates = safe_load(f)
-    if not isinstance(templates, Dict):
+      source_templates: Dict[str, Any] = safe_load(f)
+    if not isinstance(source_templates, Dict):
       raise ValueError(f"Message template file '{template_file}' is invalid")
+    
+    templates = {}
+    namespace = ""
+    if isinstance(source_templates.get("_namespace"), str):
+      namespace = source_templates["_namespace"] + "_"
+    if isinstance(source_templates.get("_colors"), Dict):
+      templates["_colors"] = source_templates["_colors"]
+    if len(namespace) > 1 and "_" in source_templates.keys():
+      templates[namespace.removesuffix("_")] = source_templates["_"]
+    templates |= {namespace + k: v for k, v in source_templates.items() if not k.startswith("_")}
     
     return templates
 
