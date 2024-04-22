@@ -1,0 +1,39 @@
+# /gacha shards
+# Show Shards amount held by a target user.
+
+_namespace: gacha_shards
+
+# General fields
+# -----------------------------------------------------------------------------
+# user            : Calling user (mention)
+# username        : Calling username (tag)
+# usericon        : Calling user avatar, uses server profile avatar if available
+# target_user     : Target user (mention), defaults to self
+# target_username : Target username (tag)
+# target_usericon : Target user avatar, uses server profile avatar if available
+# shards          : Amount of Shards held by target user
+# currency        : Gacha currency with name, e.g. 💠 Shard
+# currency_icon   : Gacha currency icon, e.g. 💠
+# currency_name   : Gacha currency name, e.g. Shard
+# -----------------------------------------------------------------------------
+
+# Shards
+_:
+  title: >-
+    ${currency_icon} ${shards}
+  description: >-
+    Amount held by ${target_user}
+  thumbnail   : ${target_usericon}
+
+# Shards - Server booster in a server with premium shards enabled
+# 
+# guild_name : Name of the boosted server
+premium:
+  title: >-
+    ${currency_icon} ${shards}
+  description: >-
+    Amount held by ${target_user}
+
+    **'${guild_name}' boosted**
+  thumbnail   : ${target_usericon}
+  color: gold

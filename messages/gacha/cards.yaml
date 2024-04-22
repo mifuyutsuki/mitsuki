@@ -1,0 +1,87 @@
+# /gacha cards
+# [FUTURE] /gacha gallery
+# /system gacha cards (/gacha admin cards)
+# View a user's collection of gacha cards.
+
+_namespace: gacha_cards
+
+# General fields
+# -----------------------------------------------------------------------------
+# user            : Calling user (mention)
+# username        : Calling username (tag)
+# usericon        : Calling user avatar, uses server profile avatar if available
+# target_user     : Target user (mention), defaults to self
+# target_username : Target username (tag)
+# target_usericon : Target user avatar, uses server profile avatar if available
+# page            : Current page number
+# pages           : Total number of pages
+# -----------------------------------------------------------------------------
+
+# Card information fields
+# -----------------------------------------------------------------------------
+# total_cards : Total number of unique cards in user collection or gacha roster
+# card        : Card ID
+# name        : Card name
+# type        : Type (category) of card
+# series      : Series name (subcategory) of card
+# stars       : Stars denoting rarity
+# image       : Image URL of card
+# -----------------------------------------------------------------------------
+# amount           : Amount of card acquired by target user
+# first_acquired   : User first acquired time in timestamp
+# first_acquired_f : User first acquired time in dynamic timestamp (full)
+# -----------------------------------------------------------------------------
+
+_:
+  title: >-
+    ${target_username}'s Cards Collection (${page}/${pages})
+  description: >-
+    `${total_cards}` unique cards obtained by ${target_user}
+  thumbnail   : ${target_usericon}
+  field       :
+    name      : ${stars} ${name}
+    value     : >-
+      `${amount}` • ${type} • ${series} • ${first_acquired_f}
+    inline    : false
+
+# Deck mode
+# [FUTURE] /gacha gallery
+deck:
+  author:
+    name: >-
+      ${target_username}'s Cards Collection (${page}/${pages})
+    icon_url: ${target_usericon}
+  title: >-
+    ${name}
+  description: >-
+    ${stars} • ${type} • ${series}
+
+
+    `${amount}` in ${target_user}'s card collection
+
+    First acquired by user: ${first_acquired_f}
+  image: >-
+    ${image}
+  color: ${color}
+
+# User has no obtained cards - does not embed card information
+no_cards:
+  title: >-
+    ${target_username}'s Cards Collection
+  description: >-
+    User ${target_user} has no cards
+  thumbnail   : ${target_usericon}
+  color: error
+
+# List all cards in roster - does not embed ownership information
+# /system gacha cards (/gacha admin cards)
+admin:
+  title: >-
+    Card Roster (${page}/${pages})
+  description: >-
+    `${total_cards}` unique cards in the roster
+  field       :
+    name      : ${stars} ${name}
+    value     : >-
+      `${card}` • ${type} • ${series}
+    inline    : false

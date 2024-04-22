@@ -1,0 +1,57 @@
+# Base colors
+_colors:
+  gold    : 0xe6bd37 # gold
+  ok      : 0x344ae1 # blue
+  warning : 0xc2b41d # yellow
+  error   : 0xc31d1d # crimson red
+
+# Default, used as base by all other messages
+default:
+  footer: 
+    text: >-
+      ${username}
+    icon_url: >-
+      ${usericon}
+  color: ok
+
+# System message
+system:
+  footer: 
+    text: >-
+      Bot system message
+    icon_url: >-
+      ${bot_usericon}
+  color: ok
+
+# Template for reference
+_template:
+  author      :       # author
+    name      : >-    # author.name
+      
+    url       :       # author.url
+    icon_url  :       # author.icon_url
+  title       : >-    # title
+     
+  url         :       # url
+  thumbnail   :       # thumbnail.url
+  description : >-    # description
+    
+  desc_field  : >-    # description (joined by newlines) (multiline) (UC)
+    
+  desc_fields :       # description (joined by newlines) (UC)
+  - ""
+  image       :       # image
+  footer      :       # footer
+    text      : >-    # footer.text
+      
+    icon_url  :       # footer.icon_url
+  timestamp   :       # timestamp (UC)
+  color       :       # color
+  field       :       # fields (multifield)
+    name      :       # fields.name
+    value     :       # fields.value
+    inline    : false # fields.inline
+  fields      :       # fields
+  - name      :       # fields.name
+    value     :       # fields.value
+    inline    : false # fields.inline

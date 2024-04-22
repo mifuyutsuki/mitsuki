@@ -1,0 +1,61 @@
+# /gacha daily
+# Claim daily shards.
+
+_namespace: gacha_daily
+
+# General fields
+# -----------------------------------------------------------------------------
+# user            : Calling user (mention)
+# username        : Calling username (tag)
+# usericon        : Calling user avatar, uses server profile avatar if available
+# currency        : Gacha currency with name, e.g. 💠 Shard
+# currency_icon   : Gacha currency icon, e.g. 💠
+# currency_name   : Gacha currency name, e.g. Shard
+# shards          : Amount of claimed daily Shards
+# new_shards      : Amount of currently held Shards after daily
+# timestamp_r     : Dynamic timestamp showing time to next reset (relative)
+# timestamp_f     : Dynamic timestamp showing time to next reset (full)
+# -----------------------------------------------------------------------------
+
+# Daily claimed
+_:
+  title: >-
+    Claimed daily ${currency_icon} ${shards}
+  description: >-
+    You have ${currency_icon} **${new_shards}**
+    
+    Next daily is available ${timestamp_r}
+
+# Daily claimed - Server booster in a server with premium shards enabled
+# 
+# guild_name : Name of the boosted server
+premium:
+  title: >-
+    Claimed daily ${currency_icon} ${shards}
+  description: >-
+    **'${guild_name}' boost!**
+    
+    You have ${currency_icon} **${new_shards}**
+    
+    Next daily is available ${timestamp_r}
+  color: gold
+
+# Daily claimed - First-timer with first-time bonus enabled
+first:
+  title: >-
+    Claimed daily ${currency_icon} ${shards}
+  description: >-
+    **First-time bonus!**
+    
+    You have ${currency_icon} **${new_shards}**
+    
+    Next daily is available ${timestamp_r}
+  color: gold
+
+# User already claimed dailies
+already_claimed:
+  title: >-
+    Already claimed for today
+  description: >-
+    Next daily is available ${timestamp_r}
+  color: error

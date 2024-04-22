@@ -1,0 +1,41 @@
+# /info *
+# Information tools.
+
+_namespace: info
+
+# Info about user (nonmember)
+user_user:
+  title: >-
+    ${target_dispname}
+  description: >-
+    ${target_username} (${target_user_id})
+
+    Global name: ${target_globalname}
+
+    Created at ${created_at}
+  thumbnail   : ${target_usericon}
+  image       : ${target_userbanner}
+
+# Info about user (member)
+user_member:
+  title: >-
+    ${target_dispname}
+  description: >-
+    ${target_username} (${target_user_id})
+
+    Global name: ${target_globalname}
+
+    Created at ${created_at}
+  thumbnail   : ${target_usericon}
+  image       : ${target_userbanner}
+  fields:
+  - name      : ${guild_name}
+    value     : >-
+      Guild ID: ${guild_id}
+
+      Nickname: ${target_nickname}
+
+      Last joined: ${joined_at}
+
+      Server booster: ${is_booster}
+    inline    : false # fields.inline

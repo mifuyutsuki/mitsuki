@@ -1,0 +1,39 @@
+# Message if an application error (unhandled error) has occured.
+error:
+  title: >-
+    Application Error
+  description: >-
+    An error has occured - please contact bot operator.
+    
+    ```
+    
+    ${error_repr}
+    ```
+  color: error
+
+
+# Message if a command is on cooldown.
+error_cooldown:
+  title: >-
+    Command on Cooldown
+  description: >-
+    Try again in ${cooldown_seconds} seconds
+  color: error
+
+
+# Message if the application reached max concurrency.
+error_concurrency:
+  title: >-
+    Application Error
+  description: >-
+    Maximum concurrent application usage reached, please try again later
+  color: error
+  
+
+# Message if a command check (almost always a permissions check) has occured.
+error_command_perms:
+  title: >-
+    Permission Error
+  description: >-
+    You do not have permissions to run this command
+  color: error

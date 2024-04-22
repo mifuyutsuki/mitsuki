@@ -1,0 +1,66 @@
+# /gacha roll
+# Roll a card.
+
+_namespace: gacha_get
+
+# General fields
+# -----------------------------------------------------------------------------
+# user            : Calling user (mention)
+# username        : Calling username (tag)
+# usericon        : Calling user avatar, uses server profile avatar if available
+# currency        : Gacha currency with name, e.g. 💠 Shard
+# currency_icon   : Gacha currency icon, e.g. 💠
+# currency_name   : Gacha currency name, e.g. Shard
+# -----------------------------------------------------------------------------
+
+# Card information fields
+# -----------------------------------------------------------------------------
+# card        : Card ID
+# name        : Card name
+# type        : Type (category) of card
+# series      : Series name (subcategory) of card
+# stars       : Stars denoting rarity
+# image       : Image URL of card
+# dupe_shards : Duplicate card shards from card
+# new_shards  : Amount of currently held Shards after roll
+# -----------------------------------------------------------------------------
+
+# New card
+new_card:
+  author:
+    name: >-
+      Obtained card!
+    icon_url: ${usericon}
+  title: >-
+    ${name}
+  description: >-
+    ${stars} • ${type} • ${series}
+    
+
+    ✨ **New!**
+
+    You have ${currency_icon} **${new_shards}**
+  image: >-
+    ${image}
+  color: >-
+    ${color}
+
+# Duplicate card
+gacha_get_dupe_card:
+  author:
+    name: >-
+      Obtained card!
+    icon_url: ${usericon}
+  title: >-
+    ${name}
+  description: >-
+    ${stars} • ${type} • ${series}
+
+
+    **${currency}** +${dupe_shards}
+
+    You have ${currency_icon} **${new_shards}**
+  image: >-
+    ${image}
+  color: >-
+    ${color}

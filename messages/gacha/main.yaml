@@ -1,0 +1,33 @@
+# /gacha *
+# General messages
+
+_namespace: gacha
+
+# General fields
+# -----------------------------------------------------------------------------
+# user          : Calling user (mention)
+# username      : Calling username (tag)
+# usericon      : Calling user avatar, uses server profile avatar if available
+# currency      : Gacha currency with name, e.g. 💠 Shard
+# currency_icon : Gacha currency icon, e.g. 💠
+# currency_name : Gacha currency name, e.g. Shard
+# -----------------------------------------------------------------------------
+
+# Not enough Shards for the action.
+# shards : Number of current shards
+# cost   : Cost of shards for the transaction
+insufficient_funds:
+  title: >-
+    Not enough ${currency}
+  description: >-
+    Need ${currency_icon} **${cost}**, has ${currency_icon} ${shards}
+  color: error
+
+# Reload gacha configuration.
+# /system gacha reload (/gacha admin reload)
+# cards : Number of cards in roster
+reload:
+  title: >-
+    Reloaded gacha configuration
+  description: >-
+    Cards in roster: ${cards}
