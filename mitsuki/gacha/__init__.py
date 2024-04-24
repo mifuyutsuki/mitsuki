@@ -208,10 +208,12 @@ class MitsukiGacha(Extension):
         use_message = "gacha_daily_first"
         
     # Claim daily
+    user_shards = await userdata.shards(ctx.author.id)
     message = load_message(
       use_message,
       data={
         "shards": shards,
+        "new_shards": shards + user_shards,
         "timestamp_r": daily_timestamp_r,
         "timestamp_f": daily_timestamp_f,
         "guild_name": guild_name,
