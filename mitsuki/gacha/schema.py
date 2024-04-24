@@ -11,6 +11,7 @@
 # GNU Affero General Public License for more details.
 
 from mitsuki.userdata import Base
+from mitsuki.utils import escape_text
 from sqlalchemy import ForeignKey, Row
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from rapidfuzz import fuzz
@@ -166,6 +167,7 @@ class UserCard:
   
   mention: str = field(init=False)
   first_acquired_f: str = field(init=False)
+  linked_name: str = field(init=False)
 
   @classmethod
   def create(cls, result: Row):
@@ -192,6 +194,7 @@ class UserCard:
   def __attrs_post_init__(self):
     self.mention = f"<@{self.user}>"
     self.first_acquired_f = f"<t:{self.first_acquired}:f>"
+    self.linked_name = f"[{escape_text(self.name)}]({self.image})" if self.image else self.name
 
   def asdict(self):
     return _asdict(self)
@@ -268,6 +271,7 @@ class RosterCard:
 
   card: str = field(init=False)
   card_id: str = field(init=False)
+  linked_name: str = field(init=False)
 
   @classmethod
   def from_db(cls, result: Row):
@@ -289,6 +293,7 @@ class RosterCard:
   def __attrs_post_init__(self):
     self.card = self.id    # Used by /gacha view
     self.card_id = self.id # Used by /system gacha cards
+    self.linked_name = f"[{escape_text(self.name)}]({self.image})" if self.image else self.name
 
   def asdict(self):
     return _asdict(self)
@@ -315,6 +320,7 @@ class StatsCard:
 
   card: str = field(init=False)
   card_id: str = field(init=False)
+  linked_name: str = field(init=False)
 
   first_user_mention: Optional[str] = field(init=False)
   first_user_acquired: Optional[int] = field(init=False)
@@ -373,6 +379,7 @@ class StatsCard:
     )
     self.card = self.id    # Used by /gacha view
     self.card_id = self.id # Used by /system gacha cards
+    self.linked_name = f"[{escape_text(self.name)}]({self.image})" if self.image else self.name
 
   def asdict(self):
     return _asdict(self)
