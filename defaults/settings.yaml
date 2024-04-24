@@ -10,9 +10,17 @@ mitsuki:
   #   the defaults file directly. Instead, create another messages.yaml file
   #   in a gitignored path, such as ./assets and ./settings.
   #
-  #   Superseded by messages_dir. If specified, Mitsuki will load from
-  #   messages_dir instead of messages_default.
+  #   [BETA] Superseded by messages_dir. If specified, Mitsuki will load from
+  #   messages_dir and messages_custom_dir instead of messages_default and
+  #   messages.
   messages_default: "defaults/messages.yaml"
+
+  # Path to custom messages file.
+  #   Templates in this file will overwrite defaults in messages_default.
+  #
+  #   [BETA] Superseded by messages_custom_dir. If messages_dir is specified,
+  #   Mitsuki will not load the file under this setting.
+  messages: 
 
   # Path to messages directory.
   #   This directory is recursively checked for all .yaml and .yml (YAML) files
@@ -30,12 +38,10 @@ mitsuki:
   #   defined through messages_dir.
   messages_custom_dir: 
 
-  # Path to custom messages file.
-  #   Templates in this file will overwrite defaults in messages_default.
-  messages: 
-
   # Daily reset time.
   #   Determines the reset time for certain functions, such as /gacha daily.
+  #
+  #   [FUTURE] Different modules can set their own daily reset time.
   # 
   # Format: HH:MM+hhmm <or> HH:MM-hhmm
   #   HH:MM   daily reset time (24-hour time)
@@ -85,7 +91,6 @@ mitsuki:
   log_info: false
 
 
-# [FUTURE] Dev mode (run.py dev) settings.
 dev:
   # Guild ID for the dev-mode. Required to use 'run.py dev'.
   scope: 
