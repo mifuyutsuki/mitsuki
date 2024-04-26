@@ -48,7 +48,7 @@ from mitsuki.messages import (
 from mitsuki.core import system_command
 from mitsuki.utils import is_caller, process_text, suppressed_defer
 from mitsuki.userdata import new_session, initialize
-from mitsuki.gacha import userdata
+from mitsuki.gacha import userdata, commands
 from mitsuki.gacha.gachaman import gacha
 from mitsuki.gacha.schema import SourceCard
 
@@ -131,25 +131,11 @@ class MitsukiGacha(Extension):
     opt_type=OptionType.USER
   )
   async def shards_cmd(self, ctx: SlashContext, user: Optional[BaseUser] = None):
-    target_user = user or ctx.author
-    shards      = await userdata.shards(target_user.id)
-
-    is_premium = False
-    guild_name = None
-    if gacha.premium_guilds and gacha.premium_daily_shards and isinstance(target_user, Member):
-      guild_name = target_user.guild.name
-      if target_user.premium and (target_user.guild.id in gacha.premium_guilds):
-        is_premium = True
+    command = await commands.Shards.create(ctx.author, user or ctx.author)
 
     message = load_message(
-      "gacha_shards_premium" if is_premium else "gacha_shards",
-      data={
-        "shards": shards,
-        "guild_name": guild_name,
-        **currency_data()
-      },
-      user=ctx.author,
-      target_user=target_user,
+      "gacha_shards_premium" if command.data.is_premium else "gacha_shards",
+      data=command.asdict(),
       escape_data_values=["guild_name"]
     )
     await ctx.send(**message.to_dict())

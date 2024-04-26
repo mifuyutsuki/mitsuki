@@ -23,6 +23,7 @@ from sqlalchemy.dialects.postgresql import insert as pginsert
 from sqlalchemy.ext.asyncio import AsyncSession
 from rapidfuzz import fuzz
 
+from mitsuki import settings
 from mitsuki.userdata import engine, new_session
 from mitsuki.gacha.schema import *
 
@@ -71,11 +72,12 @@ async def daily_give(session: AsyncSession, user_id: Snowflake, amount: int, fir
   await _daily_add(session, user_id, amount, first=first)
 
 
-async def daily_check(user_id: Snowflake, reset_time: str = "00:00+0000"):
+async def daily_check(user_id: Snowflake, reset_time: Optional[str] = None):
+  reset_time = reset_time or settings.mitsuki.daily_reset
   last_daily_data = await daily_last(user_id)
   if last_daily_data is None:
     return True
-   
+
   return datetime.now().timestamp() > _daily_next(last_daily_data, reset_time)
 
 
@@ -93,9 +95,10 @@ async def daily_first_check(user_id: Snowflake):
     result = await session.scalar(statement)
   
   return not bool(result)
-  
 
-def daily_next(from_time: Optional[float] = None, reset_time: str = "00:00+0000"):
+
+def daily_next(from_time: Optional[float] = None, reset_time: Optional[str] = None):
+  reset_time = reset_time or settings.mitsuki.daily_reset
   from_time = from_time or datetime.now().timestamp()
   dt = datetime.strptime(reset_time, "%H:%M%z")
   
@@ -569,7 +572,7 @@ async def _daily_last(user_id: Snowflake):
     return await session.scalar(statement)
 
 
-def _daily_next(last_daily: float, reset_time: str = "00:00+0000"):
+def _daily_next(last_daily: float, reset_time: str):
   dt = datetime.strptime(reset_time, "%H:%M%z")
 
   reset_tz = dt.tzinfo
