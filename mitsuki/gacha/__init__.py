@@ -131,15 +131,7 @@ class MitsukiGacha(Extension):
     opt_type=OptionType.USER
   )
   async def shards_cmd(self, ctx: SlashContext, user: Optional[BaseUser] = None):
-    command = await commands.Shards.create(ctx.author, user or ctx.author)
-
-    message = load_message(
-      "gacha_shards_premium" if command.data.is_premium else "gacha_shards",
-      data=command.asdict(),
-      escape_data_values=["guild_name"]
-    )
-    await ctx.send(**message.to_dict())
-
+    await commands.Shards.create(ctx).run(user)
 
   # ===========================================================================
   # ===========================================================================
@@ -151,75 +143,7 @@ class MitsukiGacha(Extension):
   @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 3.0)
   async def daily_cmd(self, ctx: SlashContext):
-    daily_reset_time = settings.mitsuki.daily_reset
-    
-    # Timestamp for next daily
-    daily_timestamp = userdata.daily_next(reset_time=daily_reset_time)
-    daily_timestamp_r = f"<t:{int(daily_timestamp)}:R>"
-    daily_timestamp_f = f"<t:{int(daily_timestamp)}:f>"
-
-    # ---------------------------------------------------------------
-    # Check if daily is already claimed
-
-    if not await userdata.daily_check(ctx.author.id, daily_reset_time):
-      message = load_message(
-        "gacha_daily_already_claimed",
-        data={
-          "timestamp_r": daily_timestamp_r,
-          "timestamp_f": daily_timestamp_f,
-          **currency_data()
-        },
-        user=ctx.author
-      )
-      await ctx.send(**message.to_dict())
-      return
-    
-    shards = gacha.daily_shards
-    use_message = "gacha_daily"
-    guild_name = None
-
-    # Premium check
-    if gacha.premium_guilds and gacha.premium_daily_shards and isinstance(ctx.author, Member):
-      guild_name = ctx.author.guild.name
-      if ctx.author.premium and (ctx.author.guild.id in gacha.premium_guilds):
-        shards = gacha.premium_daily_shards
-        use_message = "gacha_daily_premium"
-    
-    # First-timer check (overrides premium)
-    first = False
-    if gacha.first_time_shards:
-      if await userdata.daily_first_check(ctx.author.id):
-        first = True
-        shards = gacha.first_time_shards
-        use_message = "gacha_daily_first"
-        
-    # Claim daily
-    user_shards = await userdata.shards(ctx.author.id)
-    message = load_message(
-      use_message,
-      data={
-        "shards": shards,
-        "new_shards": shards + user_shards,
-        "timestamp_r": daily_timestamp_r,
-        "timestamp_f": daily_timestamp_f,
-        "guild_name": guild_name,
-        **currency_data()
-      },
-      user=ctx.author,
-      escape_data_values=["guild_name"]
-    )
-
-    async with new_session() as session:
-      try:
-        await userdata.daily_give(session, ctx.author.id, shards, first=first)
-
-        await ctx.send(**message.to_dict())
-      except Exception:
-        await session.rollback()
-        raise 
-      else:
-        await session.commit()
-
+    await commands.Daily.create(ctx).run()
 
   # ===========================================================================
   # ===========================================================================
