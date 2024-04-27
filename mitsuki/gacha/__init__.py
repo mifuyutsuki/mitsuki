@@ -155,69 +155,7 @@ class MitsukiGacha(Extension):
   @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 3.0)
   async def roll_cmd(self, ctx: SlashContext):
-    user       = ctx.author
-    shards     = await userdata.shards(user.id)
-    cost       = gacha.cost
-
-    # ---------------------------------------------------------------
-    # Insufficient funds?
-    
-    if shards < cost:
-      message = load_message(
-        "gacha_insufficient_funds",
-        data={
-          "shards": shards,
-          "cost": cost,
-          **currency_data()
-        },
-        user=user)
-      await ctx.send(**message.to_dict())
-      return
-    
-    # Checks complete. Hard defer this command
-    await suppressed_defer(ctx)
-
-    # ---------------------------------------------------------------
-    # Roll
-
-    # TODO: pass pity data to gachaman.roll
-
-    min_rarity  = await userdata.pity_check(user.id, gacha.pity)
-    rolled      = gacha.roll(min_rarity=min_rarity)
-    is_new_card = not await userdata.card_has(user.id, rolled.id)
-    dupe_shards = 0 if is_new_card else gacha.dupe_shards[rolled.rarity]
-    new_shards  = shards + dupe_shards - cost
-
-    # ---------------------------------------------------------------
-    # Generate embed
-    
-    message = load_message(
-      "gacha_get_new_card" if is_new_card else "gacha_get_dupe_card",
-      data={
-        **card_data(rolled),
-        **currency_data(),
-        "new_shards": new_shards
-      },
-      user=ctx.author,
-      escape_data_values=["name", "type", "series"]
-    )
-
-    # ---------------------------------------------------------------
-    # Update userdata
-    
-    async with new_session() as session:      
-      try:
-        await userdata.shards_update(session, user.id, dupe_shards - cost)
-        await userdata.card_give(session, user.id, rolled.id)
-        await userdata.pity_update(session, user.id, rolled.rarity, gacha.pity)
-
-        await ctx.send(**message.to_dict())
-      except Exception:
-        await session.rollback()
-        raise
-      else:
-        await session.commit()
-
+    await commands.Roll.create(ctx).run()
 
   # ===========================================================================
   # ===========================================================================

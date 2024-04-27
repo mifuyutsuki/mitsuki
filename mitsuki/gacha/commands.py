@@ -12,9 +12,11 @@
 
 # [EXPERIMENTAL] Commands framework. Eases creation of stateful commands.
 
-from mitsuki import settings, messages
+from mitsuki import settings, messages, bot
 from mitsuki.userdata import new_session
+from mitsuki.utils import escape_text, is_caller
 from . import userdata
+from .schema import RosterCard
 from .gachaman import gacha
 # from .schema import UserCard, StatsCard, RosterCard
 
@@ -28,6 +30,8 @@ from interactions import (
   InteractionContext,
   Message,
   Timestamp,
+  Button,
+  ButtonStyle,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -184,7 +188,7 @@ class MultifieldMixin:
     return messages.load_multipage(
       template, self.field_dict, base_data=self.asdict() | (other_data or {}), **kwargs
     )
-  
+
   async def send_multifield(
     self,
     template: Optional[str] = None,
@@ -253,6 +257,25 @@ class WriterCommand(Command):
 
 # =============================================================================
 # Gacha data
+
+@define(slots=False)
+class BaseCard(AsDict):
+  id: str
+  name: str
+  rarity: int
+  type: str
+  series: str
+
+  color: int
+  stars: str
+  dupe_shards: int
+  image: Optional[str] = field(default=None)
+
+  linked_name: str = field(init=False)
+
+  def __attrs_post_init__(self):
+    self.linked_name = f"[{escape_text(self.name)}]({self.image})" if self.image else self.name
+
 
 @define(slots=False)
 class Currency(AsDict):
@@ -371,12 +394,93 @@ class Daily(CurrencyMixin, WriterCommand):
     )
 
     if available and daily_shards > 0:
-      return await self.send_commit(escape_data_values=["guild_name"])
+      return await self.send_commit(template_kwargs=dict(escape_data_values=["guild_name"]))
     else:
-      return await self.send(escape_data_values=["guild_name"])
+      return await self.send(template_kwargs=dict(escape_data_values=["guild_name"]))
 
   async def transaction(self, session: AsyncSession):
     await userdata.daily_give(session, self.caller_id, self.amount)
+
+
+class Roll(CurrencyMixin, WriterCommand):
+  state: "Roll.States"
+  data: "Roll.Data"
+  card: Optional[BaseCard] = None
+  end: bool = False
+
+  class States(StateEnum):
+    INSUFFICIENT = State(0, "gacha_insufficient_funds")
+    NEW          = State(1, "gacha_get_new_card")
+    DUPE         = State(2, "gacha_get_dupe_card")
+
+  @define(slots=False)
+  class Data(AsDict):
+    shards: int
+    update_shards: int
+    cost: int = field(default=gacha.cost)
+    new_shards: int = field(init=False)
+
+    @classmethod
+    def set(cls, user_shards: int, update_shards: int):
+      return cls(shards=user_shards, update_shards=update_shards)
+
+    def __attrs_post_init__(self):
+      self.new_shards = self.shards + self.update_shards
+
+  async def roll(self):
+    user_shards = await userdata.shards(self.caller_id)
+    roll_cost   = gacha.cost
+
+    if user_shards < roll_cost:
+      self.state = self.States.INSUFFICIENT
+      self.data  = self.Data.set(user_shards, 0)
+      await self.send()
+      return False
+
+    await self.ctx.defer()
+    pity   = await userdata.pity_check(self.caller_id, gacha.pity)
+    rolled = gacha.roll(min_rarity=pity)
+    card   = await userdata.card_get_roster(rolled.id)
+
+    if await userdata.card_has(self.caller_id, rolled.id):
+      self.state = self.States.DUPE
+      self.data  = self.Data.set(user_shards, card.dupe_shards - roll_cost)
+    else:
+      self.state = self.States.NEW
+      self.data  = self.Data.set(user_shards, -roll_cost)
+    self.end  = self.data.new_shards < self.data.cost
+    self.card = card
+    return True
+
+
+  async def run(self):
+    again_response = None
+    while not self.end:
+      if not await self.roll():
+        return
+
+      if again_response:
+        await self.message.edit(components=[])
+      again_btn = Button(style=ButtonStyle.BLURPLE, label="Roll again", disabled=self.end)
+      await self.send_commit(
+        other_data=self.card.asdict(), 
+        template_kwargs=dict(escape_data_values=["name", "type", "series"]),
+        components=again_btn
+      )
+
+      try:
+        again_response = await bot.wait_for_component(components=again_btn, check=is_caller(self.ctx), timeout=30)
+      except TimeoutError:
+        await self.message.edit(components=[])
+        return
+      else:
+        self.set_ctx(again_response.ctx)
+
+
+  async def transaction(self, session: AsyncSession):
+    await userdata.shards_update(session, self.caller_id, self.data.update_shards)
+    await userdata.card_give(session, self.caller_id, self.card.id)
+    await userdata.pity_update(session, self.caller_id, self.card.rarity, gacha.pity)
 
 
 class View(CurrencyMixin, ReaderCommand):

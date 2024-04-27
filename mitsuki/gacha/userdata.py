@@ -131,6 +131,22 @@ async def card_count(user_id: int, card_id: str):
   return count or 0
 
 
+async def card_get_roster(card_id: str):
+  statement = (
+    select(Card, Settings)
+    .join(Settings, Card.rarity == Settings.rarity)
+    .where(Card.id == card_id)
+  )
+
+  async with new_session() as session:
+    result = (await session.execute(statement)).first()
+  
+  if not result:
+    raise ValueError(f"Card with ID '{card_id}' not found in roster")
+  else:
+    return RosterCard.from_db(result)
+
+
 async def card_get_user(user_id: int, card_id: str):
   statement = (
     select(Inventory, Card, Settings)

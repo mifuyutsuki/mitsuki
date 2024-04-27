@@ -267,6 +267,7 @@ class RosterCard:
 
   color: int
   stars: str
+  dupe_shards: int
   image: Optional[str] = field(default=None)
 
   card: str = field(init=False)
@@ -283,7 +284,8 @@ class RosterCard:
       series=result.Card.series,
       image=result.Card.image,
       color=result.Settings.color,
-      stars=result.Settings.stars
+      stars=result.Settings.stars,
+      dupe_shards=result.Settings.dupe_shards
     )
   
   @classmethod
