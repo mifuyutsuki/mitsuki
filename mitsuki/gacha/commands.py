@@ -406,7 +406,7 @@ class Roll(CurrencyMixin, WriterCommand):
   state: "Roll.States"
   data: "Roll.Data"
   card: Optional[BaseCard] = None
-  end: bool = False
+  again: bool = True
 
   class States(StateEnum):
     INSUFFICIENT = State(0, "gacha_insufficient_funds")
@@ -434,7 +434,6 @@ class Roll(CurrencyMixin, WriterCommand):
     if user_shards < roll_cost:
       self.state = self.States.INSUFFICIENT
       self.data  = self.Data.set(user_shards, 0)
-      await self.send()
       return False
 
     await self.ctx.defer()
@@ -448,33 +447,34 @@ class Roll(CurrencyMixin, WriterCommand):
     else:
       self.state = self.States.NEW
       self.data  = self.Data.set(user_shards, -roll_cost)
-    self.end  = self.data.new_shards < self.data.cost
-    self.card = card
+    self.again = self.data.new_shards >= self.data.cost
+    self.card  = card
     return True
 
 
   async def run(self):
     again_response = None
-    while not self.end:
+    while self.again:
       if not await self.roll():
+        await self.send()
         return
 
-      if again_response:
-        await self.message.edit(components=[])
-      again_btn = Button(style=ButtonStyle.BLURPLE, label="Roll again", disabled=self.end)
-      await self.send_commit(
+      again_btn = Button(style=ButtonStyle.BLURPLE, label="Roll again", disabled=not self.again)
+      message   = await self.send_commit(
         other_data=self.card.asdict(), 
         template_kwargs=dict(escape_data_values=["name", "type", "series"]),
         components=again_btn
       )
 
       try:
-        again_response = await bot.wait_for_component(components=again_btn, check=is_caller(self.ctx), timeout=30)
+        again_response = await bot.wait_for_component(components=again_btn, check=is_caller(self.ctx), timeout=15)
       except TimeoutError:
-        await self.message.edit(components=[])
         return
       else:
         self.set_ctx(again_response.ctx)
+      finally:
+        if message:       
+          await message.edit(components=[])
 
 
   async def transaction(self, session: AsyncSession):
