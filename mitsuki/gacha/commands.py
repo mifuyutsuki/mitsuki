@@ -14,11 +14,10 @@
 
 from mitsuki import settings, messages, bot
 from mitsuki.userdata import new_session
-from mitsuki.utils import escape_text, is_caller
+from mitsuki.utils import escape_text, is_caller, process_text, suppressed_defer
 from . import userdata
-from .schema import RosterCard
+from .schema import UserCard, StatsCard, RosterCard
 from .gachaman import gacha
-# from .schema import UserCard, StatsCard, RosterCard
 
 from attrs import define, frozen, field, asdict as _asdict
 from typing import Optional, Union, List, Dict, Any, NamedTuple
@@ -32,6 +31,7 @@ from interactions import (
   Timestamp,
   Button,
   ButtonStyle,
+  StringSelectMenu,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -127,6 +127,7 @@ class Command:
     *,
     other_data: Optional[dict] = None,
     template_kwargs: Optional[dict] = None,
+    edit_origin: bool = False,
     **kwargs
   ):
     if not template:
@@ -136,7 +137,11 @@ class Command:
         raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
-    self.message = await self.ctx.send(
+    if edit_origin and hasattr(self.ctx, "edit_origin"):
+      send = self.ctx.edit_origin
+    else:
+      send = self.ctx.send
+    self.message = await send(
       **self.message_template(template, other_data, **template_kwargs).to_dict(), **kwargs
     )
     return self.message
@@ -174,7 +179,7 @@ class MultifieldMixin:
 
   @property
   def field_dict(self):
-    if isinstance(self.field_data[0], AsDict):
+    if isinstance(self.field_data[0], AsDict) or hasattr(self.field_data[0], "asdict"):
       return [page.asdict() for page in self.field_data]
     else:
       return self.field_data
@@ -328,7 +333,7 @@ class Shards(TargetMixin, CurrencyMixin, ReaderCommand):
     is_premium = is_gacha_premium(self.target_user)
     guild_name = self.target_user.guild.name if isinstance(self.target_user, Member) else None
     self.data  = self.Data(shards=shards, is_premium=is_premium, guild_name=guild_name)
-    return await self.send("gacha_shards", escape_data_values=["guild_name"])
+    return await self.send("gacha_shards", template_kwargs=dict(escape_data_values=["guild_name"]))
 
 
 class Daily(CurrencyMixin, WriterCommand):
@@ -436,7 +441,7 @@ class Roll(CurrencyMixin, WriterCommand):
       self.data  = self.Data.set(user_shards, 0)
       return False
 
-    await self.ctx.defer()
+    await suppressed_defer(self.ctx)
     pity   = await userdata.pity_check(self.caller_id, gacha.pity)
     rolled = gacha.roll(min_rarity=pity)
     card   = await userdata.card_get_roster(rolled.id)
@@ -483,15 +488,123 @@ class Roll(CurrencyMixin, WriterCommand):
     await userdata.pity_update(session, self.caller_id, self.card.rarity, gacha.pity)
 
 
-class View(CurrencyMixin, ReaderCommand):
+class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
   state: "View.States"
   data: "View.Data"
+  card: StatsCard
+  card_results: List[StatsCard]
+  card_user: Optional[UserCard] = None
+  user_mode: bool = False
 
-  class States(Enum):
-    SEARCH_RESULTS = State(0, "gacha_view_gs_search_results")
-    VIEW           = State(1, "gacha_view_gs")
-    NO_RESULTS     = State(2, "gacha_view_gs_no_results")
-    NO_INVENTORY   = State(3, "gacha_view_gs_no_acquired")
+  class States(StateEnum):
+    SEARCH_RESULTS      = State(0, "gacha_view_search_results_2")   # gacha_view_gs_search_results
+    NO_RESULTS          = State(1, "gacha_view_no_results_2")       # gacha_view_gs_no_results
+    NO_INVENTORY        = State(2, "gacha_view_no_acquired")        # gacha_view_gs_no_acquired
+    SEARCH_RESULTS_USER = State(3, "gacha_view_search_results")     # gacha_view_us_search_results
+    NO_RESULTS_USER     = State(4, "gacha_view_no_results")         # gacha_view_us_no_results
+    NO_INVENTORY_USER   = State(5, "gacha_view_no_cards")           # gacha_view_us_no_cards
 
+    VIEW_OWNERS_UNACQ   = State(11, "gacha_view_card_2_unacquired")           # gacha_view_gs_owners_unacquired
+    VIEW_1OWNER_UNACQ   = State(12, "gacha_view_card_2_unacquired_one_owner") # gacha_view_gs_1owner_unacquired
+    VIEW_OWNERS_ACQ     = State(13, "gacha_view_card_2_acquired")             # gacha_view_gs_owners_acquired
+    VIEW_1OWNER_ACQ     = State(14, "gacha_view_card_2_acquired_one_owner")   # gacha_view_gs_1owner_acquired
+    VIEW_USER           = State(15, "gacha_view_card")                        # gacha_view_us_card
+
+  @define(slots=False)
   class Data(AsDict):
-    pass
+    search_key: str
+    total_cards: int
+    # total_results: int [FUTURE]
+
+  @property
+  def search_key(self):
+    return self.data.search_key
+
+  @property
+  def total_cards(self):
+    return self.data.total_cards
+
+
+  async def run(self, search_key: str, target: Optional[BaseUser] = None):
+    self.set_target(target or self.caller_user)
+    self.user_mode = target is not None
+
+    results: List[StatsCard] = await self.search(search_key)
+    if len(results) <= 0: # no results
+      if self.total_cards <= 0:
+        self.state = self.States.NO_INVENTORY_USER if self.user_mode else self.States.NO_INVENTORY
+      else:
+        self.state = self.States.NO_RESULTS_USER if self.user_mode else self.States.NO_RESULTS
+      await self.send()
+      return
+    elif len(results) == 1: # singular match
+      await suppressed_defer(self.ctx)
+      self.card = results[0]
+    elif len(results) > 1: # multiple matches
+      await suppressed_defer(self.ctx)
+      self.state = self.States.SEARCH_RESULTS_USER if self.user_mode else self.States.SEARCH_RESULTS
+      card = await self.prompt()
+      if not card:
+        return
+      self.card = card
+
+    if self.user_mode:
+      self.card_user = await userdata.card_get_user(self.target_id, self.card.id)
+      self.state = self.States.VIEW_USER
+    else:
+      self.card_user = await userdata.card_get_user(self.caller_id, self.card.id)
+      if self.card_user:
+        self.state = self.States.VIEW_1OWNER_ACQ if self.card.users <= 1 else self.States.VIEW_OWNERS_ACQ
+      else:
+        self.state = self.States.VIEW_1OWNER_UNACQ if self.card.users <= 1 else self.States.VIEW_OWNERS_UNACQ
+
+    await self.send(
+      other_data=self.card.asdict() | (self.card_user.asdict() if self.card_user else {}),
+      template_kwargs=dict(escape_data_values=["search_key", "name", "type", "series"]),
+      edit_origin=True,
+      components=[]
+    )
+
+
+  async def search(self, search_key: str):
+    total_cards = await userdata.card_list_count(target_id := self.target_id if self.user_mode else None)
+    self.data = self.Data(search_key=search_key, total_cards=total_cards)
+    if total_cards <= 0:
+      return []
+
+    self.card_results = await userdata.card_search(
+      search_key, user_id=target_id, limit=6, cutoff=60, strong_cutoff=90, processor=process_text
+    )
+    return self.card_results
+
+
+  async def prompt(self):
+    # Handle cards with the same names
+    self.field_data = self.card_results
+    selection: List[str] = []
+    for card in self.card_results:
+      selection_name = card.name
+      repeat_no = 1
+      while selection_name in selection:
+        selection_name = f"{card.name} ({repeat_no})"
+        repeat_no += 1
+      selection.append(selection_name)
+    
+    # Create prompt
+    select_menu = StringSelectMenu(*selection, placeholder="Card to view from search results")
+    message = self.message_multifield(
+      self.state.template, escape_data_values=["search_key", "name", "type", "series"]
+    )
+    self.message = await self.ctx.send(content=message.content, embed=message.embeds[0], components=select_menu)
+
+    # Initiate prompt
+    try:
+      selected = await bot.wait_for_component(components=select_menu, check=is_caller(self.ctx), timeout=45)
+    except TimeoutError:
+      if self.message:
+        await self.message.edit(components=[])
+      return None
+    else:
+      self.set_ctx(selected.ctx)
+      await self.ctx.defer(edit_origin=True)
+      return self.card_results[selection.index(self.ctx.values[0])]
