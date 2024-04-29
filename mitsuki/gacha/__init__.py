@@ -328,13 +328,13 @@ class MitsukiGacha(Extension):
     sub_cmd_description="Give Shards to another user"
   )
   @slash_option(
-    name="target_user",
+    name="target",
     description="User to give Shards to",
     required=True,
     opt_type=OptionType.USER
   )
   @slash_option(
-    name="shards",
+    name="amount",
     description="Amount of Shards to give",
     required=True,
     opt_type=OptionType.INTEGER,
@@ -346,36 +346,12 @@ class MitsukiGacha(Extension):
   async def system_give_cmd(
     self,
     ctx: SlashContext,
-    target_user: BaseUser,
-    shards: int
+    target: BaseUser,
+    amount: int
   ):
-    shards_before = await userdata.shards(target_user.id)
-    shards_after  = shards_before + shards
+    await commands.GiveAdmin.create(ctx).run(target, amount)
 
-    message = load_message(
-      "gacha_give",
-      data={
-        "shards": shards,
-        "shards_before": shards_before,
-        "shards_after": shards_after,
-        **currency_data()
-      },
-      user=ctx.author,
-      target_user=target_user
-    )
 
-    async with new_session() as session:
-      try:
-        await userdata.shards_give(session, target_user.id, shards)
-
-        await ctx.send(**message.to_dict(), ephemeral=True)
-      except Exception:
-        await session.rollback()
-        raise
-      else:
-        await session.commit()
-  
-  
   # ===========================================================================
   # ===========================================================================
 

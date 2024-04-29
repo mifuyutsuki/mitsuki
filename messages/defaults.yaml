@@ -14,6 +14,19 @@ default:
       ${usericon}
   color: ok
 
+# Default but without footer
+no_footer:
+  color: ok
+
+# Admin commands
+admin:
+  footer: 
+    text: >-
+      ${username} • Admin
+    icon_url: >-
+      ${usericon}
+  color: ok
+
 # System message
 system:
   footer: 

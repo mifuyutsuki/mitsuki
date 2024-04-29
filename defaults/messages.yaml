@@ -287,6 +287,19 @@ gacha_give:
     Sent to ${target_user}
 
 
+# /system gacha give (/gacha admin give)
+# Admin: Give an amount of Shards to another user for free.
+# 
+# currency    : Gacha currency, shown with icon
+# target_user : Target user (mention) other than self
+# amount      : Number of Shards sent to target user
+gacha_give_admin:
+  title: >-
+    ${amount} ${currency} sent
+  description: >-
+    Sent to ${target_user}
+
+
 # /gacha give
 # Notification for the target user.
 gacha_give_notification:

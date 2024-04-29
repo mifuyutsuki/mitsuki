@@ -465,7 +465,7 @@ class Give(TargetMixin, CurrencyMixin, WriterCommand):
 
     def __attrs_post_init__(self):
       self.cost = self.amount
-      self.new_shards = self.shards if self.shards < self.amount else self.shards - self.amount
+      self.new_shards = self.shards if self.amount < 0 or self.shards < self.amount else self.shards - self.amount
 
 
   async def run(self, target: BaseUser, amount: int):
@@ -498,3 +498,43 @@ class Give(TargetMixin, CurrencyMixin, WriterCommand):
 
   async def transaction(self, session: AsyncSession):
     await userdata.shards_exchange(session, self.caller_id, self.target_id, self.data.amount)
+
+
+class GiveAdmin(TargetMixin, CurrencyMixin, WriterCommand):
+  state: "GiveAdmin.States"
+  data: "GiveAdmin.Data"
+
+  class States(StrEnum):
+    INVALID_VALUE = "gacha_give_admin_badvalue"
+    SENT          = "gacha_give_admin"
+
+  @define(slots=False)
+  class Data(AsDict):
+    shards: int
+    amount: int
+    new_shards: int = field(init=False)
+
+    def __attrs_post_init__(self):
+      self.new_shards = self.shards if self.amount <= 0 else self.shards + self.amount
+
+  async def run(self, target: BaseUser, amount: int):
+    self.set_target(target)
+    await suppressed_defer(self.ctx, ephemeral=True)
+
+    target_shards = await userdata.shards(self.target_id)
+    valid = False
+    if amount < 1:
+      self.set_state(self.States.INVALID_VALUE)
+    else:
+      self.set_state(self.States.SENT)
+      valid = True
+    self.data = self.Data(shards=target_shards, amount=amount)
+
+    if not valid:
+      await self.send()
+    else:
+      await self.send_commit()
+
+
+  async def transaction(self, session: AsyncSession):
+    await userdata.shards_give(session, self.target_id, self.data.amount)

@@ -28,7 +28,27 @@ _:
     
     You have ${currency_icon} **${new_shards}**
 
-# Notification for the target user.
+# Admin version
+# new_shards is the shards amount of the target user
+admin:
+  base_template: admin
+  title: >-
+    ${amount} ${currency} sent
+  description: >-
+    Sent to ${target_user}
+
+    Target user has ${currency_icon} **${new_shards}**
+
+# User supplied an invalid amount to give (Admin)
+admin_badvalue:
+  base_template: admin
+  title: >-
+    Invalid value
+  description: >-
+    Give amount must be at least 1.
+  color: error
+
+# Notification for the target user
 notification:
   base_template: system
   title: >-
