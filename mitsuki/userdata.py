@@ -17,12 +17,14 @@ from sqlalchemy.ext.asyncio import (
   async_sessionmaker,
   AsyncAttrs,
 )
+from attrs import asdict as _asdict
 from os import environ
 from urllib.parse import quote_plus
 from mitsuki import settings
 
 __all__ = (
   "Base",
+  "AsDict",
   "engine",
   "initialize",
   "new_session",
@@ -50,14 +52,20 @@ else:
     f"Database '{settings.mitsuki.db_use}' not recognized or supported"
   )
 
-  
+
 new_session = async_sessionmaker(engine, expire_on_commit=False)
+
+
+class AsDict:
+  def asdict(self):
+    return _asdict(self)
 
 
 class Base(DeclarativeBase, AsyncAttrs):
   def asdict(self):
     #: Source: https://stackoverflow.com/a/1960546
     return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
 
 async def initialize():
   global engine

@@ -15,13 +15,14 @@
 from mitsuki import settings, messages, bot
 from mitsuki.userdata import new_session
 from mitsuki.utils import escape_text, is_caller, process_text, suppressed_defer
+from mitsuki.lib.commands import AsDict, ReaderCommand, WriterCommand, TargetMixin, MultifieldMixin
 from . import userdata
 from .schema import UserCard, StatsCard, RosterCard
 from .gachaman import gacha
 
-from attrs import define, frozen, field, asdict as _asdict
+from attrs import define, field
 from typing import Optional, Union, List, Dict, Any, NamedTuple
-from enum import Enum
+from enum import Enum, StrEnum
 from interactions import (
   Snowflake,
   BaseUser,
@@ -34,230 +35,6 @@ from interactions import (
   StringSelectMenu,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-
-
-# =============================================================================
-# Base MitsukiCommand classes. Defined here as experimental
-
-class AsDict:
-  def asdict(self):
-    return _asdict(self)
-
-
-@define(slots=False)
-class Caller(AsDict):
-  userid: int
-  user: str
-  username: str
-  usericon: str
-
-  @classmethod
-  def set(cls, user: BaseUser):
-    return cls(
-      userid=user.id,
-      user=user.mention,
-      username=user.tag,
-      usericon=user.display_avatar.url
-    )
-
-  @classmethod
-  def raw_set(cls, id: Snowflake, username: str, usericon: str):
-    return cls(userid=id, user=f"<@{id}>", username=username, usericon=usericon)
-
-
-@define(slots=False)
-class Target(AsDict):
-  target_userid: int
-  target_user: str
-  target_username: str
-  target_usericon: str
-
-  @classmethod
-  def set(cls, user: BaseUser):
-    return cls(
-      target_userid=user.id,
-      target_user=user.mention,
-      target_username=user.tag,
-      target_usericon=user.display_avatar.url,
-    )
-
-  @classmethod
-  def raw_set(cls, id: Snowflake, username: str, usericon: str):
-    return cls(target_userid=id, target_user=f"<@{id}>", target_username=username, target_usericon=usericon)
-
-
-class State(NamedTuple):
-  enum: int
-  template: str
-
-
-class StateEnum(State, Enum):
-  pass
-
-
-class Command:
-  ctx: InteractionContext
-  caller_data: "Caller"
-  caller_user: BaseUser
-  data: Optional["AsDict"] = None
-  message: Optional[Message] = None
-  state: Optional["StateEnum"] = None
-
-  @classmethod
-  def create(cls, ctx: InteractionContext):
-    o = cls()
-    o.set_ctx(ctx)
-    return o
-
-  def set_ctx(self, ctx: InteractionContext):
-    self.ctx = ctx
-    self.caller_user = ctx.author
-    self.caller_data = Caller.set(ctx.author)
-
-  @property
-  def caller_id(self):
-    return self.caller_data.userid
-
-  def message_template(self, template: str, other_data: Optional[dict] = None, **kwargs):
-    return messages.load_message(template, data=self.asdict() | (other_data or {}), **kwargs)
-
-  async def send(
-    self,
-    template: Optional[str] = None,
-    *,
-    other_data: Optional[dict] = None,
-    template_kwargs: Optional[dict] = None,
-    edit_origin: bool = False,
-    **kwargs
-  ):
-    if not template:
-      if self.state:
-        template = self.state.template
-      else:
-        raise RuntimeError("Unspecified message template or state")
-    template_kwargs = template_kwargs or {}
-
-    if edit_origin and hasattr(self.ctx, "edit_origin"):
-      send = self.ctx.edit_origin
-    else:
-      send = self.ctx.send
-    self.message = await send(
-      **self.message_template(template, other_data, **template_kwargs).to_dict(), **kwargs
-    )
-    return self.message
-
-  async def run(self, *args, **kwargs):
-    raise NotImplementedError
-
-  def asdict(self):
-    return (self.data.asdict() if self.data else {}) | self.caller_data.asdict()
-
-
-class TargetMixin:
-  target_data: "Target"
-  target_user: BaseUser
-
-  @property
-  def target_id(self):
-    return self.target_user.id
-
-  def set_target(self, target: BaseUser):
-    self.target_user = target
-    self.target_data = Target.set(target)
-
-  def asdict(self):
-    return super().asdict() | self.target_data.asdict()
-
-
-class MultifieldMixin:
-  data: "AsDict"
-  field_data: Union[List["AsDict"], List[Dict[str, Any]]]
-
-  @property
-  def base_data(self):
-    return self.data
-
-  @property
-  def field_dict(self):
-    if isinstance(self.field_data[0], AsDict) or hasattr(self.field_data[0], "asdict"):
-      return [page.asdict() for page in self.field_data]
-    else:
-      return self.field_data
-
-  def message_multifield(self, template: str, other_data: Optional[dict] = None, **kwargs):
-    return messages.load_multifield(
-      template, self.field_dict, base_data=self.asdict() | (other_data or {}), **kwargs
-    )
-
-  def message_multipage(self, template: str, other_data: Optional[dict] = None, **kwargs):
-    return messages.load_multipage(
-      template, self.field_dict, base_data=self.asdict() | (other_data or {}), **kwargs
-    )
-
-  async def send_multifield(
-    self,
-    template: Optional[str] = None,
-    *,
-    other_data: Optional[dict] = None,
-    template_kwargs: Optional[dict] = None,
-    **kwargs
-  ):
-    if self.state:
-      template = self.state.template
-    else:
-      raise RuntimeError("Unspecified message template or state")
-    template_kwargs = template_kwargs or {}
-
-    self.message = await self.ctx.send(
-      **self.message_multifield(template, other_data, **template_kwargs).to_dict(), **kwargs
-    )
-    return self.message
-
-  async def send_multipage(
-    self,
-    template: Optional[str] = None,
-    *,
-    other_data: Optional[dict] = None,
-    template_kwargs: Optional[dict] = None,
-    **kwargs
-  ):
-    if self.state:
-      template = self.state.template
-    else:
-      raise RuntimeError("Unspecified message template or state")
-    template_kwargs = template_kwargs or {}
-
-    self.message = await self.ctx.send(
-      **self.message_multipage(template, other_data, **template_kwargs).to_dict(), **kwargs
-    )
-    return self.message
-
-
-class ReaderCommand(Command):
-  pass
-
-
-class WriterCommand(Command):
-  async def send_commit(self,
-    template: Optional[str] = None,
-    *,
-    other_data: Optional[dict] = None,
-    template_kwargs: Optional[dict] = None,
-    **kwargs
-  ):
-    async with new_session() as session:
-      try:
-        await self.transaction(session)
-        self.message = await self.send(template, other_data=other_data, template_kwargs=template_kwargs, **kwargs)
-      except Exception:
-        await session.rollback()
-        raise
-      else:
-        await session.commit()
-    return self.message
-
-  async def transaction(self, session: AsyncSession):
-    raise NotImplementedError
 
 
 # =============================================================================
@@ -287,6 +64,7 @@ class Currency(AsDict):
   currency: str = field(default=gacha.currency)
   currency_name: str = field(default=gacha.currency_name)
   currency_icon: str = field(default=gacha.currency_icon)
+
 
 class CurrencyMixin:
   currency_data: "Currency" = Currency()
@@ -340,11 +118,11 @@ class Daily(CurrencyMixin, WriterCommand):
   state: "Daily.States"
   data: "Daily.Data"
 
-  class States(StateEnum):
-    ALREADY_CLAIMED = State(0, "gacha_daily_already_claimed")
-    CLAIMED         = State(1, "gacha_daily")
-    CLAIMED_FIRST   = State(2, "gacha_daily_first")
-    CLAIMED_PREMIUM = State(3, "gacha_daily_premium")
+  class States(StrEnum):
+    ALREADY_CLAIMED = "gacha_daily_already_claimed"
+    CLAIMED         = "gacha_daily"
+    CLAIMED_FIRST   = "gacha_daily_first"
+    CLAIMED_PREMIUM = "gacha_daily_premium"
 
   @define(slots=False)
   class Data(AsDict):
@@ -378,16 +156,16 @@ class Daily(CurrencyMixin, WriterCommand):
     guild_name     = user.guild.name if getattr(user, "guild", None) else "-"
 
     if not available:
-      self.state   = self.States.ALREADY_CLAIMED
+      self.set_state(self.States.ALREADY_CLAIMED)
       daily_shards = 0
     elif await is_gacha_first(user):
-      self.state   = self.States.CLAIMED_FIRST
+      self.set_state(self.States.CLAIMED_FIRST)
       daily_shards = gacha.first_time_shards or gacha.daily_shards
     elif is_gacha_premium(user):
-      self.state   = self.States.CLAIMED_PREMIUM
+      self.set_state(self.States.CLAIMED_PREMIUM)
       daily_shards = gacha.premium_daily_shards or gacha.daily_shards
     else:
-      self.state   = self.States.CLAIMED
+      self.set_state(self.States.CLAIMED)
       daily_shards = gacha.daily_shards
 
     self.data = self.Data(
@@ -413,10 +191,10 @@ class Roll(CurrencyMixin, WriterCommand):
   card: Optional[BaseCard] = None
   again: bool = True
 
-  class States(StateEnum):
-    INSUFFICIENT = State(0, "gacha_insufficient_funds")
-    NEW          = State(1, "gacha_get_new_card")
-    DUPE         = State(2, "gacha_get_dupe_card")
+  class States(StrEnum):
+    INSUFFICIENT = "gacha_insufficient_funds"
+    NEW          = "gacha_get_new_card"
+    DUPE         = "gacha_get_dupe_card"
 
   @define(slots=False)
   class Data(AsDict):
@@ -437,7 +215,7 @@ class Roll(CurrencyMixin, WriterCommand):
     roll_cost   = gacha.cost
 
     if user_shards < roll_cost:
-      self.state = self.States.INSUFFICIENT
+      self.set_state(self.States.INSUFFICIENT)
       self.data  = self.Data.set(user_shards, 0)
       return False
 
@@ -447,10 +225,10 @@ class Roll(CurrencyMixin, WriterCommand):
     card   = await userdata.card_get_roster(rolled.id)
 
     if await userdata.card_has(self.caller_id, rolled.id):
-      self.state = self.States.DUPE
+      self.set_state(self.States.DUPE)
       self.data  = self.Data.set(user_shards, card.dupe_shards - roll_cost)
     else:
-      self.state = self.States.NEW
+      self.set_state(self.States.NEW)
       self.data  = self.Data.set(user_shards, -roll_cost)
     self.again = self.data.new_shards >= self.data.cost
     self.card  = card
@@ -496,19 +274,19 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
   card_user: Optional[UserCard] = None
   user_mode: bool = False
 
-  class States(StateEnum):
-    SEARCH_RESULTS      = State(0, "gacha_view_search_results_2")   # gacha_view_gs_search_results
-    NO_RESULTS          = State(1, "gacha_view_no_results_2")       # gacha_view_gs_no_results
-    NO_INVENTORY        = State(2, "gacha_view_no_acquired")        # gacha_view_gs_no_acquired
-    SEARCH_RESULTS_USER = State(3, "gacha_view_search_results")     # gacha_view_us_search_results
-    NO_RESULTS_USER     = State(4, "gacha_view_no_results")         # gacha_view_us_no_results
-    NO_INVENTORY_USER   = State(5, "gacha_view_no_cards")           # gacha_view_us_no_cards
+  class States(StrEnum):
+    SEARCH_RESULTS      = "gacha_view_search_results_2"   # gacha_view_gs_search_results
+    NO_RESULTS          = "gacha_view_no_results_2"       # gacha_view_gs_no_results
+    NO_INVENTORY        = "gacha_view_no_acquired"        # gacha_view_gs_no_acquired
+    SEARCH_RESULTS_USER = "gacha_view_search_results"     # gacha_view_us_search_results
+    NO_RESULTS_USER     = "gacha_view_no_results"         # gacha_view_us_no_results
+    NO_INVENTORY_USER   = "gacha_view_no_cards"           # gacha_view_us_no_cards
 
-    VIEW_OWNERS_UNACQ   = State(11, "gacha_view_card_2_unacquired")           # gacha_view_gs_owners_unacquired
-    VIEW_1OWNER_UNACQ   = State(12, "gacha_view_card_2_unacquired_one_owner") # gacha_view_gs_1owner_unacquired
-    VIEW_OWNERS_ACQ     = State(13, "gacha_view_card_2_acquired")             # gacha_view_gs_owners_acquired
-    VIEW_1OWNER_ACQ     = State(14, "gacha_view_card_2_acquired_one_owner")   # gacha_view_gs_1owner_acquired
-    VIEW_USER           = State(15, "gacha_view_card")                        # gacha_view_us_card
+    VIEW_OWNERS_UNACQ   = "gacha_view_card_2_unacquired"           # gacha_view_gs_owners_unacquired
+    VIEW_1OWNER_UNACQ   = "gacha_view_card_2_unacquired_one_owner" # gacha_view_gs_1owner_unacquired
+    VIEW_OWNERS_ACQ     = "gacha_view_card_2_acquired"             # gacha_view_gs_owners_acquired
+    VIEW_1OWNER_ACQ     = "gacha_view_card_2_acquired_one_owner"   # gacha_view_gs_1owner_acquired
+    VIEW_USER           = "gacha_view_card"                        # gacha_view_us_card
 
   @define(slots=False)
   class Data(AsDict):
@@ -532,9 +310,9 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
     results: List[StatsCard] = await self.search(search_key)
     if len(results) <= 0: # no results
       if self.total_cards <= 0:
-        self.state = self.States.NO_INVENTORY_USER if self.user_mode else self.States.NO_INVENTORY
+        self.set_state(self.States.NO_INVENTORY_USER if self.user_mode else self.States.NO_INVENTORY)
       else:
-        self.state = self.States.NO_RESULTS_USER if self.user_mode else self.States.NO_RESULTS
+        self.set_state(self.States.NO_RESULTS_USER if self.user_mode else self.States.NO_RESULTS)
       await self.send()
       return
     elif len(results) == 1: # singular match
@@ -542,7 +320,7 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
       self.card = results[0]
     elif len(results) > 1: # multiple matches
       await suppressed_defer(self.ctx)
-      self.state = self.States.SEARCH_RESULTS_USER if self.user_mode else self.States.SEARCH_RESULTS
+      self.set_state(self.States.SEARCH_RESULTS_USER if self.user_mode else self.States.SEARCH_RESULTS)
       card = await self.prompt()
       if not card:
         return
@@ -550,13 +328,13 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
 
     if self.user_mode:
       self.card_user = await userdata.card_get_user(self.target_id, self.card.id)
-      self.state = self.States.VIEW_USER
+      self.set_state(self.States.VIEW_USER)
     else:
       self.card_user = await userdata.card_get_user(self.caller_id, self.card.id)
       if self.card_user:
-        self.state = self.States.VIEW_1OWNER_ACQ if self.card.users <= 1 else self.States.VIEW_OWNERS_ACQ
+        self.set_state(self.States.VIEW_1OWNER_ACQ if self.card.users <= 1 else self.States.VIEW_OWNERS_ACQ)
       else:
-        self.state = self.States.VIEW_1OWNER_UNACQ if self.card.users <= 1 else self.States.VIEW_OWNERS_UNACQ
+        self.set_state(self.States.VIEW_1OWNER_UNACQ if self.card.users <= 1 else self.States.VIEW_OWNERS_UNACQ)
 
     await self.send(
       other_data=self.card.asdict() | (self.card_user.asdict() if self.card_user else {}),
@@ -592,10 +370,11 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
     
     # Create prompt
     select_menu = StringSelectMenu(*selection, placeholder="Card to view from search results")
-    message = self.message_multifield(
-      self.state.template, escape_data_values=["search_key", "name", "type", "series"]
+    _ = await self.send_multifield_single(
+      page_index=0,
+      template_kwargs=dict(escape_data_values=["search_key", "name", "type", "series"]),
+      components=select_menu
     )
-    self.message = await self.ctx.send(content=message.content, embed=message.embeds[0], components=select_menu)
 
     # Initiate prompt
     try:
