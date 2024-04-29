@@ -12,7 +12,9 @@ _namespace: gacha_give
 # target_user     : Target user (mention), defaults to self
 # target_username : Target username (tag)
 # target_usericon : Target user avatar, uses server profile avatar if available
-# shards          : Amount of Shards sent to target user
+# shards          : Amount of Shards held by sender before give
+# new_shards      : Amount of Shards held by sender after give
+# amount          : Amount of Shards sent to target user
 # currency        : Gacha currency with name, e.g. 💠 Shard
 # currency_icon   : Gacha currency icon, e.g. 💠
 # currency_name   : Gacha currency name, e.g. Shard
@@ -20,20 +22,30 @@ _namespace: gacha_give
 
 _:
   title: >-
-    ${shards} ${currency} sent
+    ${amount} ${currency} sent
   description: >-
     Sent to ${target_user}
+    
+    You have ${currency_icon} **${new_shards}**
 
 # Notification for the target user.
 notification:
   base_template: system
   title: >-
-    ${username} gave you ${shards} ${currency}!
+    You received ${amount} ${currency}!
   description: >-
     Sent by ${user}
-  thumbnail   : ${usericon}
+  thumbnail: ${usericon}
   content: >-
     ${target_user}
+
+# User supplied an invalid amount to give
+badvalue:
+  title: >-
+    Invalid value
+  description: >-
+    Give amount must be at least 1.
+  color: error
 
 # User supplied self as target user
 self:

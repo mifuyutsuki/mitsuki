@@ -299,13 +299,13 @@ class MitsukiGacha(Extension):
   @cooldown(Buckets.USER, 1, 15.0)
   @auto_defer(time_until_defer=2.0)
   @slash_option(
-    name="target_user",
+    name="target",
     description="User to give Shards to",
     required=True,
     opt_type=OptionType.USER
   )
   @slash_option(
-    name="shards",
+    name="amount",
     description="Amount of Shards to give",
     required=True,
     opt_type=OptionType.INTEGER,
@@ -314,87 +314,12 @@ class MitsukiGacha(Extension):
   async def give_cmd(
     self,
     ctx: SlashContext,
-    target_user: BaseUser,
-    shards: int
+    target: BaseUser,
+    amount: int
   ):
-    user       = ctx.author
-    own_shards = await userdata.shards(user.id)
+    await commands.Give.create(ctx).run(target, amount)
 
-    # NOTE: don't defer, otherwise the cmd fails to ping the target user
-    
-    # ---------------------------------------------------------------
-    # Check invalids
-    
-    if user.id == target_user.id:
-      message = load_message("gacha_give_self", user=ctx.author)
-      await ctx.send(**message.to_dict())
-      return
-    
-    if target_user.bot:
-      message = load_message("gacha_give_bot", user=ctx.author)
-      await ctx.send(**message.to_dict())
-      return
-    
-    if isinstance(target_user, User):
-      message = load_message("gacha_give_nonmember", user=ctx.author)
-      await ctx.send(**message.to_dict())
-      return
-    
-    # ---------------------------------------------------------------
-    # Insufficient funds?
-    
-    if own_shards < shards:
-      message = load_message(
-        "gacha_insufficient_funds",
-        data={
-          "cost": shards,
-          "shards": own_shards,
-          **currency_data()
-        },
-        user=user,
-        target_user=target_user
-      )
-      await ctx.send(**message.to_dict())
-      return
-    
-    # ---------------------------------------------------------------
-    # Generate message & give funds
 
-    sender_message = load_message(
-      "gacha_give",
-      data={
-        "shards": shards,
-        **currency_data()
-      },
-      user=user,
-      target_user=target_user
-    )
-
-    receiver_message = load_message(
-      "gacha_give_notification",
-      data={
-        "shards": shards,
-        **currency_data(),
-        **bot_data()
-      },
-      user=user,
-      target_user=target_user,
-      escape_data_values=["username", "target_username"]
-    )
-
-    async with new_session() as session:
-      try:
-        await userdata.shards_exchange(session, user.id, target_user.id, shards)
-
-        await ctx.send(**sender_message.to_dict())
-        await ctx.channel.send(**receiver_message.to_dict(), allowed_mentions=AllowedMentions.all())
-      except Exception:
-        await session.rollback()
-        raise
-      else:
-        await session.commit()
-
-  
   # ===========================================================================
   # ===========================================================================
 

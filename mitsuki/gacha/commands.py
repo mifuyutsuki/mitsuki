@@ -441,3 +441,60 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
       self.set_ctx(selected.ctx)
       await self.ctx.defer(edit_origin=True)
       return self.card_results[selection.index(self.ctx.values[0])]
+
+
+class Give(TargetMixin, CurrencyMixin, WriterCommand):
+  states: "Give.States"
+  data: "Give.Data"
+
+  class States(StrEnum):
+    INSUFFICIENT      = "gacha_insufficient_funds"
+    INVALID_VALUE     = "gacha_give_badvalue"
+    INVALID_SELF      = "gacha_give_self"
+    INVALID_BOT       = "gacha_give_bot"
+    INVALID_NONMEMBER = "gacha_give_nonmember"
+    SENT              = "gacha_give"
+    NOTIFY            = "gacha_give_notification"
+
+  @define(slots=False)
+  class Data(AsDict):
+    shards: int
+    amount: int
+    new_shards: int = field(init=False)
+    cost: int = field(init=False) # used by gacha_insufficient_funds
+
+    def __attrs_post_init__(self):
+      self.cost = self.amount
+      self.new_shards = self.shards if self.shards < self.amount else self.shards - self.amount
+
+
+  async def run(self, target: BaseUser, amount: int):
+    self.set_target(target)
+    user_shards = await userdata.shards(self.caller_id)
+
+    valid = False
+    if amount < 1:
+      self.set_state(self.States.INVALID_VALUE)
+    elif self.target_id == self.caller_id:
+      self.set_state(self.States.INVALID_SELF)
+    elif self.target_user.bot:
+      self.set_state(self.States.INVALID_BOT)
+    elif not isinstance(self.target_user, Member):
+      self.set_state(self.States.INVALID_NONMEMBER)
+    elif user_shards < amount:
+      self.set_state(self.States.INSUFFICIENT)
+    else:
+      self.set_state(self.States.SENT)
+      valid = True
+    self.data = self.Data(shards=user_shards, amount=amount)
+
+    if not valid:
+      await self.send()
+    else:
+      await self.send_commit()
+      self.set_state(self.States.NOTIFY)
+      await self.send(template_kwargs=dict(escape_data_values=["username", "target_username"]))
+
+
+  async def transaction(self, session: AsyncSession):
+    await userdata.shards_exchange(session, self.caller_id, self.target_id, self.data.amount)

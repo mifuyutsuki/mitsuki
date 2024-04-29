@@ -277,10 +277,12 @@ gacha_shards_premium:
 # 
 # currency    : Gacha currency, shown with icon
 # target_user : Target user (mention) other than self
-# shards      : Number of Shards sent to target user
+# shards      : Amount of Shards held by sender before give
+# new_shards  : Amount of Shards held by sender after give
+# amount      : Number of Shards sent to target user
 gacha_give:
   title: >-
-    ${shards} ${currency} sent
+    ${amount} ${currency} sent
   description: >-
     Sent to ${target_user}
 
@@ -603,6 +605,16 @@ gacha_insufficient_funds:
     Not enough ${currency}
   description: >-
     Need ${currency_icon} **${cost}**, has ${currency_icon} ${shards}
+  color: *color_error
+
+
+# /gacha give
+# Message if user supplied a bad shards amount, which is <= 0.
+gacha_give_badvalue:
+  title: >-
+    Invalid value
+  description: >-
+    Give amount must be at least 1.
   color: *color_error
 
 
