@@ -236,7 +236,7 @@ class MultifieldMixin:
     template_kwargs = template_kwargs or {}
 
     message = self.message_multifield(template, other_data, **template_kwargs)
-    paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout)
+    paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
     paginator.show_select_menu = True
     self.message = await paginator.send(self.ctx, content=message.content, **kwargs)
     return self.message
@@ -280,7 +280,7 @@ class MultifieldMixin:
     template_kwargs = template_kwargs or {}
 
     message = self.message_multipage(template, other_data, **template_kwargs)
-    paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout)
+    paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
     paginator.show_select_menu = True
     self.message = await paginator.send(self.ctx, content=message.content, **kwargs)
     return self.message
