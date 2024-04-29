@@ -148,15 +148,15 @@ class Paginator:
     """Should a select menu be shown for navigation"""
 
     first_button_emoji: Optional[Union["PartialEmoji", dict, str]] = attrs.field(
-        repr=False, default="⏮️", metadata=export_converter(process_emoji)
+        repr=False, default="⏪", metadata=export_converter(process_emoji)
     )
     """The emoji to use for the first button"""
     back_button_emoji: Optional[Union["PartialEmoji", dict, str]] = attrs.field(
-        repr=False, default="⬅️", metadata=export_converter(process_emoji)
+        repr=False, default="◀", metadata=export_converter(process_emoji)
     )
     """The emoji to use for the back button"""
     next_button_emoji: Optional[Union["PartialEmoji", dict, str]] = attrs.field(
-        repr=False, default="➡️", metadata=export_converter(process_emoji)
+        repr=False, default="▶", metadata=export_converter(process_emoji)
     )
     """The emoji to use for the next button"""
     last_button_emoji: Optional[Union["PartialEmoji", dict, str]] = attrs.field(
