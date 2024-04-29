@@ -70,7 +70,7 @@ init_event = asyncio.Event()
 class Bot(Client):
   status_index: int 
   arona: Random
-  
+
   def __init__(self):
     super().__init__(
       status=Status.DND,
@@ -98,13 +98,13 @@ class Bot(Client):
   async def on_ready(self):
     await self.next_status()
     print(f"Ready: {self.user.tag} ({self.user.id})")
-  
+
 
   @Task.create(IntervalTrigger(seconds=max(60, settings.mitsuki.status_cycle)))
   async def cycle_status(self):
     await self.next_status()
-  
-  
+
+
   async def next_status(self):
     if len(settings.mitsuki.status) == 0:
       await self.change_presence(
@@ -112,7 +112,7 @@ class Bot(Client):
         activity=None
       )
       return
-    
+
     await self.change_presence(
       status=Status.ONLINE,
       activity=Activity(
@@ -120,13 +120,13 @@ class Bot(Client):
         type=ActivityType.PLAYING
       )
     )
-    
+
     if settings.mitsuki.status_randomize:
       new_index = self.arona.randrange(len(settings.mitsuki.status))
       new_index = new_index + 1 if self.status_index == new_index else new_index
     else:
       new_index += 1
-    
+
     if new_index >= len(settings.mitsuki.status):
       new_index = 0
     self.status_index = new_index
@@ -164,7 +164,7 @@ class Bot(Client):
           mitsuki_tb = tb
         use_tb = mitsuki_tb or tb
         tb = tb.tb_next
-      
+
       if mitsuki_tb:
         e_path = (
           use_tb.tb_frame.f_code.co_filename
@@ -188,17 +188,17 @@ class Bot(Client):
         ) if use_tb else repr(event.error)
 
       logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
-      
+
       message = load_message(
         "error",
         data={"error_repr": error_repr},
         user=event.ctx.author
       )
       ephemeral = False
-    
+
     if isinstance(event.ctx, SendMixin):
       await event.ctx.send(**message.to_dict(), ephemeral=ephemeral)
-  
+
 
   @listen(CommandCompletion)
   async def on_command_completion(self, event: CommandCompletion):
@@ -211,7 +211,7 @@ class Bot(Client):
       if len(event.ctx.kwargs) > 0:
         kwargs = {k: str(v) for k, v in event.ctx.kwargs.items()}
         logger.info(f"kwargs: {kwargs}")
-  
+
 
   @listen(ComponentCompletion)
   async def on_component_completion(self, event: ComponentCompletion):
@@ -220,7 +220,7 @@ class Bot(Client):
       component_name = event.ctx.custom_id.split("|")[1]
     except Exception:
       component_name = event.ctx.custom_id
-    
+
     logger.info(f"Component emitted: {command_name}: {component_name}")
     if len(event.ctx.values) > 0:
       values = [str(v) for v in event.ctx.args]
@@ -228,6 +228,7 @@ class Bot(Client):
 
 
 bot = Bot()
+bot.del_unused_app_cmd = True
 
 
 def run():
@@ -239,7 +240,7 @@ def run():
   print(f"Copyright (c) 2024 Mifuyu (mifuyutsuki)")
   print(f"Current time in UTC: {curr_time}")
   print("")
-  
+
   dev_mode = environ.get("ENABLE_DEV_MODE") == "1"
   sentry_dsn = environ.get("SENTRY_DSN")
   sentry_env = environ.get("SENTRY_ENV") or "dev"
@@ -248,12 +249,12 @@ def run():
     # Activate Jurigged integration with dev-mode (run.py dev)
     bot.load_extension("interactions.ext.jurigged")
     print("Running in dev mode. Jurigged is active")
-    
+
     if not settings.dev.scope:
       logger.warning(
         "Settings property dev.dev_scope is not set. Running commands globally"
       )
-    
+
     bot.debug_scope = settings.dev.scope
     token = environ.get("DEV_BOT_TOKEN")
   else:
@@ -263,12 +264,12 @@ def run():
       print("Sentry logging is active")
     else:
       logger.warning("Env variable SENTRY_DSN is not set. Sentry logging is off")
-      
+
     token = environ.get("BOT_TOKEN")
-  
+
   if not token:
     raise SystemExit("Token not set. Please add your bot token to .env")
-  
+
   bot.load_extension("mitsuki.core")
   bot.load_extension("mitsuki.info")
   bot.load_extension("mitsuki.gacha")
