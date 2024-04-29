@@ -162,32 +162,21 @@ class MitsukiGacha(Extension):
 
   @gacha_cmd.subcommand(
     sub_cmd_name="cards",
-    sub_cmd_description="View your or another user's collected cards"
+    sub_cmd_description="View a list of your or another user's collected cards"
   )
   @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 15.0)
   @slash_option(
-    name="mode",
-    description="Card viewing mode, default: list",
-    required=False,
-    opt_type=OptionType.STRING,
-    choices=[
-      SlashCommandChoice(name="list", value="list"),
-      SlashCommandChoice(name="deck", value="deck"),
-    # SlashCommandChoice(name="compact", value="compact")
-    ]
-  )
-  @slash_option(
     name="sort",
-    description="Card sorting mode, default: rarity (list mode), acquired (deck mode)",
+    description="Card sorting mode, default: latest acquired",
     required=False,
     opt_type=OptionType.STRING,
     choices=[
+      SlashCommandChoice(name="Latest acquired", value="date"),
+      SlashCommandChoice(name="Number acquired", value="count"),
       SlashCommandChoice(name="Rarity", value="rarity"),
       SlashCommandChoice(name="Name", value="alpha"),
-      SlashCommandChoice(name="First acquired", value="date"),
       SlashCommandChoice(name="Series", value="series"),
-      SlashCommandChoice(name="Number acquired", value="count"),
       SlashCommandChoice(name="Card ID", value="id"),
     ]
   )
@@ -200,14 +189,48 @@ class MitsukiGacha(Extension):
   async def cards_cmd(
     self,
     ctx: SlashContext,
-    mode: Optional[str] = "list",
     sort: Optional[str] = None,
     user: Optional[BaseUser] = None
   ):
-    if mode == "deck":
-      await commands.Gallery.create(ctx).run(user, sort)
-    else:
-      await commands.Cards.create(ctx).run(user, sort)
+    await commands.Cards.create(ctx).run(user, sort)
+
+
+  # ===========================================================================
+  # ===========================================================================
+
+  @gacha_cmd.subcommand(
+    sub_cmd_name="gallery",
+    sub_cmd_description="View a gallery of your or another user's collected cards"
+  )
+  @auto_defer(time_until_defer=2.0)
+  @cooldown(Buckets.USER, 1, 15.0)
+  @slash_option(
+    name="sort",
+    description="Card sorting mode, default: latest acquired",
+    required=False,
+    opt_type=OptionType.STRING,
+    choices=[
+      SlashCommandChoice(name="Latest acquired", value="date"),
+      SlashCommandChoice(name="Number acquired", value="count"),
+      SlashCommandChoice(name="Rarity", value="rarity"),
+      SlashCommandChoice(name="Name", value="alpha"),
+      SlashCommandChoice(name="Series", value="series"),
+      SlashCommandChoice(name="Card ID", value="id"),
+    ]
+  )
+  @slash_option(
+    name="user",
+    description="User to view",
+    required=False,
+    opt_type=OptionType.USER
+  )
+  async def gallery_cmd(
+    self,
+    ctx: SlashContext,
+    sort: Optional[str] = None,
+    user: Optional[BaseUser] = None
+  ):
+    await commands.Gallery.create(ctx).run(user, sort)
 
 
   # ===========================================================================
