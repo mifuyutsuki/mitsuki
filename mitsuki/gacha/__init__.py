@@ -204,64 +204,12 @@ class MitsukiGacha(Extension):
     sort: Optional[str] = None,
     user: Optional[BaseUser] = None
   ):
-    if mode == "list":
-      sort = sort or "rarity"
-    elif mode == "deck":
-      sort = sort or "date"
+    if mode == "deck":
+      await commands.Gallery.create(ctx).run(user, sort)
     else:
-      sort = sort or "rarity"
+      await commands.Cards.create(ctx).run(user, sort)
 
-    target_user       = user or ctx.author
-    target_user_cards = await userdata.card_list(target_user.id, sort=sort)
 
-    # ---------------------------------------------------------------
-    # User has no cards?
-    
-    total_cards = len(target_user_cards)
-    if total_cards <= 0:
-      message = load_message("gacha_cards_no_cards", user=ctx.author, target_user=target_user)
-      await ctx.send(**message.to_dict())
-      return
-
-    # Checks complete. Hard defer this command
-    await suppressed_defer(ctx)
-
-    # ---------------------------------------------------------------
-    # List cards
-
-    cards = []
-    for card in target_user_cards:
-      cards.append(card.asdict())
-
-    # ---------------------------------------------------------------
-    # Generate message
-    
-    if mode == "list":
-      message = load_multifield(
-        "gacha_cards",
-        cards,
-        base_data={"total_cards": total_cards},
-        user=ctx.author,
-        target_user=target_user,
-        escape_data_values=["name", "type", "series"]
-      )
-    elif mode == "deck":
-      message = load_multipage(
-        "gacha_cards_deck",
-        cards,
-        base_data={"total_cards": total_cards},
-        user=ctx.author,
-        target_user=target_user,
-        escape_data_values=["name", "type", "series"]
-      )
-    else:
-      raise ValueError(f"Unsupported viewing mode '{mode}'")
-    
-    paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=45)
-    paginator.show_select_menu = True
-    await paginator.send(ctx, content=message.content)
-
-  
   # ===========================================================================
   # ===========================================================================
 

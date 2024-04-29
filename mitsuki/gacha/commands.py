@@ -109,7 +109,7 @@ class Shards(TargetMixin, CurrencyMixin, ReaderCommand):
     self.set_target(target or self.caller_user)
     shards     = await userdata.shards(self.target_id)
     is_premium = is_gacha_premium(self.target_user)
-    guild_name = self.target_user.guild.name if isinstance(self.target_user, Member) else None
+    guild_name = self.target_user.guild.name if getattr(self.target_user, "guild", None) else "-"
     self.data  = self.Data(shards=shards, is_premium=is_premium, guild_name=guild_name)
     return await self.send("gacha_shards", template_kwargs=dict(escape_data_values=["guild_name"]))
 
@@ -264,6 +264,60 @@ class Roll(CurrencyMixin, WriterCommand):
     await userdata.shards_update(session, self.caller_id, self.data.update_shards)
     await userdata.card_give(session, self.caller_id, self.card.id)
     await userdata.pity_update(session, self.caller_id, self.card.rarity, gacha.pity)
+
+
+class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
+  state: "Cards.States"
+  data: "Cards.Data"
+
+  class States(StrEnum):
+    NO_CARDS = "gacha_cards_no_cards"
+    CARDS    = "gacha_cards"
+
+  @define(slots=False)
+  class Data(AsDict):
+    total_cards: int
+
+
+  async def run(self, target: Optional[BaseUser] = None, sort: Optional[str] = None):
+    self.set_target(target or self.caller_user)
+    await suppressed_defer(self.ctx)
+    self.field_data = await userdata.card_list(self.target_id, sort=sort or "date")
+    self.data = self.Data(total_cards=len(self.field_data))
+
+    if self.data.total_cards <= 0:
+      self.set_state(self.States.NO_CARDS)
+    else:
+      self.set_state(self.States.CARDS)
+
+    await self.send_multifield(template_kwargs=dict(escape_data_values=["name", "type", "series"]), timeout=45)
+
+
+class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
+  state: "Cards.States"
+  data: "Cards.Data"
+
+  class States(StrEnum):
+    NO_CARDS = "gacha_cards_no_cards"
+    CARDS    = "gacha_cards_deck"
+
+  @define(slots=False)
+  class Data(AsDict):
+    total_cards: int
+
+
+  async def run(self, target: Optional[BaseUser] = None, sort: Optional[str] = None):
+    self.set_target(target or self.caller_user)
+    await suppressed_defer(self.ctx)
+    self.field_data = await userdata.card_list(self.target_id, sort=sort or "date")
+    self.data = self.Data(total_cards=len(self.field_data))
+
+    if self.data.total_cards <= 0:
+      self.set_state(self.States.NO_CARDS)
+    else:
+      self.set_state(self.States.CARDS)
+
+    await self.send_multipage(template_kwargs=dict(escape_data_values=["type", "series"]), timeout=45)
 
 
 class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
