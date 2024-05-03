@@ -232,7 +232,7 @@ class MultifieldMixin:
     *,
     other_data: Optional[dict] = None,
     template_kwargs: Optional[dict] = None,
-    timeout: int = 30,
+    timeout: int = 0,
     **kwargs
   ):
     if self.state:
@@ -276,7 +276,7 @@ class MultifieldMixin:
     *,
     other_data: Optional[dict] = None,
     template_kwargs: Optional[dict] = None,
-    timeout: int = 30,
+    timeout: int = 0,
     **kwargs
   ):
     if self.state:
