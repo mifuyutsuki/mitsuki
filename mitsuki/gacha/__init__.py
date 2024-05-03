@@ -368,7 +368,7 @@ class MitsukiGacha(Extension):
 
   # ===========================================================================
   # ===========================================================================
-    
+
   @system_gacha_command.subcommand(
     sub_cmd_name="cards",
     sub_cmd_description="View the card roster"
@@ -377,21 +377,4 @@ class MitsukiGacha(Extension):
   @check(is_owner())
   @auto_defer(ephemeral=True)
   async def system_cards_cmd(self, ctx: SlashContext):
-    roster_cards = await userdata.cards_roster()
-
-    cards = []
-    for roster_card in roster_cards:
-      cards.append(roster_card.asdict())
-    
-    message = load_multifield(
-      "gacha_cards_admin",
-      cards,
-      base_data={
-        "total_cards": len(cards)
-      },
-      user=ctx.author,
-      escape_data_values=["name", "type", "series"]
-    )
-    paginator = Paginator.create_from_embeds(bot, *message.embeds)
-    paginator.show_select_menu = True
-    await paginator.send(ctx, content=message.content, ephemeral=True)
+    await commands.ViewAdmin.create(ctx).run(sort="id")

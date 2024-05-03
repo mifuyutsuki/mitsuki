@@ -293,6 +293,32 @@ class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
     await self.send_multifield(template_kwargs=dict(escape_data_values=["name", "type", "series"]), timeout=45)
 
 
+class ViewAdmin(MultifieldMixin, ReaderCommand):
+  states: "ViewAdmin.States"
+  data: "ViewAdmin.Data"
+
+  class States(StrEnum):
+    NO_CARDS = "gacha_view_admin_no_cards"
+    CARDS    = "gacha_view_admin"
+
+  @define(slots=False)
+  class Data(AsDict):
+    total_cards: int
+
+
+  async def run(self, sort: Optional[str] = None):
+    await self.defer(ephemeral=True, suppress_error=True)
+    self.field_data = await userdata.cards_stats(unobtained=True, sort=sort)
+    self.data = self.Data(total_cards=len(self.field_data))
+
+    if self.data.total_cards <= 0:
+      self.set_state(self.States.NO_CARDS)
+    else:
+      self.set_state(self.States.CARDS)
+
+    await self.send_multifield(template_kwargs=dict(escape_data_values=["name", "type", "series"]))
+
+
 class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
   state: "Cards.States"
   data: "Cards.Data"

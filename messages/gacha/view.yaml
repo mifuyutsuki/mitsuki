@@ -231,6 +231,34 @@ us_card: &card
   color: >-
     ${color}
 
+# List/view all cards in roster
+# /system gacha cards (/gacha admin cards)
+admin:
+  title: >-
+    Card Roster (${page}/${pages})
+  description: >-
+    `${total_cards}` unique cards in the roster
+  field       :
+    name      : ${stars} ${name}
+    value     : >-
+      `${rolled}`x by `${users}` • `${card}` • ${type} • ${series}
+
+      First: ${first_user_acquired_f} by ${first_user_mention}
+
+      Latest: ${last_user_acquired_f} by ${last_user_mention}
+    inline    : false
+
+# Roster has no cards
+# /system gacha cards (/gacha admin cards)
+admin_no_cards:
+  title: >-
+    Card Roster is empty
+  description: >-
+    No cards found in the roster. If you have updated your roster .yaml file,
+    run `reload` to load the roster.
+  color: error
+
+
 # -----------------------------------------------------------------------------
 # Legacy targets
 

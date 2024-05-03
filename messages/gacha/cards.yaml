@@ -85,3 +85,13 @@ admin:
     value     : >-
       `${card}` • ${type} • ${series}
     inline    : false
+
+# Roster has no cards
+# /system gacha cards (/gacha admin cards)
+admin_no_cards:
+  title: >-
+    Card Roster is empty
+  description: >-
+    No cards found in the roster. If you have updated your roster .yaml file,
+    run `reload` to load the roster.
+  color: error
