@@ -39,6 +39,15 @@ __all__ = (
 )
 
 
+def _bot_data():
+  return {
+    "bot_userid": bot.user.id,
+    "bot_user": bot.user.mention,
+    "bot_username": bot.user.display_name,
+    "bot_usericon": bot.user.avatar_url
+  }
+
+
 class AsDict:
   def asdict(self):
     return _asdict(self)
@@ -150,7 +159,7 @@ class Command:
     raise NotImplementedError
 
   def asdict(self):
-    return (self.data.asdict() if self.data else {}) | self.caller_data.asdict()
+    return (self.data.asdict() if self.data else {}) | _bot_data() | self.caller_data.asdict()
 
 
 class ReaderCommand(Command):
