@@ -222,7 +222,7 @@ class Roll(CurrencyMixin, WriterCommand):
     await self.defer()
     pity   = await userdata.pity_check(self.caller_id, gacha.pity)
     rolled = gacha.roll(min_rarity=pity)
-    card   = await userdata.card_get_roster(rolled.id)
+    card   = await userdata.card_roster(rolled.id)
 
     if await userdata.card_has(self.caller_id, rolled.id):
       self.set_state(self.States.DUPE)
@@ -282,7 +282,7 @@ class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
   async def run(self, target: Optional[BaseUser] = None, sort: Optional[str] = None):
     self.set_target(target or self.caller_user)
     await self.defer()
-    self.field_data = await userdata.card_list(self.target_id, sort=sort or "date")
+    self.field_data = await userdata.cards_user(self.target_id, sort=sort or "date")
     self.data = self.Data(total_cards=len(self.field_data))
 
     if self.data.total_cards <= 0:
@@ -309,7 +309,7 @@ class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
   async def run(self, target: Optional[BaseUser] = None, sort: Optional[str] = None):
     self.set_target(target or self.caller_user)
     await self.defer()
-    self.field_data = await userdata.card_list(self.target_id, sort=sort or "date")
+    self.field_data = await userdata.cards_user(self.target_id, sort=sort or "date")
     self.data = self.Data(total_cards=len(self.field_data))
 
     if self.data.total_cards <= 0:
@@ -381,10 +381,10 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
       self.card = card
 
     if self.user_mode:
-      self.card_user = await userdata.card_get_user(self.target_id, self.card.id)
+      self.card_user = await userdata.card_user(self.target_id, self.card.id)
       self.set_state(self.States.VIEW_USER)
     else:
-      self.card_user = await userdata.card_get_user(self.caller_id, self.card.id)
+      self.card_user = await userdata.card_user(self.caller_id, self.card.id)
       if self.card_user:
         self.set_state(self.States.VIEW_1OWNER_ACQ if self.card.users <= 1 else self.States.VIEW_OWNERS_ACQ)
       else:
@@ -399,11 +399,16 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
 
 
   async def search(self, search_key: str):
-    total_cards = await userdata.card_list_count(target_id := self.target_id if self.user_mode else None)
+    if self.user_mode:
+      total_cards = await userdata.cards_user_count(self.target_id)
+    else:
+      total_cards = await userdata.cards_roster_count(unobtained=False)
+
     self.data = self.Data(search_key=search_key, total_cards=total_cards)
     if total_cards <= 0:
       return []
 
+    target_id = self.target_id if self.user_mode else None
     self.card_results = await userdata.card_search(
       search_key, user_id=target_id, limit=6, cutoff=60, strong_cutoff=90, processor=process_text
     )

@@ -377,7 +377,7 @@ class MitsukiGacha(Extension):
   @check(is_owner())
   @auto_defer(ephemeral=True)
   async def system_cards_cmd(self, ctx: SlashContext):
-    roster_cards = await userdata.card_list_all()
+    roster_cards = await userdata.cards_roster()
 
     cards = []
     for roster_card in roster_cards:

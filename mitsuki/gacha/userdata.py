@@ -131,7 +131,7 @@ async def card_count(user_id: int, card_id: str):
   return count or 0
 
 
-async def card_get_roster(card_id: str):
+async def card_roster(card_id: str):
   statement = (
     select(Card, Settings)
     .join(Settings, Card.rarity == Settings.rarity)
@@ -147,7 +147,7 @@ async def card_get_roster(card_id: str):
     return RosterCard.from_db(result)
 
 
-async def card_get_user(user_id: int, card_id: str):
+async def card_user(user_id: int, card_id: str):
   statement = (
     select(Inventory, Card, Settings)
     .join(Card, Inventory.card == Card.id)
@@ -163,41 +163,103 @@ async def card_get_user(user_id: int, card_id: str):
   return UserCard.create(result) if result else None
 
 
-async def card_list(user_id: Snowflake, sort: str = "rarity"):
+async def cards_user(
+  user_id: Snowflake,
+  card_ids: Optional[List[str]] = None,
+  sort: Optional[str] = None,
+  limit: Optional[int] = None,
+  offset: Optional[int] = None,
+):
   statement = (
     select(Inventory, Card, Settings)
     .join(Card, Inventory.card == Card.id)
     .join(Settings, Card.rarity == Settings.rarity)
-    .where(Inventory.card == Card.id)
     .where(Inventory.user == user_id)
   )
+  if card_ids:
+    statement = statement.where(Inventory.card.in_(card_ids))
 
-  sort = sort.lower()
-  if sort == "rarity":
-    statement = statement.order_by(Card.rarity.desc()).order_by(Inventory.first_acquired.desc())
-  elif sort == "alpha":
-    statement = statement.order_by(func.lower(Card.name))
-  elif sort == "date":
-    statement = statement.order_by(Inventory.first_acquired.desc())
-  elif sort == "series":
-    statement = statement.order_by(Card.type).order_by(Card.series).order_by(Card.rarity).order_by(Card.id)
-  elif sort == "count":
-    statement = statement.order_by(Inventory.count.desc()).order_by(Inventory.first_acquired.desc())
-  elif sort == "id":
-    statement = statement.order_by(Card.id)
-  else:
-    raise ValueError(f"Invalid sort setting '{sort}'")
-  
+  sort = sort or "date"
+  match sort.lower():
+    case "rarity":
+      statement = statement.order_by(Card.rarity.desc()).order_by(Inventory.first_acquired.desc())
+    case "alpha":
+      statement = statement.order_by(func.lower(Card.name))
+    case "date":
+      statement = statement.order_by(Inventory.first_acquired.desc())
+    case "series":
+      statement = statement.order_by(Card.type).order_by(Card.series).order_by(Card.rarity).order_by(Card.id)
+    case "count":
+      statement = statement.order_by(Inventory.count.desc()).order_by(Inventory.first_acquired.desc())
+    case "id":
+      statement = statement.order_by(Card.id)
+    case "match":
+      if card_ids is None:
+        raise ValueError("Cannot use 'match' sort with no card_ids")
+      statement = statement.order_by(_insertion_order(Card.id, card_ids))
+    case _:
+      raise ValueError(f"Invalid sort setting '{sort}'")
+
+  if limit:
+    statement = statement.limit(limit)
+    if offset:
+      statement = statement.offset(offset)
+
   async with new_session() as session:
     results = (await session.execute(statement)).all()
   
   return UserCard.create_many(results)
 
 
-async def card_list_count(user_id: Optional[Snowflake] = None, unobtained: bool = False):
-  if user_id:
-    statement = select(func.count(Inventory.card)).where(Inventory.user == user_id)
-  elif not unobtained:
+async def cards_user_count(user_id: Optional[Snowflake]):
+  statement = select(func.count(Inventory.card)).where(Inventory.user == user_id)
+  
+  async with new_session() as session:
+    result = (await session.scalar(statement))
+
+  return result or 0
+
+
+async def cards_roster(
+  card_ids: Optional[List[str]] = None,
+  sort: Optional[str] = None,
+  limit: Optional[int] = None,
+  offset: Optional[int] = None,
+):
+  statement = select(Card, Settings).join(Settings, Card.rarity == Settings.rarity)
+  if card_ids:
+    statement = statement.where(Card.id.in_(card_ids))
+
+  sort = sort or "id"
+  match sort.lower():
+    case "rarity":
+      statement = statement.order_by(Card.rarity.desc()).order_by(func.lower(Card.name))
+    case "alpha":
+      statement = statement.order_by(func.lower(Card.name))
+    case "series":
+      statement = statement.order_by(Card.type).order_by(Card.series).order_by(Card.rarity).order_by(Card.id)
+    case "id":
+      statement = statement.order_by(Card.id)
+    case "match":
+      if card_ids is None:
+        raise ValueError("Cannot use 'match' sort with no card_ids")
+      statement = statement.order_by(_insertion_order(Card.id, card_ids))
+    case _:
+      raise ValueError(f"Invalid sort setting '{sort}'")
+
+  if limit:
+    statement = statement.limit(limit)
+    if offset:
+      statement = statement.offset(offset)
+
+  async with new_session() as session:
+    results = (await session.execute(statement)).all()
+
+  return RosterCard.from_db_many(results)
+
+
+async def cards_roster_count(unobtained: bool = False):
+  if not unobtained:
     obtained = select(Inventory.card.distinct().label("card")).subquery()
     statement = select(func.count(obtained.c.card))
   else:
@@ -209,116 +271,15 @@ async def card_list_count(user_id: Optional[Snowflake] = None, unobtained: bool 
   return result or 0
 
 
-async def card_list_all(sort: str = "id"):
-  statement = select(Card, Settings).join(Settings, Card.rarity == Settings.rarity)
-  
-  sort = sort.lower()
-  if sort == "rarity":
-    statement = statement.order_by(Card.rarity.desc()).order_by(func.lower(Card.name))
-  elif sort == "alpha":
-    statement = statement.order_by(func.lower(Card.name))
-  elif sort == "series":
-    statement = statement.order_by(Card.type).order_by(Card.series).order_by(Card.rarity).order_by(Card.id)
-  elif sort == "id":
-    statement = statement.order_by(Card.id)
-  else:
-    raise ValueError(f"Invalid sort setting '{sort}'")
-
-  async with new_session() as session:
-    results = (await session.execute(statement)).all()
-
-  return RosterCard.from_db_many(results)
-
-
-async def card_list_all_obtained(sort: str = "rarity"):
-  # To prevent bare columns, the statement is this long
-  subq_counts = (
-    select(
-      Inventory.card.label("card"),
-      func.count(Inventory.count).label("users"),
-      func.sum(Inventory.count).label("rolled"),
-      func.min(Inventory.first_acquired).label("first_user_acquired"),
-      func.max(Inventory.first_acquired).label("last_user_acquired")
-    )
-    .group_by(Inventory.card)
-    .subquery()
-  )
-  subq_info = (
-    select(subq_counts, Card, Settings)
-    .join(Card, subq_counts.c.card == Card.id)
-    .join(Settings, Card.rarity == Settings.rarity)
-    .subquery()
-  )
-  card = subq_info.c
-  statement = (
-    select(
-      subq_info,
-      Inventory.user.label("first_user"),
-      Inventory.user.label("last_user")
-    )
-    .join(Inventory, Inventory.first_acquired == card.first_user_acquired)
-    .join(Inventory, Inventory.first_acquired == card.last_user_acquired)
-  )
-  
-  sort = sort.lower()
-  if sort == "rarity":
-    statement = statement.order_by(card.rarity.desc()).order_by(func.lower(card.name))
-  elif sort == "alpha":
-    statement = statement.order_by(func.lower(card.name))
-  elif sort == "series":
-    statement = statement.order_by(card.type).order_by(card.series).order_by(card.rarity).order_by(card.id)
-  elif sort == "id":
-    statement = statement.order_by(card.id)
-  else:
-    raise ValueError(f"Invalid sort setting '{sort}'")
-
-  async with new_session() as session:
-    results = (await session.execute(statement)).all()
-
-  return StatsCard.from_db_many(results)
-
-
-async def card_search(
-  search_key: str,
-  user_id: Optional[Snowflake] = None,
-  *,
+async def cards_stats(
+  card_ids: Optional[List[str]] = None,
   unobtained: bool = False,
-  search_by: str = "name",
-  sort: str = "match",
+  sort: Optional[str] = None,
   limit: Optional[int] = None,
-  cutoff: float = 60.0,
-  strong_cutoff: Optional[float] = None,
-  ratio: Callable[[str, str], str] = fuzz.WRatio,
-  processor: Optional[Callable[[str], str]] = None,
-) -> List[StatsCard]:
-  cards = await card_key_search(
-    search_key,
-    user_id,
-    unobtained=unobtained,
-    search_by=search_by,
-    cutoff=cutoff,
-    ratio=ratio,
-    processor=processor
-  )
-
-  # SearchCard is already sorted by match so just check the first two
-
-  if len(cards) <= 0:
-    return []
-  if len(cards) >= 2 and strong_cutoff:
-    if cards[0].score >= strong_cutoff > cards[1].score:   # Only 1 is over strong_cutoff
-      card_ids = [cards[0].id]
-    elif cards[0].score > cards[1].score >= strong_cutoff: # 2+ are over strong_cutoff
-      card_ids = [cards[0].id]
-    else:
-      card_ids = [c.id for c in cards]
-  else:
-    card_ids = [c.id for c in cards]
-  
-  if limit:
-    card_ids = card_ids[:limit]
-  
-  # -----
+  offset: Optional[int] = None,
+):
+  card_ids = card_ids or []
+  sort     = sort or "rarity"
 
   subq_counts = (
     select(
@@ -365,34 +326,80 @@ async def card_search(
     .join(Settings, Card.rarity == Settings.rarity)
     .subquery()
   )
-  result_statement = select(subq_cards).where(subq_cards.c.id.in_(card_ids))
+  statement = select(subq_cards)
   card = subq_cards.c
-  
-  if len(card_ids) > 1:
-    match sort.lower():
-      case "match":
-        result_statement = result_statement.order_by(_insertion_order(card.id, card_ids))
-      case "rarity":
-        result_statement = result_statement.order_by(card.rarity.desc()).order_by(func.lower(card.name))
-      case "alpha":
-        result_statement = result_statement.order_by(func.lower(card.name))
-      case "name":
-        result_statement = result_statement.order_by(func.lower(card.name))
-      case "series":
-        result_statement = (
-          result_statement.order_by(card.type).order_by(card.series).order_by(card.rarity).order_by(card.id)
-        )
-      case "id":
-        result_statement = result_statement.order_by(card.id)
-      case _:
-        raise ValueError(f"Invalid sort setting '{sort}'")
 
-    result_statement = result_statement.limit(limit)
+  if card_ids:
+    statement = statement.where(subq_cards.c.id.in_(card_ids))
+
+  match sort.lower():
+    case "match":
+      statement = statement.order_by(_insertion_order(card.id, card_ids))
+    case "rarity":
+      statement = statement.order_by(card.rarity.desc()).order_by(func.lower(card.name))
+    case "alpha":
+      statement = statement.order_by(func.lower(card.name))
+    case "name":
+      statement = statement.order_by(func.lower(card.name))
+    case "series":
+      statement = statement.order_by(card.type).order_by(card.series, card.rarity, card.id)
+    case "id":
+      statement = statement.order_by(card.id)
+    case _:
+      raise ValueError(f"Invalid sort setting '{sort}'")
+
+  if limit:
+    statement = statement.limit(limit)
+    if offset:
+      statement = statement.offset(offset)
 
   async with new_session() as session:
-    results = (await session.execute(result_statement)).all()
+    results = (await session.execute(statement)).all()
 
   return StatsCard.from_db_many(results)
+
+
+async def card_search(
+  search_key: str,
+  user_id: Optional[Snowflake] = None,
+  *,
+  search_by: Optional[str] = None,
+  ratio: Optional[Callable[[str, str], str]] = None,
+  processor: Optional[Callable[[str], str]] = None,
+  unobtained: bool = False,
+  sort: Optional[str] = None,
+  limit: Optional[int] = None,
+  cutoff: Union[int, float] = 60,
+  strong_cutoff: Optional[Union[int, float]] = None,
+) -> List[StatsCard]:
+  search_by = search_by or "name"
+  sort      = sort or "match"
+
+  cards = await card_key_search(
+    search_key,
+    user_id,
+    unobtained=unobtained,
+    search_by=search_by,
+    cutoff=cutoff,
+    ratio=ratio,
+    processor=processor
+  )
+
+  # SearchCard is already sorted by match so just check the first two
+
+  if len(cards) <= 0:
+    return []
+  if len(cards) >= 2 and strong_cutoff:
+    if cards[0].score >= strong_cutoff > cards[1].score:   # Only 1 is over strong_cutoff
+      card_ids = [cards[0].id]
+    elif cards[0].score > cards[1].score >= strong_cutoff: # 2+ are over strong_cutoff
+      card_ids = [cards[0].id]
+    else:
+      card_ids = [c.id for c in cards]
+  else:
+    card_ids = [c.id for c in cards]
+
+  return await cards_stats(card_ids=card_ids, unobtained=unobtained, sort=sort, limit=limit)
 
 
 async def card_key_search(
@@ -402,9 +409,10 @@ async def card_key_search(
   unobtained: bool = False,
   search_by: str = "name",
   cutoff: float = 60.0,
-  ratio: Callable[[str, str], str] = fuzz.WRatio,
+  ratio: Optional[Callable[[str, str], str]] = None,
   processor: Optional[Callable[[str], str]] = None,
 ):
+  ratio     = ratio or fuzz.WRatio
   processor = processor or (lambda s: s)
 
   match search_by.lower():
