@@ -219,7 +219,7 @@ class Roll(CurrencyMixin, WriterCommand):
       self.data  = self.Data.set(user_shards, 0)
       return False
 
-    await self.defer()
+    await self.defer(suppress_error=True)
     pity   = await userdata.pity_check(self.caller_id, gacha.pity)
     rolled = gacha.roll(min_rarity=pity)
     card   = await userdata.card_roster(rolled.id)
@@ -281,7 +281,7 @@ class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
 
   async def run(self, target: Optional[BaseUser] = None, sort: Optional[str] = None):
     self.set_target(target or self.caller_user)
-    await self.defer()
+    await self.defer(suppress_error=True)
     self.field_data = await userdata.cards_user(self.target_id, sort=sort or "date")
     self.data = self.Data(total_cards=len(self.field_data))
 
@@ -308,7 +308,7 @@ class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
 
   async def run(self, target: Optional[BaseUser] = None, sort: Optional[str] = None):
     self.set_target(target or self.caller_user)
-    await self.defer()
+    await self.defer(suppress_error=True)
     self.field_data = await userdata.cards_user(self.target_id, sort=sort or "date")
     self.data = self.Data(total_cards=len(self.field_data))
 
@@ -370,10 +370,10 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
       await self.send()
       return
     elif len(results) == 1: # singular match
-      await self.defer()
+      await self.defer(suppress_error=True)
       self.card = results[0]
     elif len(results) > 1: # multiple matches
-      await self.defer()
+      await self.defer(suppress_error=True)
       self.set_state(self.States.SEARCH_RESULTS_USER if self.user_mode else self.States.SEARCH_RESULTS)
       card = await self.prompt()
       if not card:
@@ -444,7 +444,7 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
       return None
     else:
       self.set_ctx(selected.ctx)
-      await self.ctx.defer(edit_origin=True)
+      await self.defer(edit_origin=True)
       return self.card_results[selection.index(self.ctx.values[0])]
 
 
