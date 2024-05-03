@@ -140,8 +140,11 @@ class Command:
     )
     return self.message
 
-  async def defer(self, ephemeral: bool = False, suppress_error: bool = False):
-    return await self.ctx.defer(ephemeral=ephemeral, suppress_error=suppress_error)
+  async def defer(self, ephemeral: bool = False, edit_origin: bool = False, suppress_error: bool = False):
+    if hasattr(self.ctx, "edit_origin"):
+      return await self.ctx.defer(ephemeral=ephemeral, edit_origin=edit_origin, suppress_error=suppress_error)
+    else:
+      return await self.ctx.defer(ephemeral=ephemeral, suppress_error=suppress_error)
 
   async def run(self):
     raise NotImplementedError
