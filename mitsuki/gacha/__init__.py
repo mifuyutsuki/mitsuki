@@ -363,18 +363,7 @@ class MitsukiGacha(Extension):
   @check(is_owner())
   @auto_defer(ephemeral=True)
   async def system_reload_cmd(self, ctx: SlashContext):
-    gacha.reload()
-    await gacha.sync_db()
-
-    message = load_message(
-      "gacha_reload",
-      data={
-        "cards": len(gacha.cards)
-      },
-      user=ctx.author
-    )
-
-    await ctx.send(**message.to_dict(), ephemeral=True)
+    await commands.ReloadAdmin.create(ctx).run()
 
 
   # ===========================================================================

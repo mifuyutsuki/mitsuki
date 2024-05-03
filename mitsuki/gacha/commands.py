@@ -538,3 +538,27 @@ class GiveAdmin(TargetMixin, CurrencyMixin, WriterCommand):
 
   async def transaction(self, session: AsyncSession):
     await userdata.shards_give(session, self.target_id, self.data.amount)
+
+
+class ReloadAdmin(ReaderCommand):
+  state: "ReloadAdmin.States"
+  data: "ReloadAdmin.Data"
+
+  class States(StrEnum):
+    RELOAD = "gacha_reload"
+
+  @define(slots=False)
+  class Data(AsDict):
+    cards: int
+
+
+  async def run(self):
+    global gacha
+    await suppressed_defer(self.ctx, ephemeral=True)
+
+    gacha.reload()
+    await gacha.sync_db()
+
+    self.data = self.Data(cards=len(gacha.cards))
+    self.set_state(self.States.RELOAD)
+    await self.send()
