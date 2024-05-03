@@ -88,13 +88,12 @@ async def suppressed_defer(ctx: InteractionContext, ephemeral: bool = False):
   """
   Defer a command without emitting an error.
 
-  Note: This option is to be added builtin to interactions.py in a future
-  interactions.py version.
+  Warning: This function is now a built feature in interactions.py as
+  defer(suppress_error=True) and is deprecated.
 
   Args:
       ctx: Interaction context object
   """
 
-  # TODO: replace with ipy defer(suppress_errors=True) when available
   with contextlib.suppress(AlreadyDeferred, HTTPException):
     await ctx.defer(ephemeral=ephemeral)

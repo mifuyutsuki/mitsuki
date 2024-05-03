@@ -57,7 +57,7 @@ class Caller(AsDict):
       userid=user.id,
       user=user.mention,
       username=user.tag,
-      usericon=user.display_avatar.url
+      usericon=user.avatar_url
     )
 
   @classmethod
@@ -78,7 +78,7 @@ class Target(AsDict):
       target_userid=user.id,
       target_user=user.mention,
       target_username=user.tag,
-      target_usericon=user.display_avatar.url,
+      target_usericon=user.avatar_url,
     )
 
   @classmethod
@@ -139,6 +139,9 @@ class Command:
       **self.message_template(template, other_data, **template_kwargs).to_dict(), **kwargs
     )
     return self.message
+
+  async def defer(self, ephemeral: bool = False, suppress_error: bool = False):
+    return await self.ctx.defer(ephemeral=ephemeral, suppress_error=suppress_error)
 
   async def run(self):
     raise NotImplementedError

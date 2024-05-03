@@ -219,7 +219,7 @@ class Roll(CurrencyMixin, WriterCommand):
       self.data  = self.Data.set(user_shards, 0)
       return False
 
-    await suppressed_defer(self.ctx)
+    await self.defer()
     pity   = await userdata.pity_check(self.caller_id, gacha.pity)
     rolled = gacha.roll(min_rarity=pity)
     card   = await userdata.card_get_roster(rolled.id)
@@ -281,7 +281,7 @@ class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
 
   async def run(self, target: Optional[BaseUser] = None, sort: Optional[str] = None):
     self.set_target(target or self.caller_user)
-    await suppressed_defer(self.ctx)
+    await self.defer()
     self.field_data = await userdata.card_list(self.target_id, sort=sort or "date")
     self.data = self.Data(total_cards=len(self.field_data))
 
@@ -308,7 +308,7 @@ class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
 
   async def run(self, target: Optional[BaseUser] = None, sort: Optional[str] = None):
     self.set_target(target or self.caller_user)
-    await suppressed_defer(self.ctx)
+    await self.defer()
     self.field_data = await userdata.card_list(self.target_id, sort=sort or "date")
     self.data = self.Data(total_cards=len(self.field_data))
 
@@ -370,10 +370,10 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
       await self.send()
       return
     elif len(results) == 1: # singular match
-      await suppressed_defer(self.ctx)
+      await self.defer()
       self.card = results[0]
     elif len(results) > 1: # multiple matches
-      await suppressed_defer(self.ctx)
+      await self.defer()
       self.set_state(self.States.SEARCH_RESULTS_USER if self.user_mode else self.States.SEARCH_RESULTS)
       card = await self.prompt()
       if not card:
@@ -518,8 +518,8 @@ class GiveAdmin(TargetMixin, CurrencyMixin, WriterCommand):
       self.new_shards = self.shards if self.amount <= 0 else self.shards + self.amount
 
   async def run(self, target: BaseUser, amount: int):
+    await self.defer(ephemeral=True, suppress_error=True)
     self.set_target(target)
-    await suppressed_defer(self.ctx, ephemeral=True)
 
     target_shards = await userdata.shards(self.target_id)
     valid = False
@@ -554,7 +554,7 @@ class ReloadAdmin(ReaderCommand):
 
   async def run(self):
     global gacha
-    await suppressed_defer(self.ctx, ephemeral=True)
+    await self.defer(ephemeral=True, suppress_error=True)
 
     gacha.reload()
     await gacha.sync_db()

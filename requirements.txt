@@ -2,7 +2,7 @@ pyyaml
 python-dotenv
 rapidfuzz
 sqlalchemy~=2.0.25
-discord-py-interactions>=5.11.0
+discord-py-interactions>=5.12.0
 jurigged
 aiosqlite
 attrs

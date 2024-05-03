@@ -71,7 +71,7 @@ class MitsukiInfo(Extension):
       "target_globalname": user.global_name or "-",
       "target_dispname": user.display_name,
       "target_username": user.tag,
-      "target_usericon": user.display_avatar.url,
+      "target_usericon": user.avatar_url,
       "target_user_id": user.id,
       "target_userbanner": banner,
       "created_at": user.created_at.format("f")
