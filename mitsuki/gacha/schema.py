@@ -327,9 +327,11 @@ class StatsCard:
   first_user_mention: Optional[str] = field(init=False)
   first_user_acquired: Optional[int] = field(init=False)
   first_user_acquired_f: str = field(init=False)
+  first_user_acquired_d: str = field(init=False)
   last_user_mention: Optional[str] = field(init=False)
   last_user_acquired: Optional[int] = field(init=False)
   last_user_acquired_f: str = field(init=False)
+  last_user_acquired_d: str = field(init=False)
 
   @classmethod
   def from_db(cls, result: Row):
@@ -359,25 +361,23 @@ class StatsCard:
   def __attrs_post_init__(self):
     self.first_user_mention = f"<@{self.first_user}>" if self.first_user else "-"
     self.first_user_acquired = (
-      int(self.first_user_acquired_float)
-      if self.first_user_acquired_float
-      else None
+      int(self.first_user_acquired_float) if self.first_user_acquired_float else None
     )
     self.first_user_acquired_f = (
-      f"<t:{self.first_user_acquired}:f>"
-      if self.first_user_acquired
-      else "-"
+      f"<t:{self.first_user_acquired}:f>" if self.first_user_acquired else "-"
+    )
+    self.first_user_acquired_d = (
+      f"<t:{self.first_user_acquired}:D>" if self.first_user_acquired else "-"
     )
     self.last_user_mention = f"<@{self.last_user}>" if self.last_user else "-"
     self.last_user_acquired = (
-      int(self.last_user_acquired_float)
-      if self.last_user_acquired_float
-      else None
+      int(self.last_user_acquired_float) if self.last_user_acquired_float else None
     )
     self.last_user_acquired_f = (
-      f"<t:{self.last_user_acquired}:f>"
-      if self.last_user_acquired
-      else "-"
+      f"<t:{self.last_user_acquired}:f>" if self.last_user_acquired else "-"
+    )
+    self.last_user_acquired_d = (
+      f"<t:{self.last_user_acquired}:D>" if self.last_user_acquired else "-"
     )
     self.card = self.id    # Used by /gacha view
     self.card_id = self.id # Used by /system gacha cards
@@ -385,7 +385,6 @@ class StatsCard:
 
   def asdict(self):
     return _asdict(self)
-
 
 
 @define

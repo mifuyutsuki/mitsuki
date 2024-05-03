@@ -29,10 +29,12 @@ _namespace: gacha_view
 # -----------------------------------------------------------------------------
 # first_user_mention    : First user who acquired the card (mention)
 # first_user_acquired   : First acquired time in timestamp
-# first_user_acquired_f : First acquired time in dynamic timestamp (full)
+# first_user_acquired_f : First acquired time in dynamic timestamp (datetime)
+# first_user_acquired_d : First acquired time in dynamic timestamp (date)
 # last_user_mention     : Latest user who acquired the card (mention)
 # last_user_acquired    : Latest acquired time in timestamp
-# last_user_acquired_f  : Latest acquired time in dynamic timestamp (full)
+# last_user_acquired_f  : Latest acquired time in dynamic timestamp (datetime)
+# last_user_acquired_d  : Latest acquired time in dynamic timestamp (date)
 # -----------------------------------------------------------------------------
 
 
@@ -241,11 +243,10 @@ admin:
   field       :
     name      : ${stars} ${name}
     value     : >-
-      `${rolled}`x by `${users}` • `${card}` • ${type} • ${series}
+      `${rolled}` rolled by `${users}` • `${card}` • ${type} • ${series}
 
-      First: ${first_user_acquired_f} by ${first_user_mention}
-
-      Latest: ${last_user_acquired_f} by ${last_user_mention}
+      First ${first_user_acquired_d} by ${first_user_mention} • 
+      Latest ${last_user_acquired_d} by ${last_user_mention}
     inline    : false
 
 # Roster has no cards
