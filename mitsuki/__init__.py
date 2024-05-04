@@ -271,6 +271,7 @@ def run():
     raise SystemExit("Token not set. Please add your bot token to .env")
 
   bot.load_extension("mitsuki.core")
+  bot.load_extension("mitsuki.system")
   bot.load_extension("mitsuki.info")
   bot.load_extension("mitsuki.gacha")
 
