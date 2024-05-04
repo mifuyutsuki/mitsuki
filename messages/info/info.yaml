@@ -5,37 +5,35 @@ _namespace: info
 
 # Info about user (nonmember)
 user_user:
+  author:
+    name: >-
+      ${target_username} (${target_userid})
   title: >-
-    ${target_dispname}
+    ${target_globalname}
   description: >-
-    ${target_username} (${target_user_id})
+    ${target_user}
 
-    Global name: ${target_globalname}
-
-    Created at ${created_at}
+    **Created at** — ${created_at}
   thumbnail   : ${target_usericon}
   image       : ${target_userbanner}
 
 # Info about user (member)
 user_member:
+  author:
+    name: >-
+      ${target_username} (${target_userid})
   title: >-
-    ${target_dispname}
+    ${target_nickname} / ${target_globalname}
   description: >-
-    ${target_username} (${target_user_id})
+    ${target_user}
 
-    Global name: ${target_globalname}
-
-    Created at ${created_at}
+    **Created at** — ${created_at}
   thumbnail   : ${target_usericon}
   image       : ${target_userbanner}
   fields:
-  - name      : ${guild_name}
+  - name      : ${guild_name} (${guild_id})
     value     : >-
-      Guild ID: ${guild_id}
+      **Last joined** — ${joined_at}
 
-      Nickname: ${target_nickname}
-
-      Last joined: ${joined_at}
-
-      Server booster: ${is_booster}
+      **Server booster** — ${is_booster}
     inline    : false # fields.inline

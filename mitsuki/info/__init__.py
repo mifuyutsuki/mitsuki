@@ -24,7 +24,81 @@ from interactions import (
 )
 
 from mitsuki import bot
-from mitsuki.messages import load_message
+from mitsuki.lib.commands import AsDict, ReaderCommand, TargetMixin
+from attrs import define, field
+from enum import StrEnum
+from typing import Optional, Union
+
+
+class UserInfo(TargetMixin, ReaderCommand):
+  state: "UserInfo.States"
+  data: "UserInfo.Data"
+  member_data: Optional["UserInfo.MemberData"] = None
+
+  class States(StrEnum):
+    USER = "info_user_user"
+    MEMBER = "info_user_member"
+
+  @define(slots=False)
+  class Data(AsDict):
+    target_globalname: str
+    target_dispname: str
+    target_userbanner: str
+    created_at: str
+
+  @define(slots=False)
+  class MemberData(AsDict):
+    guild_name: str
+    guild_id: int
+    joined_at: str
+    target_nickname: str
+    is_booster: str
+
+
+  async def run(self, target: Optional[Union[User, Member]] = None):
+    self.set_target(target := target or self.caller_user)
+    await self.defer(suppress_error=True)
+
+    escapes = [
+      "target_globalname",
+      "target_dispname",
+      "target_nickname",
+      "guild_name",
+    ]
+    color = None
+    try:
+      fetched = await bot.fetch_user(self.target_user, force=True)
+      banner = fetched.banner.url if fetched and fetched.banner else None
+    except Exception:
+      banner = None
+
+    self.data = self.Data(
+      target_globalname=target.global_name or target.username,
+      target_dispname=target.display_name,
+      target_userbanner=banner,
+      created_at=target.created_at.format("f"),
+    )
+    if isinstance(target, Member):
+      pos = 0
+      for role in target.roles:
+        if role.color != "#000000" and role.position > pos:
+          color = role.color.value
+          pos = role.position
+
+      self.member_data = self.MemberData(
+        guild_name=target.guild.name,
+        guild_id=target.guild.id,
+        joined_at=target.joined_at.format("f"),
+        target_nickname=target.nick or "-",
+        is_booster="Yes" if target.premium else "No",
+      )
+      self.set_state(self.States.MEMBER)
+      await self.send(
+        other_data=self.member_data.asdict(), template_kwargs=dict(escape_data_values=escapes), color=color
+      )
+    else:
+      self.set_state(self.States.USER)
+      await self.send(template_kwargs=dict(escape_data_values=escapes))
 
 
 class MitsukiInfo(Extension):
@@ -48,62 +122,4 @@ class MitsukiInfo(Extension):
     opt_type=OptionType.USER
   )
   async def user_cmd(self, ctx: SlashContext, user: BaseUser = None):
-    await ctx.defer()
-    user = user or ctx.author
-
-    # Obtaining the user banner is not stable, skipping relevant exception
-    # Currently, there's no known way to fetch a user's server profile banner.
-    try:
-      fetched = await bot.fetch_user(user.id, force=True)
-      banner = fetched.banner.url if fetched and fetched.banner else None
-    except Exception:
-      banner = None
-    
-    escapes = [
-      "target_globalname",
-      "target_dispname",
-      "target_nickname",
-      "target_username",
-      "guild_name",
-    ]
-
-    data = {
-      "target_globalname": user.global_name or "-",
-      "target_dispname": user.display_name,
-      "target_username": user.tag,
-      "target_usericon": user.avatar_url,
-      "target_user_id": user.id,
-      "target_userbanner": banner,
-      "created_at": user.created_at.format("f")
-    }
-    if isinstance(user, Member):
-      data |= {
-        "guild_name": user.guild.name,
-        "guild_id": user.guild.id,
-        "target_nickname": user.nickname or "-",
-        "joined_at": user.joined_at.format("f"),
-        "is_booster": "Yes" if user.premium else "No"
-      }
-      color = None
-      pos = 0
-      for role in user.roles:
-        if role.color != "#000000" and role.position > pos:
-          color = role.color.value
-          pos = role.position
-      
-      message = load_message(
-        "info_user_member",
-        data=data,
-        user=ctx.author,
-        escape_data_values=escapes,
-        color=color
-      )
-    else:
-      message = load_message(
-        "info_user_user",
-        data=data,
-        user=ctx.author,
-        escape_data_values=escapes
-      )
-    
-    await ctx.send(**message.to_dict())
+    await UserInfo.create(ctx).run(user)
