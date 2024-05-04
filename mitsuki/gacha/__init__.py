@@ -44,7 +44,7 @@ from .gachaman import gacha
 # =============================================================================
 
 
-class MitsukiGacha(Extension):
+class GachaModule(Extension):
   @listen(Startup)
   async def on_startup(self):
     await init_event.wait()

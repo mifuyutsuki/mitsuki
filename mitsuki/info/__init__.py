@@ -26,7 +26,7 @@ from interactions import (
 from . import commands
 
 
-class MitsukiInfo(Extension):
+class InfoModule(Extension):
   @slash_command(
     name="info",
     description="Informational commands"
