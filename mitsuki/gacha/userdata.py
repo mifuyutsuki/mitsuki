@@ -12,10 +12,9 @@
 
 from typing import Dict, List, Callable, Any, Union
 from time import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from interactions import Snowflake
-from sqlalchemy import select, update
-from sqlalchemy.orm import load_only
+from sqlalchemy import select
 from sqlalchemy.sql.functions import func
 from sqlalchemy.sql.expression import case
 from sqlalchemy.dialects.sqlite import insert as slinsert
@@ -25,7 +24,8 @@ from rapidfuzz import fuzz
 
 from mitsuki import settings
 from mitsuki.userdata import engine, new_session
-from mitsuki.gacha.schema import *
+
+from .schema import *
 
 insert = pginsert if "postgresql" in engine.url.drivername else slinsert
 

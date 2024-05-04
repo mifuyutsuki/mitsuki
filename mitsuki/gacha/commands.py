@@ -12,14 +12,6 @@
 
 # [EXPERIMENTAL] Commands framework. Eases creation of stateful commands.
 
-from mitsuki import settings, messages, bot
-from mitsuki.userdata import new_session
-from mitsuki.utils import escape_text, is_caller, process_text, suppressed_defer
-from mitsuki.lib.commands import AsDict, ReaderCommand, WriterCommand, TargetMixin, MultifieldMixin
-from . import userdata
-from .schema import UserCard, StatsCard, RosterCard
-from .gachaman import gacha
-
 from attrs import define, field
 from typing import Optional, Union, List, Dict, Any, NamedTuple
 from enum import Enum, StrEnum
@@ -35,6 +27,14 @@ from interactions import (
   StringSelectMenu,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from mitsuki import bot
+from mitsuki.utils import escape_text, is_caller, process_text
+from mitsuki.lib.commands import AsDict, ReaderCommand, WriterCommand, TargetMixin, MultifieldMixin
+
+from . import userdata
+from .schema import UserCard, StatsCard, RosterCard
+from .gachaman import gacha
 
 
 # =============================================================================

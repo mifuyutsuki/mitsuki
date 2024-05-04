@@ -33,24 +33,13 @@ from interactions import (
   Buckets,
 )
 from interactions.api.events import Startup
-from interactions.client.errors import HTTPException
-from mitsuki.paginators import Paginator
-from rapidfuzz import fuzz, process
 from typing import Optional
 
-from mitsuki import bot, init_event
-from mitsuki import settings
-from mitsuki.messages import (
-  load_message,
-  load_multipage,
-  load_multifield,
-)
+from mitsuki import init_event
 from mitsuki.core import system_command
-from mitsuki.utils import is_caller, process_text, suppressed_defer
-from mitsuki.userdata import new_session, initialize
-from mitsuki.gacha import userdata, commands
-from mitsuki.gacha.gachaman import gacha
-from mitsuki.gacha.schema import SourceCard
+
+from . import commands
+from .gachaman import gacha
 
 
 # =============================================================================
@@ -60,40 +49,6 @@ system_gacha_command = system_command(
   group_name="gacha",
   group_description="Manage gacha system"
 )
-
-
-def currency_data():
-  return {
-    "currency": gacha.currency,
-    "currency_icon": gacha.currency_icon,
-    "currency_name": gacha.currency_name,
-  }
-
-
-def bot_data():
-  return {
-    "bot_user": bot.user.mention,
-    "bot_username": bot.user.display_name,
-    "bot_usericon": bot.user.avatar_url
-  }
-
-
-def card_data(card: SourceCard):
-  stars       = gacha.stars[card.rarity]
-  color       = gacha.colors[card.rarity]
-  dupe_shards = gacha.dupe_shards[card.rarity]
-
-  return {
-    "id"          : card.id,
-    "type"        : card.type,
-    "series"      : card.series,
-    "name"        : card.name,
-    "image"       : card.image,
-    "stars"       : stars,
-    "color"       : color,
-    "dupe_shards" : dupe_shards,
-    "card_id"     : card.id      # Alias used by /admin gacha cards
-  }
 
 
 # =============================================================================

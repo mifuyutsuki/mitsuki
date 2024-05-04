@@ -11,12 +11,12 @@
 # GNU Affero General Public License for more details.
 
 from interactions import User, Member
-
-from mitsuki import bot
-from mitsuki.lib.commands import AsDict, ReaderCommand, TargetMixin
 from attrs import define, field
 from enum import StrEnum
 from typing import Optional, Union
+
+from mitsuki import bot
+from mitsuki.lib.commands import AsDict, ReaderCommand, TargetMixin
 
 
 class UserInfo(TargetMixin, ReaderCommand):

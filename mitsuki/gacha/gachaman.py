@@ -14,9 +14,10 @@ from yaml import safe_load
 from typing import Dict, List, Optional, Any, Callable, TypeVar
 from random import SystemRandom
 
+from mitsuki import settings
+
 from .schema import SourceCard, SourceSettings
 from .userdata import add_cards, add_settings
-from mitsuki import settings
 
 T = TypeVar("T")
 

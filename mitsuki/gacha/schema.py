@@ -10,14 +10,15 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from mitsuki.userdata import Base
-from mitsuki.utils import escape_text
 from sqlalchemy import ForeignKey, Row
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 from rapidfuzz import fuzz
 from typing import Optional, List, Callable
 from attrs import define, field
 from attrs import asdict as _asdict
+
+from mitsuki.userdata import Base
+from mitsuki.utils import escape_text
 
 
 class Rolls(Base):
