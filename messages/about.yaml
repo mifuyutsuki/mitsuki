@@ -2,6 +2,7 @@ _namespace: "help"
 
 # /help about
 about:
+  base_template: no_footer
   title: >-
     Mitsuki v${version}
   description: >-
@@ -17,9 +18,9 @@ about:
     This license does not extend to some assets, such as gacha cards.
     All resources belong to their respective owners.
 
-
 # /help license
 license:
+  base_template: no_footer
   title: >-
     License
   description: >-
