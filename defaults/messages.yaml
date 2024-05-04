@@ -49,6 +49,27 @@ default:
       ${usericon}
   color: *color_ok
 
+# Default but without footer
+no_footer:
+  color: ok
+
+# Admin commands
+admin:
+  footer: 
+    text: >-
+      ${username} • Admin
+    icon_url: >-
+      ${usericon}
+  color: ok
+
+# System message
+system:
+  footer: 
+    text: >-
+      Bot system message
+    icon_url: >-
+      ${bot_usericon}
+  color: ok
 
 # Message if an application error (unhandled error) has occured.
 error:
@@ -102,6 +123,7 @@ under_construction:
 
 # /help about
 help_about:
+  base_template: no_footer
   title: >-
     Mitsuki v${version}
   description: >-
@@ -120,6 +142,7 @@ help_about:
 
 # /help license
 help_license:
+  base_template: no_footer
   title: >-
     License
   description: >-
@@ -143,14 +166,15 @@ help_license:
 # /info user
 # Info about user, if User.
 info_user_user:
+  author:
+    name: >-
+      ${target_username} (${target_userid})
   title: >-
-    ${target_dispname}
+    ${target_globalname}
   description: >-
-    ${target_username} (${target_user_id})
+    ${target_user}
 
-    Global name: ${target_globalname}
-
-    Created at ${created_at}
+    **Created at** — ${created_at}
   thumbnail   : ${target_usericon}
   image       : ${target_userbanner}
 
@@ -158,26 +182,23 @@ info_user_user:
 # /info user
 # Info about user, if Member.
 info_user_member:
+  author:
+    name: >-
+      ${target_username} (${target_userid})
   title: >-
-    ${target_dispname}
+    ${target_nickname} / ${target_globalname}
   description: >-
-    ${target_username} (${target_user_id})
+    ${target_user}
 
-    Global name: ${target_globalname}
-
-    Created at ${created_at}
+    **Created at** — ${created_at}
   thumbnail   : ${target_usericon}
   image       : ${target_userbanner}
   fields:
-  - name      : ${guild_name}
+  - name      : ${guild_name} (${guild_id})
     value     : >-
-      Guild ID: ${guild_id}
+      **Last joined** — ${joined_at}
 
-      Nickname: ${target_nickname}
-
-      Last joined: ${joined_at}
-
-      Server booster: ${is_booster}
+      **Server booster** — ${is_booster}
     inline    : false # fields.inline
 
 
@@ -287,19 +308,6 @@ gacha_give:
     Sent to ${target_user}
 
 
-# /system gacha give (/gacha admin give)
-# Admin: Give an amount of Shards to another user for free.
-# 
-# currency    : Gacha currency, shown with icon
-# target_user : Target user (mention) other than self
-# amount      : Number of Shards sent to target user
-gacha_give_admin:
-  title: >-
-    ${amount} ${currency} sent
-  description: >-
-    Sent to ${target_user}
-
-
 # /gacha give
 # Notification for the target user.
 gacha_give_notification:
@@ -315,6 +323,68 @@ gacha_give_notification:
       Bot system message
     icon_url  : >-
       ${bot_usericon}
+
+
+
+# /gacha give
+# Message if user supplied a bad shards amount, which is <= 0.
+gacha_give_badvalue:
+  title: >-
+    Invalid value
+  description: >-
+    Give amount must be at least 1.
+  color: *color_error
+
+
+# /gacha give
+# Message if user supplied self as target user.
+gacha_give_self:
+  title: >-
+    Invalid target user
+  description: >-
+    You gave to yourself. Oh wait, you can't.
+  color: *color_error
+
+
+# /gacha give
+# Message if user supplied a bot user as target user.
+gacha_give_bot:
+  title: >-
+    Invalid target user
+  description: >-
+    Target user is a bot.
+  color: *color_error
+
+
+# /gacha give
+# Message if user supplied a bot user as target user.
+gacha_give_nonmember:
+  title: >-
+    Invalid target user
+  description: >-
+    Target user is not a member of the current server.
+  color: *color_error
+
+
+# Admin version
+# new_shards is the shards amount of the target user
+gacha_give_admin:
+  base_template: admin
+  title: >-
+    ${amount} ${currency} sent
+  description: >-
+    Sent to ${target_user}
+
+    Target user has ${currency_icon} **${new_shards}**
+
+# User supplied an invalid amount to give (Admin)
+gacha_give_admin_badvalue:
+  base_template: admin
+  title: >-
+    Invalid value
+  description: >-
+    Give amount must be at least 1.
+  color: error
 
 
 # /gacha cards
@@ -621,46 +691,6 @@ gacha_insufficient_funds:
   color: *color_error
 
 
-# /gacha give
-# Message if user supplied a bad shards amount, which is <= 0.
-gacha_give_badvalue:
-  title: >-
-    Invalid value
-  description: >-
-    Give amount must be at least 1.
-  color: *color_error
-
-
-# /gacha give
-# Message if user supplied self as target user.
-gacha_give_self:
-  title: >-
-    Invalid target user
-  description: >-
-    You gave to yourself. Oh wait, you can't.
-  color: *color_error
-
-
-# /gacha give
-# Message if user supplied a bot user as target user.
-gacha_give_bot:
-  title: >-
-    Invalid target user
-  description: >-
-    Target user is a bot.
-  color: *color_error
-
-
-# /gacha give
-# Message if user supplied a bot user as target user.
-gacha_give_nonmember:
-  title: >-
-    Invalid target user
-  description: >-
-    Target user is not a member of the current server.
-  color: *color_error
-
-
 # /gacha roll
 # Message if user rolled a new card.
 # 
@@ -740,3 +770,93 @@ gacha_cards_admin:
     value     : >-
       `${card_id}` • ${type} • ${series}
     inline    : false
+
+
+# Roster has no cards
+# /system gacha cards (/gacha admin cards)
+gacha_cards_admin_no_cards:
+  title: >-
+    Card Roster is empty
+  description: >-
+    No cards found in the roster. If you have updated your roster .yaml file,
+    run `reload` to load the roster.
+  color: error
+
+
+# List/view all cards in roster
+# /system gacha cards (/gacha admin cards)
+gacha_view_admin:
+  title: >-
+    Card Roster (${page}/${pages})
+  description: >-
+    `${total_cards}` unique cards in the roster
+  field       :
+    name      : ${stars} ${name}
+    value     : >-
+      `${rolled}` rolled by `${users}` • `${card}` • ${type} • ${series}
+
+      First ${first_user_acquired_d} by ${first_user_mention} • 
+      Latest ${last_user_acquired_d} by ${last_user_mention}
+    inline    : false
+
+
+# Roster has no cards
+# /system gacha cards (/gacha admin cards)
+gacha_view_admin_no_cards:
+  title: >-
+    Card Roster is empty
+  description: >-
+    No cards found in the roster. If you have updated your roster .yaml file,
+    run `reload` to load the roster.
+  color: error
+
+
+system_nickname_ok:
+  title: >-
+    Bot nickname set
+  description: >-
+    From `${old_nickname}` to `${new_nickname}`
+
+system_nickname_not_in_guild:
+  title: >-
+    Command Error
+  description: >-
+    This command is only available in servers.
+  color: error
+
+system_nickname_denied_bot:
+  title: >-
+    Permission Error
+  description: >-
+    The bot has no permissions to execute this command.
+    
+
+    Requires: `Change Nickname`
+  color: error
+
+system_nickname_denied_user:
+  title: >-
+    Permission Error
+  description: >-
+    You don't have permissions to run this command.
+    
+
+    Requires: `Manage Nickname`
+  color: error
+
+system_nickname_error_same:
+  title: >-
+    Command Error
+  description: >-
+    Bot is already set with this nickname.
+  color: error
+
+system_nickname_error:
+  title: >-
+    Command Error
+  description: >-
+    Could not set nickname to ${new_nickname}.
+
+
+    Error: `${error}`
+  color: error
