@@ -49,8 +49,8 @@ import asyncio
 import logging
 
 from mitsuki import settings
-from mitsuki.messages import load_message
-from mitsuki.userdata import initialize
+from mitsuki.lib.messages import load_message
+from mitsuki.lib.userdata import initialize
 from mitsuki.version import __version__
 
 __all__ = (
@@ -271,9 +271,9 @@ def run():
     raise SystemExit("Token not set. Please add your bot token to .env")
 
   bot.load_extension("mitsuki.core")
-  bot.load_extension("mitsuki.system")
-  bot.load_extension("mitsuki.info")
-  bot.load_extension("mitsuki.gacha")
+  bot.load_extension("mitsuki.modules.system")
+  bot.load_extension("mitsuki.modules.info")
+  bot.load_extension("mitsuki.modules.gacha")
 
   # fixes image loading issues?
   # CLIENT_FEATURE_FLAGS["FOLLOWUP_INTERACTIONS_FOR_IMAGES"] = True

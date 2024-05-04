@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from rapidfuzz import fuzz
 
 from mitsuki import settings
-from mitsuki.userdata import engine, new_session
+from mitsuki.lib.userdata import engine, new_session
 
 from .schema import *
 

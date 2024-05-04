@@ -12,9 +12,10 @@
 
 # [EXPERIMENTAL] Commands framework. Eases creation of stateful commands.
 
-from mitsuki import messages, bot
-from mitsuki.userdata import new_session
-from mitsuki.paginators import Paginator
+from mitsuki import bot
+from mitsuki.lib import messages
+from mitsuki.lib.paginators import Paginator
+from mitsuki.lib.userdata import new_session
 
 from attrs import define, asdict as _asdict
 from typing import Optional, Union, List, Dict, Any

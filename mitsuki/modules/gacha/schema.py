@@ -17,7 +17,7 @@ from typing import Optional, List, Callable
 from attrs import define, field
 from attrs import asdict as _asdict
 
-from mitsuki.userdata import Base
+from mitsuki.lib.userdata import Base
 from mitsuki.utils import escape_text
 
 

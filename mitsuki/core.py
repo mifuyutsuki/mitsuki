@@ -17,7 +17,7 @@ from interactions import (
   BaseContext
 )
 from interactions.api.events import Component
-from mitsuki.messages import load_message
+from mitsuki.lib.messages import load_message
 from mitsuki.version import __version__
 from functools import partial
 
