@@ -36,19 +36,9 @@ from interactions.api.events import Startup
 from typing import Optional
 
 from mitsuki import init_event
-from mitsuki.core import system_command
 
 from . import commands
 from .gachaman import gacha
-
-
-# =============================================================================
-
-
-system_gacha_command = system_command(
-  group_name="gacha",
-  group_description="Manage gacha system"
-)
 
 
 # =============================================================================
@@ -69,6 +59,10 @@ class MitsukiGacha(Extension):
   async def gacha_cmd(self, ctx: SlashContext):
     pass
 
+  gacha_admin_cmd = gacha_cmd.group(
+    name="admin",
+    description="Gacha administration commands"
+  )
 
   # ===========================================================================
   # ===========================================================================
@@ -278,7 +272,7 @@ class MitsukiGacha(Extension):
   # ===========================================================================
   # ===========================================================================
 
-  @system_gacha_command.subcommand(
+  @gacha_admin_cmd.subcommand(
     sub_cmd_name="give",
     sub_cmd_description="Give Shards to another user"
   )
@@ -310,7 +304,7 @@ class MitsukiGacha(Extension):
   # ===========================================================================
   # ===========================================================================
 
-  @system_gacha_command.subcommand(
+  @gacha_admin_cmd.subcommand(
     sub_cmd_name="reload",
     sub_cmd_description="Reload gacha configuration files"
   )
@@ -324,7 +318,7 @@ class MitsukiGacha(Extension):
   # ===========================================================================
   # ===========================================================================
 
-  @system_gacha_command.subcommand(
+  @gacha_admin_cmd.subcommand(
     sub_cmd_name="cards",
     sub_cmd_description="View the card roster"
   )
