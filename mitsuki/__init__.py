@@ -22,6 +22,7 @@ from interactions import (
   InteractionContext,
   IntervalTrigger,
   listen,
+  SlashCommand,
   Task,
 )
 from interactions.api.events import (
@@ -54,8 +55,11 @@ from mitsuki.lib.userdata import initialize
 from mitsuki.version import __version__
 
 __all__ = (
+  "__version__",
   "bot",
   "run",
+  "init_event",
+  "help_cmd",
 )
 
 logging.basicConfig(
@@ -65,6 +69,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 init_event = asyncio.Event()
+
+help_cmd = SlashCommand(
+  name="help",
+  description="Help on available commands and other info"
+)
 
 
 class Bot(Client):
@@ -270,7 +279,7 @@ def run():
   if not token:
     raise SystemExit("Token not set. Please add your bot token to .env")
 
-  bot.load_extension("mitsuki.core")
+  bot.load_extension("mitsuki.modules.about")
   bot.load_extension("mitsuki.modules.system")
   bot.load_extension("mitsuki.modules.info")
   bot.load_extension("mitsuki.modules.gacha")
