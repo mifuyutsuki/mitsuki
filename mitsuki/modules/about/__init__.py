@@ -14,7 +14,13 @@ from interactions import (
   Extension,
   slash_command,
   SlashContext,
+  component_callback,
+  Button,
+  ButtonStyle,
+  ComponentContext,
+  InteractionContext,
 )
+from interactions.client.errors import HTTPException
 
 from mitsuki import __version__
 from mitsuki.lib.messages import load_message
@@ -26,22 +32,46 @@ class AboutModule(Extension):
     description="About this bot"
   )
   async def about_cmd(self, ctx: SlashContext):
+    await self.view_about.callback(ctx)
+
+
+  @component_callback("about")
+  async def view_about(self, ctx: InteractionContext):
     message = load_message(
       "help_about",
       data={"version": __version__},
       user=ctx.author
     )
-    await ctx.send(**message.to_dict())
+    license_btn = Button(label="AGPL-3.0", style=ButtonStyle.BLURPLE, custom_id="license")
+
+    if hasattr(ctx, "edit_origin"):
+      m = await ctx.edit_origin(**message.to_dict(), components=license_btn)
+    else:
+      m = await ctx.send(**message.to_dict(), components=license_btn)
+
+    try:
+      _ = await ctx.bot.wait_for_component(components=license_btn, timeout=45)
+    except TimeoutError:
+      if m:
+        await m.edit(components=[])
 
 
-  @slash_command(
-    name="license",
-    description="License information of this bot"
-  )
-  async def license_cmd(self, ctx: SlashContext):
+  @component_callback("license")
+  async def view_license(self, ctx: InteractionContext):
     message = load_message(
       "help_license",
       data={"version": __version__},
       user=ctx.author
     )
-    await ctx.send(**message.to_dict())
+
+    about_btn = Button(label="About the bot", style=ButtonStyle.BLURPLE, custom_id="about")
+    if hasattr(ctx, "edit_origin"):
+      m = await ctx.edit_origin(**message.to_dict(), components=about_btn)
+    else:
+      m = await ctx.send(**message.to_dict(), components=about_btn)
+
+    try:
+      _ = await ctx.bot.wait_for_component(components=about_btn, timeout=45)
+    except TimeoutError:
+      if m:
+        await m.edit(components=[])
