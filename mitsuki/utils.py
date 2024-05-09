@@ -35,6 +35,10 @@ __all__ = (
 )
 
 
+_escape_text_re = re.compile(r"[*_`.+(){}!#|:@<>~\-\[\]\\\/]")
+_remove_accents_re = re.compile(r"\p{Mn}")
+
+
 def escape_text(text: str):
   """
   Escape Discord markdown special characters in a text.
@@ -47,8 +51,8 @@ def escape_text(text: str):
   Returns:
       Discord markdown-escaped string
   """
-
-  return re.sub(r"[*_`.+(){}!#|:@<>~\-\[\]\\\/]", r"\\\g<0>", text)
+  global _escape_text_re
+  return _escape_text_re.sub(r"\\\g<0>", text)
 
 
 def process_text(text: str):
@@ -56,7 +60,8 @@ def process_text(text: str):
 
 
 def remove_accents(text: str):
-  return re.sub(r'\p{Mn}', '', unicodedata.normalize('NFKD', text))
+  global _remove_accents_re
+  return _remove_accents_re.sub('', unicodedata.normalize('NFKD', text))
 
 
 def is_caller(ctx: BaseContext):
