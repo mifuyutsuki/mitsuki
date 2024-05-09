@@ -359,7 +359,7 @@ async def cards_stats(
   return StatsCard.from_db_many(results)
 
 
-async def card_search(
+async def cards_roster_search(
   search_key: str,
   user_id: Optional[Snowflake] = None,
   *,
@@ -369,6 +369,51 @@ async def card_search(
   unobtained: bool = False,
   sort: Optional[str] = None,
   limit: Optional[int] = None,
+  offset: Optional[int] = None,
+  cutoff: Union[int, float] = 60,
+  strong_cutoff: Optional[Union[int, float]] = None,
+) -> List[RosterCard]:
+  search_by = search_by or "name"
+  sort      = sort or "match"
+
+  cards = await card_key_search(
+    search_key,
+    user_id,
+    unobtained=unobtained,
+    search_by=search_by,
+    cutoff=cutoff,
+    ratio=ratio,
+    processor=processor
+  )
+
+  # SearchCard is already sorted by match so just check the first two
+
+  if len(cards) <= 0:
+    return []
+  if len(cards) >= 2 and strong_cutoff:
+    if cards[0].score >= strong_cutoff > cards[1].score:   # Only 1 is over strong_cutoff
+      card_ids = [cards[0].id]
+    elif cards[0].score > cards[1].score >= strong_cutoff: # 2+ are over strong_cutoff
+      card_ids = [cards[0].id]
+    else:
+      card_ids = [c.id for c in cards]
+  else:
+    card_ids = [c.id for c in cards]
+  
+  return await cards_roster(card_ids=card_ids, sort=sort, limit=limit, offset=offset)
+
+
+async def cards_stats_search(
+  search_key: str,
+  user_id: Optional[Snowflake] = None,
+  *,
+  search_by: Optional[str] = None,
+  ratio: Optional[Callable[[str, str], str]] = None,
+  processor: Optional[Callable[[str], str]] = None,
+  unobtained: bool = False,
+  sort: Optional[str] = None,
+  limit: Optional[int] = None,
+  offset: Optional[int] = None,
   cutoff: Union[int, float] = 60,
   strong_cutoff: Optional[Union[int, float]] = None,
 ) -> List[StatsCard]:
@@ -399,7 +444,7 @@ async def card_search(
   else:
     card_ids = [c.id for c in cards]
 
-  return await cards_stats(card_ids=card_ids, unobtained=unobtained, sort=sort, limit=limit)
+  return await cards_stats(card_ids=card_ids, unobtained=unobtained, sort=sort, limit=limit, offset=offset)
 
 
 async def card_key_search(

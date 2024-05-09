@@ -195,7 +195,7 @@ class GachaModule(Extension):
     name="name",
     description="Card name to search",
     required=True,
-    # autocomplete=True,
+    autocomplete=True,
     opt_type=OptionType.STRING,
     min_length=3,
     max_length=128
@@ -215,27 +215,9 @@ class GachaModule(Extension):
     await commands.View.create(ctx).run(name, user)
 
 
-  # @view_cmd.autocomplete("name")
-  # async def view_cmd_autocomplete(self, ctx: AutocompleteContext):
-  #   search_key     = ctx.input_text
-  #   if len(search_key) < 3:
-  #     return await ctx.send([])
-    
-  #   search_results = await userdata.card_search(
-  #     search_key,
-  #     search_by="name",
-  #     sort="match",
-  #     limit=6,
-  #     cutoff=55.0,
-  #     strong_cutoff=None,
-  #     ratio=fuzz.token_ratio,
-  #     processor=process_text
-  #   )
-    
-  #   await ctx.send([
-  #     {"name": f"{card.name} • {card.type} • {card.series}", "value": card.name}
-  #     for card in search_results
-  #   ])
+  @view_cmd.autocomplete("name")
+  async def view_cmd_autocomplete(self, ctx: AutocompleteContext):
+    await commands.View.create(ctx).autocomplete(ctx.input_text)
 
 
   # ===========================================================================

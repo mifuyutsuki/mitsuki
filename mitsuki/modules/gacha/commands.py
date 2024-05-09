@@ -28,7 +28,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mitsuki import bot
 from mitsuki.utils import escape_text, is_caller, process_text
-from mitsuki.lib.commands import AsDict, ReaderCommand, WriterCommand, TargetMixin, MultifieldMixin
+from mitsuki.lib.commands import (
+  AsDict,
+  ReaderCommand,
+  WriterCommand,
+  TargetMixin,
+  MultifieldMixin,
+  AutocompleteMixin
+)
 
 from . import userdata
 from .schema import UserCard, StatsCard, RosterCard
@@ -344,7 +351,7 @@ class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
     await self.send_multipage(template_kwargs=dict(escape_data_values=["type", "series"]), timeout=45)
 
 
-class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
+class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, ReaderCommand):
   state: "View.States"
   data: "View.Data"
   card: StatsCard
@@ -440,7 +447,7 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
     elif by_id and target_id is None:
       self.card_results = await userdata.cards_stats(card_ids=[by_id])
     if len(self.card_results) <= 0:
-      self.card_results = await userdata.card_search(
+      self.card_results = await userdata.cards_stats_search(
         search_key, user_id=target_id, limit=6, cutoff=60, strong_cutoff=90, processor=process_text
       )
     return self.card_results
@@ -457,7 +464,7 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
         selection_name = f"{card.name} ({repeat_no})"
         repeat_no += 1
       selection.append(selection_name)
-    
+
     # Create prompt
     select_menu = StringSelectMenu(*selection, placeholder="Card to view from search results")
     _ = await self.send_multifield_single(
@@ -477,6 +484,28 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
       self.set_ctx(selected.ctx)
       await self.defer(edit_origin=True)
       return self.card_results[selection.index(self.ctx.values[0])]
+
+
+  async def autocomplete(self, input_text: str):
+    if len(input_text) < 3:
+      await self.send_autocomplete()
+      return
+
+    options = [self.option(f"※ Search for '{input_text}'", input_text)]
+    search_results = await userdata.cards_roster_search(
+      input_text,
+      cutoff=60,
+      limit=10
+    )
+    ellip = "..."
+    options.extend([
+      self.option(
+        f"{card.name if len(card.name) < 32 else card.name[:29] + ellip} • {card.type} • {card.series}",
+        f"@{card.id}"
+      )
+      for card in search_results
+    ])
+    await self.send_autocomplete(options)
 
 
 class Give(TargetMixin, CurrencyMixin, WriterCommand):
