@@ -27,6 +27,7 @@ from interactions import (
   Snowflake,
   BaseUser,
   InteractionContext,
+  AutocompleteContext,
   Message,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,6 +41,7 @@ __all__ = (
   "WriterCommand",
   "TargetMixin",
   "MultifieldMixin",
+  "AutocompleteMixin",
 )
 
 
@@ -325,3 +327,22 @@ class MultifieldMixin:
       content=message.content, embed=message.embed[page_index] if message.embed else None, **kwargs
     )
     return self.message
+
+
+class AutocompleteMixin:
+  input_text: str
+
+  @staticmethod
+  def option(name: str, value: str):
+    return {
+      "name": name,
+      "value": value
+    }
+
+  async def autocomplete(self, input_text: str):
+    raise NotImplementedError
+
+  async def send_autocomplete(self, options: Optional[List[Dict[str, str]]] = None):
+    options = options or []
+    if isinstance(self.ctx, AutocompleteContext):
+      await self.ctx.send(options)
