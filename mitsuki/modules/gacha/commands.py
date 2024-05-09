@@ -348,7 +348,7 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
   state: "View.States"
   data: "View.Data"
   card: StatsCard
-  card_results: List[StatsCard]
+  card_results: List[StatsCard] = []
   card_user: Optional[UserCard] = None
   user_mode: bool = False
 
@@ -433,9 +433,16 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, ReaderCommand):
       return []
 
     target_id = self.target_id if self.user_mode else None
-    self.card_results = await userdata.card_search(
-      search_key, user_id=target_id, limit=6, cutoff=60, strong_cutoff=90, processor=process_text
-    )
+    by_id = search_key[1:] if search_key.startswith("@") else None
+
+    if by_id and target_id and await userdata.card_has(target_id, by_id):
+      self.card_results = await userdata.cards_stats(card_ids=[by_id])
+    elif by_id and target_id is None:
+      self.card_results = await userdata.cards_stats(card_ids=[by_id])
+    if len(self.card_results) <= 0:
+      self.card_results = await userdata.card_search(
+        search_key, user_id=target_id, limit=6, cutoff=60, strong_cutoff=90, processor=process_text
+      )
     return self.card_results
 
 
