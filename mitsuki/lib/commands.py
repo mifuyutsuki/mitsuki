@@ -10,7 +10,10 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-# [EXPERIMENTAL] Commands framework. Eases creation of stateful commands.
+"""
+Mitsuki commands framework. Eases creation of stateful commands with the
+Mitsuki messages library (mitsuki.lib.messages).
+"""
 
 from mitsuki import bot
 from mitsuki.lib import messages
