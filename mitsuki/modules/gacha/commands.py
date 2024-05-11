@@ -487,24 +487,23 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
 
 
   async def autocomplete(self, input_text: str):
+    ellip = "..."
+    card_info = lambda card: (
+      f"{card.name if len(card.name) < 32 else card.name[:29] + ellip} • {card.type} • {card.series}"
+    )
     if len(input_text) < 3:
       await self.send_autocomplete()
       return
 
-    options = [self.option(f"※ Search for '{input_text}'", input_text)]
-    search_results = await userdata.cards_roster_search(
-      input_text,
-      cutoff=60,
-      limit=10
-    )
-    ellip = "..."
-    options.extend([
-      self.option(
-        f"{card.name if len(card.name) < 32 else card.name[:29] + ellip} • {card.type} • {card.series}",
-        f"@{card.id}"
-      )
-      for card in search_results
-    ])
+    options = []
+    if input_text.startswith("@"):
+      card_by_id = await userdata.cards_roster(card_ids=[input_text[1:]])
+      if len(card_by_id) > 0:
+        options.append(self.option("@ " + card_info(card_by_id[0]), input_text))
+
+    search_results = await userdata.cards_roster_search(input_text, cutoff=60, limit=9-len(options))
+    options.extend([self.option(card_info(card), f"@{card.id}") for card in search_results])
+    options.append(self.option(f"※ Search for '{input_text}'", input_text))
     await self.send_autocomplete(options)
 
 
