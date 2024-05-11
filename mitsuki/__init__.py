@@ -31,6 +31,7 @@ from interactions.api.events import (
   CommandError,
   CommandCompletion,
   ComponentCompletion,
+  AutocompleteCompletion,
 )
 from interactions.client.errors import (
   CommandCheckFailure,
@@ -234,6 +235,15 @@ class Bot(Client):
     if len(event.ctx.values) > 0:
       values = [str(v) for v in event.ctx.args]
       logger.info(f"values: {values}")
+  
+
+  @listen(AutocompleteCompletion)
+  async def on_autocomplete_completion(self, event: AutocompleteCompletion):
+    command_name = event.ctx.invoke_target
+    logger.info(f"Autocomplete emitted: {command_name}: {event.ctx.input_text}")
+    # if len(event.ctx.kwargs) > 0:
+    #   kwargs = {k: str(v) for k, v in event.ctx.kwargs.items()}
+    #   logger.info(f"kwargs: {kwargs}")
 
 
 bot = Bot()
