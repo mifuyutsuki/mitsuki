@@ -226,15 +226,18 @@ async def cards_roster(
   limit: Optional[int] = None,
   offset: Optional[int] = None,
 ):
+  sort = sort or "rarity"
+
   statement = select(Card, Settings).join(Settings, Card.rarity == Settings.rarity)
   if card_ids:
     statement = statement.where(Card.id.in_(card_ids))
 
-  sort = sort or "id"
   match sort.lower():
     case "rarity":
       statement = statement.order_by(Card.rarity.desc()).order_by(func.lower(Card.name))
     case "alpha":
+      statement = statement.order_by(func.lower(Card.name))
+    case "name":
       statement = statement.order_by(func.lower(Card.name))
     case "series":
       statement = statement.order_by(Card.type).order_by(Card.series).order_by(Card.rarity).order_by(Card.id)
@@ -278,8 +281,7 @@ async def cards_stats(
   limit: Optional[int] = None,
   offset: Optional[int] = None,
 ):
-  card_ids = card_ids or []
-  sort     = sort or "rarity"
+  sort = sort or "rarity"
 
   subq_counts = (
     select(
@@ -328,13 +330,10 @@ async def cards_stats(
   )
   statement = select(subq_cards)
   card = subq_cards.c
-
   if card_ids:
-    statement = statement.where(subq_cards.c.id.in_(card_ids))
+    statement = statement.where(card.id.in_(card_ids))
 
   match sort.lower():
-    case "match":
-      statement = statement.order_by(_insertion_order(card.id, card_ids))
     case "rarity":
       statement = statement.order_by(card.rarity.desc()).order_by(func.lower(card.name))
     case "alpha":
@@ -345,6 +344,10 @@ async def cards_stats(
       statement = statement.order_by(card.type).order_by(card.series, card.rarity, card.id)
     case "id":
       statement = statement.order_by(card.id)
+    case "match":
+      if not card_ids:
+        raise ValueError("Cannot use 'match' sort with no card_ids")
+      statement = statement.order_by(_insertion_order(card.id, card_ids))
     case _:
       raise ValueError(f"Invalid sort setting '{sort}'")
 
