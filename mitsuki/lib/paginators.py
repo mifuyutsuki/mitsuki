@@ -146,6 +146,8 @@ class Paginator:
     """Show a button which will call the `callback`"""
     show_select_menu: bool = attrs.field(repr=False, default=False)
     """Should a select menu be shown for navigation"""
+    hide_buttons_on_stop: bool = attrs.field(repr=False, default=True)
+    """Should the buttons be hidden after the paginator timed out or is stopped"""
 
     first_button_emoji: Optional[Union["PartialEmoji", dict, str]] = attrs.field(
         repr=False, default="⏪", metadata=export_converter(process_emoji)
@@ -307,6 +309,9 @@ class Paginator:
             A list of ActionRows
 
         """
+        if disable and self.hide_buttons_on_stop:
+            return []
+        
         output = []
 
         if self.show_select_menu:
