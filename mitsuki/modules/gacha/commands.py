@@ -514,7 +514,7 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
   async def autocomplete(self, input_text: str):
     ellip = "..."
     card_info = lambda card: (
-      f"{card.name if len(card.name) < 32 else card.name[:29] + ellip} • {card.type} • {card.series}"
+      f"{card.name if len(card.name) < 100 else card.name[:97] + ellip}"
     )
     if len(input_text) < 3:
       await self.send_autocomplete()
