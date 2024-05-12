@@ -1,4 +1,4 @@
-# /system nickname
+# /system set-nickname
 # Set the bot nickname. Requires manage nicknames permission
 
 _namespace: system_nickname

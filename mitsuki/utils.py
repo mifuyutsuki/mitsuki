@@ -27,12 +27,24 @@ import regex as re
 import contextlib
 
 __all__ = (
+  "UserDenied",
+  "BotDenied",
   "escape_text",
   "process_text",
   "remove_accents",
   "is_caller",
   "suppressed_defer",
 )
+
+
+class UserDenied(Exception):
+  def __init__(self, requires: str) -> None:
+    self.requires = requires
+
+
+class BotDenied(Exception):
+  def __init__(self, requires: str) -> None:
+    self.requires = requires
 
 
 _escape_text_re = re.compile(r"[*_`.+(){}!#|:@<>~\-\[\]\\\/]")

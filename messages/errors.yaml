@@ -12,6 +12,30 @@ error:
   color: error
 
 
+# Message if a user is not permitted to run the command.
+error_denied_user:
+  title: >-
+    Permission Error
+  description: >-
+    You don't have permissions to run this command.
+    
+
+    Requires: `${requires}`
+  color: error
+
+
+# Message if the bot is not permitted to run the command.
+error_denied_bot:
+  title: >-
+    Permission Error
+  description: >-
+    The bot has no permissions to execute this command.
+    
+
+    Requires: `${requires}`
+  color: error
+
+
 # Message if a command is on cooldown.
 error_cooldown:
   title: >-

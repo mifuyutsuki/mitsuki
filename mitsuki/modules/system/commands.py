@@ -17,6 +17,7 @@ from enum import StrEnum
 from typing import Optional, Union
 
 from mitsuki.lib.commands import AsDict, ReaderCommand
+from mitsuki.utils import UserDenied, BotDenied
 
 
 class Nickname(ReaderCommand):
@@ -48,10 +49,10 @@ class Nickname(ReaderCommand):
     bot_member = await self.ctx.bot.fetch_member(self.ctx.bot.user.id, self.ctx.guild.id)
     prev_nick  = bot_member.nick
     if not bot_member.has_permission(Permissions.CHANGE_NICKNAME):
-      self.set_state(self.States.BOT_DENIED)
-    elif not self.caller_user.has_permission(Permissions.MANAGE_NICKNAMES) and not await is_owner()(self.ctx):
-      self.set_state(self.States.USER_DENIED)
-    elif bot_member.nick == nickname:
+      raise BotDenied(requires="Change Nickname")
+    if not self.caller_user.has_permission(Permissions.MANAGE_NICKNAMES) and not await is_owner()(self.ctx):
+      raise UserDenied(requires="Manage Nickname")
+    if bot_member.nick == nickname:
       self.set_state(self.States.ERROR_SAME)
     else:
       try:

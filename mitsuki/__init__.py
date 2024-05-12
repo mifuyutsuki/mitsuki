@@ -51,6 +51,7 @@ import asyncio
 import logging
 
 from mitsuki import settings
+from mitsuki.utils import UserDenied, BotDenied
 from mitsuki.lib.messages import load_message
 from mitsuki.lib.userdata import initialize
 from mitsuki.version import __version__
@@ -161,6 +162,20 @@ class Bot(Client):
     elif isinstance(event.error, CommandCheckFailure):
       message = load_message(
         "error_command_perms",
+        user=event.ctx.author
+      )
+      ephemeral = True
+    elif isinstance(event.error, BotDenied):
+      message = load_message(
+        "error_denied_bot",
+        data={"requires": event.error.requires},
+        user=event.ctx.author
+      )
+      ephemeral = True
+    elif isinstance(event.error, UserDenied):
+      message = load_message(
+        "error_denied_user",
+        data={"requires": event.error.requires},
         user=event.ctx.author
       )
       ephemeral = True
