@@ -68,6 +68,14 @@ class GachaModule(Extension):
   # ===========================================================================
 
   @gacha_cmd.subcommand(
+    sub_cmd_name="details",
+    sub_cmd_description="View details on playing the gacha"
+  )
+  async def details_cmd(self, ctx: SlashContext):
+    await commands.Details.create(ctx).run()
+
+
+  @gacha_cmd.subcommand(
     sub_cmd_name="shards",
     sub_cmd_description="View your or another user's amount of Shards"
   )

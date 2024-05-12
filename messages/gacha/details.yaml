@@ -1,0 +1,19 @@
+# /gacha details
+# View details on playing the gacha.
+
+_namespace: gacha_details
+
+
+_:
+  title: >-
+    Mitsuki Gacha
+  fields:
+  - name      : Cost
+    value     : ${cost_info}
+    inline    : false # fields.inline
+  - name      : Dailies
+    value     : ${daily_info}
+    inline    : false # fields.inline
+  - name      : Rarities
+    value     : ${rarities_info}
+    inline    : false # fields.inline

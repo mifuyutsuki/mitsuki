@@ -101,6 +101,57 @@ async def is_gacha_first(user: BaseUser):
 # =============================================================================
 # Gacha commands
 
+
+class Details(CurrencyMixin, ReaderCommand):
+  data: "Details.Data"
+
+  @define(slots=False)
+  class Data(AsDict):
+    daily_info: str
+    cost_info: str
+    rarities_info: str
+
+
+  async def run(self):
+    currency_icon = gacha.currency_icon
+    currency_name = gacha.currency_name
+
+    # Cost info
+    cost = gacha.cost
+    cost_info = f"{currency_icon} **{cost}** {currency_name}"
+
+    # Daily info
+    daily = gacha.daily_shards
+
+    reset_dt = Timestamp.fromtimestamp(userdata.daily_next())
+    reset_str = reset_dt.strftime("%H:%M UTC%z")
+    reset_dyn = reset_dt.format("R")
+
+    daily_info = f"{currency_icon} **{daily}** {currency_name}\n※ Resets on {reset_str} {reset_dyn}"
+    if gacha.first_time_shards and gacha.first_time_shards > 0:
+      daily_info = daily_info + f"\n※ First time daily bonus: {currency_icon} {gacha.first_time_shards}"
+
+    # Rarities info
+    rarities = sorted(gacha.rarities)
+    rarities_info_list = []
+    for rarity in rarities:
+      rate = gacha.rates[rarity] * 100.0
+      pity = gacha.pity.get(rarity, 0)
+      dupe = gacha.dupe_shards.get(rarity, 0)
+      star = gacha.stars.get(rarity) or f"{rarity}"
+
+      rarity_info = f"{star} **{rate:.5}%**"
+      if dupe > 0:
+        rarity_info = rarity_info + f" • {currency_icon} **{dupe}**"
+      if pity > 0:
+        rarity_info = rarity_info + f" • one guaranteed after {pity} rolls"
+      rarities_info_list.append(rarity_info.strip())
+    rarities_info = "\n".join(rarities_info_list)
+
+    self.data = self.Data(daily_info=daily_info, cost_info=cost_info, rarities_info=rarities_info)
+    return await self.send("gacha_details")
+
+
 class Shards(TargetMixin, CurrencyMixin, ReaderCommand):
   data: "Shards.Data"
 
