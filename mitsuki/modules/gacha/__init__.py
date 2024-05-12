@@ -36,6 +36,7 @@ from interactions.api.events import Startup
 from typing import Optional
 
 from mitsuki import init_event
+from mitsuki.utils import UserDenied
 
 from . import commands
 from .gachaman import gacha
@@ -279,8 +280,6 @@ class GachaModule(Extension):
     opt_type=OptionType.INTEGER,
     min_value=1
   )
-  @slash_default_member_permission(Permissions.ADMINISTRATOR)
-  @check(is_owner())
   @auto_defer(ephemeral=True)
   async def system_give_cmd(
     self,
@@ -288,6 +287,8 @@ class GachaModule(Extension):
     target: BaseUser,
     amount: int
   ):
+    if not await is_owner()(ctx) and not ctx.author.has_permission(Permissions.ADMINISTRATOR):
+      raise UserDenied(requires="Bot Owner or Server Admin")
     await commands.GiveAdmin.create(ctx).run(target, amount)
 
 
@@ -298,10 +299,10 @@ class GachaModule(Extension):
     sub_cmd_name="reload",
     sub_cmd_description="Reload gacha configuration files"
   )
-  @slash_default_member_permission(Permissions.ADMINISTRATOR)
-  @check(is_owner())
   @auto_defer(ephemeral=True)
   async def system_reload_cmd(self, ctx: SlashContext):
+    if not await is_owner()(ctx) and not ctx.author.has_permission(Permissions.ADMINISTRATOR):
+      raise UserDenied(requires="Bot Owner or Server Admin")
     await commands.ReloadAdmin.create(ctx).run()
 
 
@@ -312,8 +313,8 @@ class GachaModule(Extension):
     sub_cmd_name="cards",
     sub_cmd_description="View the card roster"
   )
-  @slash_default_member_permission(Permissions.ADMINISTRATOR)
-  @check(is_owner())
   @auto_defer(ephemeral=True)
   async def system_cards_cmd(self, ctx: SlashContext):
+    if not await is_owner()(ctx) and not ctx.author.has_permission(Permissions.ADMINISTRATOR):
+      raise UserDenied(requires="Bot Owner or Server Admin")
     await commands.ViewAdmin.create(ctx).run(sort="id")
