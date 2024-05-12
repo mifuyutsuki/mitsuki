@@ -59,7 +59,7 @@ def escape_text(text: str):
 
   Args:
       text: String to be escaped
-  
+
   Returns:
       Discord markdown-escaped string
   """
@@ -89,7 +89,7 @@ def is_caller(ctx: BaseContext):
   Returns:
       Coroutine to be passed into `bot.wait_for_component()`.
   """
-  
+
   async def check(component: Component):
     c = component.ctx.author.id == ctx.author.id
     if not is_caller:

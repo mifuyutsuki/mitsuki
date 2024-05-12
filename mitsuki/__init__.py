@@ -250,7 +250,7 @@ class Bot(Client):
     if len(event.ctx.values) > 0:
       values = [str(v) for v in event.ctx.args]
       logger.info(f"values: {values}")
-  
+
 
   @listen(AutocompleteCompletion)
   async def on_autocomplete_completion(self, event: AutocompleteCompletion):

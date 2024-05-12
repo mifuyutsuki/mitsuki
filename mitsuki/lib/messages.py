@@ -59,7 +59,7 @@ class Message:
     self.content = content
     self.embed = embed
     self.embeds = embeds
- 
+
 
   def to_dict(self):
     """
@@ -132,7 +132,7 @@ class MessageMan:
         default_template_path = p / "defaults.yaml"
       elif (p / "messages.yaml").exists():
         default_template_path = p / "messages.yaml"
-      
+
       if default_template_path:
         self.load(str(default_template_path))
       else:
@@ -195,16 +195,16 @@ class MessageMan:
 
     Kwargs:
         template_kwargs: Template overrides
-    
+
     Returns:
         Message: Message object to be passed to send()
-    
+
     Raises:
         ValueError: Message template 'name' does not exist in loaded file.
     """
     if template_name not in self._templates.keys():
       raise ValueError(f"Message template '{template_name}' is invalid or does not exist")
-    
+
     data = data or {}
     if user:
       data |= user_data(user)
@@ -216,7 +216,7 @@ class MessageMan:
       default = self._load_template(loaded["base_template"], copy=True)
     else:
       default = self._load_template("default", copy=True)
-    
+
     template  = default | loaded
     template  = _assign_data(template, data, escapes=escape_data_values)
     template |= template_kwargs
@@ -227,7 +227,7 @@ class MessageMan:
       content=str(content) if content else None,
       embed=_create_embed(template, color_data=self.colors)
     )
-  
+
 
   def multipage(
     self,
@@ -253,10 +253,10 @@ class MessageMan:
 
     Kwargs:
         template_kwargs: Template overrides for all pages
-    
+
     Returns:
         Message: Message object to be passed to Paginator
-    
+
     Raises:
         ValueError: Message template 'name' does not exist.
     """
@@ -274,10 +274,10 @@ class MessageMan:
       default = self._load_template(loaded["base_template"], copy=True)
     else:
       default = self._load_template("default", copy=True)
-    
+
     base_template = default | loaded
     base_template = _assign_data(base_template, base_data, escapes=escape_data_values)
-    
+
     content = base_template.get("content")
 
     # Iterate one embed per page
@@ -292,12 +292,12 @@ class MessageMan:
       )
       page_template |= template_kwargs
       embeds.append(_create_embed(page_template, color_data=self.colors))
-    
+
     return Message(
       content=str(content) if content else None,
       embeds=embeds
     )
-  
+
 
   def multifield(
     self,
@@ -325,10 +325,10 @@ class MessageMan:
 
     Kwargs:
         template_kwargs: Template overrides for all pages
-    
+
     Returns:
         Message: Message object to be passed to Paginator
-    
+
     Raises:
         ValueError: Message template 'name' does not exist.
     """
@@ -357,7 +357,7 @@ class MessageMan:
     fields_per_page = min(25, fields_per_page)
 
     embeds = []
-    
+
     # Iterate <fields_per_page> fields per page
     pages = (max(0, len(fields_data) - 1) // fields_per_page) + 1
     cursor, page = 0, 1
@@ -379,7 +379,7 @@ class MessageMan:
 
       cursor += fields_per_page
       page += 1
-    
+
     return Message(
       content=str(content) if content else None,
       embeds=embeds
@@ -391,7 +391,7 @@ class MessageMan:
       source_templates: Dict[str, Any] = safe_load(f)
     if not isinstance(source_templates, Dict):
       raise ValueError(f"Message template file '{template_file}' is invalid")
-    
+
     templates = {}
     namespace = ""
     if isinstance(source_templates.get("_namespace"), str):
@@ -401,7 +401,7 @@ class MessageMan:
     if len(namespace) > 1 and "_" in source_templates.keys():
       templates[namespace.removesuffix("_")] = source_templates["_"]
     templates |= {namespace + k: v for k, v in source_templates.items() if not k.startswith("_")}
-    
+
     return templates
 
 
@@ -411,7 +411,7 @@ class MessageMan:
       return deepcopy(get) if get else {}
     else:
       return get or {}
-  
+
 
   def _clear(self):
     self._templates = {}
@@ -482,10 +482,10 @@ def load_message(
 
   Kwargs:
       template_kwargs: Template overrides
-  
+
   Returns:
       Message: Message object to be passed to send()
-  
+
   Raises:
       ValueError: Message template 'name' does not exist in loaded file.
   """
@@ -525,10 +525,10 @@ def load_multipage(
 
   Kwargs:
       template_kwargs: Template overrides for all pages
-  
+
   Returns:
       Message: Message object to be passed to Paginator
-  
+
   Raises:
       ValueError: Message template 'name' does not exist.
   """
@@ -571,10 +571,10 @@ def load_multifield(
 
   Kwargs:
       template_kwargs: Template overrides for all pages
-  
+
   Returns:
       Message: Message object to be passed to Paginator
-  
+
   Raises:
       ValueError: Message template 'name' does not exist.
   """
@@ -638,27 +638,27 @@ def _assign_data(
       seq = temp
     else:
       seq = []
-    
+
     for s in seq:
       if is_dict:
         key, value = s
       else:
         value = s
-      
+
       if isinstance(value, (Dict, List)) and recursions < DEPTH:
         assigned_value = _recurse_assign(value, recursions+1)
       elif isinstance(value, str):
         assigned_value = Template(value).safe_substitute(**escaped_data)
       else:
         assigned_value = value
-      
+
       if is_dict:
         assigned_temp[key] = assigned_value
       elif is_list:
         assigned_temp.append(assigned_value)
 
     return assigned_temp
-  
+
   assigned = _recurse_assign(assigned)
   return assigned
 
@@ -732,7 +732,7 @@ def _is_valid_url(url: Optional[str]):
   # Good enough approach - robust alternative from Django is rather long
   if not isinstance(url, str):
     return False
-  
+
   parsed = urlparse(url)
   return (
     parsed.scheme in ("http", "https", "ftp", "ftps") and

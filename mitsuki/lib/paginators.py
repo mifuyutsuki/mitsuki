@@ -311,7 +311,7 @@ class Paginator:
         """
         if disable and self.hide_buttons_on_stop:
             return []
-        
+
         output = []
 
         if self.show_select_menu:

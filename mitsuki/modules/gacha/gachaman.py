@@ -59,8 +59,8 @@ class Gachaman:
 
   def __init__(self, settings_yaml: str, roster_yaml: str):
     self.reload(settings_yaml=settings_yaml, roster_yaml=roster_yaml)
-  
-  
+
+
   def reload(
     self,
     settings_yaml: Optional[str] = None,
@@ -71,10 +71,10 @@ class Gachaman:
 
     self._load_settings(settings_yaml)
     self._load_roster(roster_yaml)
-    
+
     self._settings_yaml = settings_yaml
     self._roster_yaml = roster_yaml
-  
+
 
   async def sync_db(self):
     await add_settings(self.of_rarity.values())
@@ -83,17 +83,17 @@ class Gachaman:
 
   def from_id(self, id: str):
     return self.cards.get(id)
-  
-  
+
+
   def from_ids(self, ids: List[str]):
     cards: List[SourceCard] = []
     for id in ids:
       card = self.from_id(id)
       if card is not None:
         cards.append(card)
-    
+
     return cards
-  
+
 
   def roll(self, min_rarity: Optional[int] = None):
     rates = self.rates
@@ -126,7 +126,7 @@ class Gachaman:
 
     picked = pick(available_picks)
     return self.cards[picked]
-  
+
 
   @property
   def currency(self):
@@ -160,7 +160,7 @@ class Gachaman:
     self.colors      = {r: self.of_rarity[r].color for r in rarities}
     self.stars       = {r: self.of_rarity[r].stars for r in rarities}
     self.rarities    = sorted(rarities, reverse=True)
-  
+
 
   def _load_roster(self, filename: str):
     _data: Dict = _load_yaml(filename)
@@ -170,7 +170,7 @@ class Gachaman:
     self.rarity_map = {}
     self.type_map   = {}
     self.series_map = {}
-        
+
     for id, data in _data.items():
       try:
         # Mandatory fields
@@ -183,7 +183,7 @@ class Gachaman:
 
       image = data.get("image")
       self.cards[id] = SourceCard(id, name, rarity, type, series, image)
-      
+
       if rarity not in self.rarity_map.keys():
         self.rarity_map[rarity] = []
       self.rarity_map[rarity].append(id)
@@ -195,8 +195,8 @@ class Gachaman:
       if series not in self.series_map.keys():
         self.series_map[series] = []
       self.series_map[series].append(id)
-  
-  
+
+
   def _parse_settings(self, data: Dict):
     rates_get: Dict[str, float]     = data.get("rates") or {}
     pity_get: Dict[str, float]      = data.get("pity") or {}
@@ -216,7 +216,7 @@ class Gachaman:
     # Everything else
     pity: Dict[int, int] = {r: 0 for r in rarities}
     pity.update(_transform_settings(pity_get))
-    
+
     dupe_shards: Dict[int, int] = {r: 0 for r in rarities}
     dupe_shards.update(_transform_settings(dupe_shards_get))
 
@@ -240,7 +240,7 @@ class Gachaman:
 
 
 # =================================================================
-      
+
 
 def _load_yaml(filename: str):
   with open(filename, encoding='UTF-8') as f:

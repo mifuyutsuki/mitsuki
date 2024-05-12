@@ -36,7 +36,7 @@ class Rolls(Base):
       f"Rolls(id={self.id!r}, user={self.user!r}, "
       f"time={self.time!r}, card={self.card!r})"
     )
-  
+
 
 class Currency(Base):
   __tablename__ = "gacha_currency"
@@ -45,7 +45,7 @@ class Currency(Base):
   amount: Mapped[int]
   last_daily: Mapped[Optional[float]]
   first_daily: Mapped[Optional[float]]
-  
+
   def __repr__(self):
     return (
       f"Currency(user={self.user!r}, amount{self.amount!r}, "
@@ -161,11 +161,11 @@ class UserCard:
   rarity: int
   type: str
   series: str
-  
+
   color: int = field(repr=False)
   stars: str = field(repr=False)
   image: Optional[str] = field(default=None)
-  
+
   mention: str = field(init=False)
   first_acquired_f: str = field(init=False)
   linked_name: str = field(init=False)
@@ -183,15 +183,15 @@ class UserCard:
       type=result.Card.type,
       series=result.Card.series,
       image=result.Card.image,
-      
+
       color=result.Settings.color,
       stars=result.Settings.stars
     )
-  
+
   @classmethod
   def create_many(cls, results: List[Row]):
     return [cls.create(result) for result in results]
-  
+
   def __attrs_post_init__(self):
     self.mention = f"<@{self.user}>"
     self.first_acquired_f = f"<t:{self.first_acquired}:f>"
@@ -210,24 +210,24 @@ class UserPity:
   @classmethod
   def create(cls, result: Pity2):
     return cls(user=result.user, rarity=result.rarity, count=result.count)
-  
+
   @classmethod
   def create_many(cls, results: List[Pity2]):
     return [cls.create(result) for result in results]
-  
+
   def asdict(self):
     return _asdict(self)
 
 
 # =============================================================================
-  
+
 
 @define
 class SearchCard:
   id: str
   search: str
   score: float = field(default=0.0)
-  
+
   @classmethod
   def from_db(
     cls,
@@ -288,7 +288,7 @@ class RosterCard:
       stars=result.Settings.stars,
       dupe_shards=result.Settings.dupe_shards
     )
-  
+
   @classmethod
   def from_db_many(cls, results: List[Row]):
     return [cls.from_db(result) for result in results]
@@ -313,7 +313,7 @@ class StatsCard:
   color: int
   stars: str
   image: Optional[str] = field(default=None)
-  
+
   users: int = field(default=0)
   rolled: int = field(default=0)
   first_user_acquired_float: Optional[float] = field(default=None)
@@ -343,18 +343,18 @@ class StatsCard:
       type=result.type,
       series=result.series,
       image=result.image,
-      
+
       users=result.users,
       rolled=result.rolled,
       first_user_acquired_float=result.first_user_acquired,
       first_user=result.first_user,
       last_user_acquired_float=result.last_user_acquired,
       last_user=result.last_user,
-      
+
       color=result.color,
       stars=result.stars
     )
-  
+
   @classmethod
   def from_db_many(cls, results: List[Row]):
     return [cls.from_db(result) for result in results]
@@ -397,7 +397,7 @@ class SourceCard:
   series: str
 
   image: Optional[str] = field(default=None)
-  
+
   def asdict(self):
     return _asdict(self)
 

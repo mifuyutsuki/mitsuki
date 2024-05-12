@@ -93,7 +93,7 @@ async def daily_first_check(user_id: Snowflake):
 
   async with new_session() as session:
     result = await session.scalar(statement)
-  
+
   return not bool(result)
 
 
@@ -101,13 +101,13 @@ def daily_next(from_time: Optional[float] = None, reset_time: Optional[str] = No
   reset_time = reset_time or settings.mitsuki.daily_reset
   from_time = from_time or datetime.now().timestamp()
   dt = datetime.strptime(reset_time, "%H:%M%z")
-  
+
   reset_tz = dt.tzinfo
   last_daily_dt = datetime.fromtimestamp(from_time, tz=reset_tz)
   next_daily_dt = last_daily_dt.replace(hour=dt.hour, minute=dt.minute, second=0, microsecond=0)
   if last_daily_dt > next_daily_dt:
     next_daily_dt = next_daily_dt + timedelta(days=1)
-  
+
   return next_daily_dt.timestamp()
 
 
@@ -127,7 +127,7 @@ async def card_count(user_id: int, card_id: str):
   )
   async with new_session() as session:
     count = await session.scalar(statement)
-  
+
   return count or 0
 
 
@@ -140,7 +140,7 @@ async def card_roster(card_id: str):
 
   async with new_session() as session:
     result = (await session.execute(statement)).first()
-  
+
   if not result:
     raise ValueError(f"Card with ID '{card_id}' not found in roster")
   else:
@@ -159,7 +159,7 @@ async def card_user(user_id: int, card_id: str):
 
   async with new_session() as session:
     result = (await session.execute(statement)).first()
-  
+
   return UserCard.create(result) if result else None
 
 
@@ -207,13 +207,13 @@ async def cards_user(
 
   async with new_session() as session:
     results = (await session.execute(statement)).all()
-  
+
   return UserCard.create_many(results)
 
 
 async def cards_user_count(user_id: Optional[Snowflake]):
   statement = select(func.count(Inventory.card)).where(Inventory.user == user_id)
-  
+
   async with new_session() as session:
     result = (await session.scalar(statement))
 
@@ -267,7 +267,7 @@ async def cards_roster_count(unobtained: bool = False):
     statement = select(func.count(obtained.c.card))
   else:
     statement = select(func.count(Card.id))
-  
+
   async with new_session() as session:
     result = (await session.scalar(statement))
 
@@ -402,7 +402,7 @@ async def cards_roster_search(
       card_ids = [c.id for c in cards]
   else:
     card_ids = [c.id for c in cards]
-  
+
   return await cards_roster(card_ids=card_ids, sort=sort, limit=limit, offset=offset)
 
 
@@ -472,7 +472,7 @@ async def card_key_search(
       search_column = Card.series
     case _:
       raise ValueError(f"Invalid search-by setting '{search_by}'")
-  
+
   search_column = search_column.label("search")
 
   if user_id:
@@ -529,12 +529,12 @@ async def pity_get(user_id: Snowflake):
 
   async with new_session() as session:
     results = (await session.scalars(statement)).all()
-  
+
   # Standard pity output is a Dict[int, int]
   get: Dict[int, int] = {}
   for result in results:
     get[result.rarity] = result.count
-  
+
   return get
 
 
@@ -551,7 +551,7 @@ async def pity_check(user_id: Snowflake, pity_settings: Dict[int, int]):
       continue
     if user_pity[pity_rarity] + 1 >= pity_settings[pity_rarity]:
       return pity_rarity
-  
+
   return pity_rarities[-1]
 
 
@@ -600,11 +600,11 @@ async def _shards_set(
 ):
   if amount < 0:
     raise ValueError(f"Invalid set amount of '{amount}' shards")
-  
+
   current_time = time()
   assign_last_daily = {"last_daily": current_time} if daily else {}
   assign_first_daily = {"first_daily": current_time} if first else {}
-  
+
   statement = (
     insert(Currency)
     .values(user=user_id, amount=amount, **assign_last_daily, **assign_first_daily)
@@ -614,7 +614,7 @@ async def _shards_set(
     )
   )
   await session.execute(statement)
-  
+
 
 async def _shards_add(session: AsyncSession, user_id: Snowflake, amount: int):
   current_amount = await _shards_get(user_id)
@@ -652,7 +652,7 @@ def _daily_next(last_daily: float, reset_time: str):
   next_daily_dt = last_daily_dt.replace(
     hour=dt.hour, minute=dt.minute, second=0, microsecond=0
   )
-  
+
   if last_daily_dt > next_daily_dt:
     next_daily_dt = next_daily_dt + timedelta(days=1)
 
@@ -704,7 +704,7 @@ async def add_cards(cards: List[SourceCard]):
   async with new_session() as session:
     for card in cards:
       await add_card(session, card)
-    
+
     await session.commit()
 
 
@@ -738,5 +738,5 @@ async def add_settings(settings: List[SourceSettings]):
   async with new_session() as session:
     for setting in settings:
       await add_setting(session, setting)
-    
+
     await session.commit()

@@ -93,7 +93,7 @@ class GachaModule(Extension):
 
   # ===========================================================================
   # ===========================================================================
-    
+
   @gacha_cmd.subcommand(
     sub_cmd_name="daily",
     sub_cmd_description=f"Claim your gacha daily"
@@ -105,7 +105,7 @@ class GachaModule(Extension):
 
   # ===========================================================================
   # ===========================================================================
-        
+
   @gacha_cmd.subcommand(
     sub_cmd_name="roll",
     sub_cmd_description="Roll gacha once using Shards"
