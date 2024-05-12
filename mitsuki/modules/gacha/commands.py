@@ -522,7 +522,7 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
 
     options = []
     if input_text.startswith("@"):
-      card_by_id = await userdata.cards_roster(card_ids=[input_text[1:]])
+      card_by_id = await userdata.cards_stats(card_ids=[input_text[1:]])
       if len(card_by_id) > 0:
         options.append(self.option("@ " + card_info(card_by_id[0]), input_text))
 
