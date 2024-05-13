@@ -83,7 +83,8 @@ class UserInfo(TargetMixin, ReaderCommand):
       )
       self.set_state(self.States.MEMBER)
       await self.send(
-        other_data=self.member_data.asdict(), template_kwargs=dict(escape_data_values=escapes), color=color
+        other_data=self.member_data.asdict(),
+        template_kwargs=dict(escape_data_values=escapes, color=color),
       )
     else:
       self.set_state(self.States.USER)
