@@ -11,6 +11,7 @@
 # GNU Affero General Public License for more details.
 
 from interactions import (
+  Client,
   Extension,
   slash_command,
   slash_option,
@@ -21,9 +22,19 @@ from interactions import (
   User,
   cooldown,
   Buckets,
+  MemberConverter,
+)
+from interactions.ext.prefixed_commands import (
+  prefixed_command,
+  PrefixedContext,
+)
+from interactions.client.errors import (
+  BadArgument,
 )
 
 from . import commands
+
+from typing import Optional
 
 
 class InfoModule(Extension):
@@ -48,3 +59,18 @@ class InfoModule(Extension):
   )
   async def user_cmd(self, ctx: SlashContext, user: BaseUser = None):
     await commands.UserInfo.create(ctx).run(user)
+
+
+  @prefixed_command(
+    name="user",
+    aliases=["u"],
+  )
+  async def user_cmd_prefixed(self, ctx: PrefixedContext, *, user: Optional[str] = None):
+    if user:
+      try:
+        select_user = await MemberConverter().convert(ctx, user)
+      except BadArgument:
+        return
+    else:
+      select_user = ctx.author
+    await commands.UserInfo.create(ctx).run(select_user)

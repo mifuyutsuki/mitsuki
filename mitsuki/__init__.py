@@ -37,6 +37,10 @@ from interactions.client.errors import (
   CommandCheckFailure,
   CommandOnCooldown,
   MaxConcurrencyReached,
+  BadArgument,
+)
+from interactions.ext.prefixed_commands import (
+  setup as setup_prefixed,
 )
 from interactions.client.const import CLIENT_FEATURE_FLAGS
 from interactions.client.mixins.send import SendMixin
@@ -90,7 +94,7 @@ class Bot(Client):
         type = ActivityType.PLAYING
       )
     )
-    self.intents = Intents.DEFAULT
+    self.intents = Intents.DEFAULT | Intents.MESSAGE_CONTENT
     self.send_command_tracebacks = False
 
     self.status_index = 0
@@ -145,6 +149,9 @@ class Bot(Client):
 
   @listen(CommandError, disable_default_listeners=True)
   async def on_command_error(self, event: CommandError):
+    if isinstance(event.error, BadArgument):
+      # Ignore for now
+      return
     if isinstance(event.error, CommandOnCooldown):
       cooldown_seconds = int(event.error.cooldown.get_cooldown_time())
       message = load_message(
@@ -263,6 +270,7 @@ class Bot(Client):
 
 bot = Bot()
 bot.del_unused_app_cmd = True
+prefix_man = setup_prefixed(bot, default_prefix="m/")
 
 
 def run():

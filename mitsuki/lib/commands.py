@@ -21,6 +21,7 @@ from mitsuki.lib.paginators import Paginator
 from mitsuki.lib.userdata import new_session
 
 from attrs import define, asdict as _asdict
+from functools import partial
 from typing import Optional, Union, List, Dict, Any
 from enum import StrEnum
 from interactions import (
@@ -29,7 +30,9 @@ from interactions import (
   InteractionContext,
   AutocompleteContext,
   Message,
+  AllowedMentions,
 )
+from interactions.ext.prefixed_commands import PrefixedContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 __all__ = (
@@ -148,6 +151,8 @@ class Command:
 
     if edit_origin and hasattr(self.ctx, "edit_origin"):
       send = self.ctx.edit_origin
+    elif isinstance(self.ctx, PrefixedContext):
+      send = partial(self.ctx.reply, allowed_mentions=AllowedMentions.none())
     else:
       send = self.ctx.send
     self.message = await send(
