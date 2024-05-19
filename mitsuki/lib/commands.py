@@ -25,7 +25,8 @@ from typing import Optional, Union, List, Dict, Any
 from enum import StrEnum
 from interactions import (
   Snowflake,
-  BaseUser,
+  User,
+  Member,
   InteractionContext,
   AutocompleteContext,
   Message,
@@ -67,7 +68,7 @@ class Caller(AsDict):
   usericon: str
 
   @classmethod
-  def set(cls, user: BaseUser):
+  def set(cls, user: Union[Member, User]):
     return cls(
       userid=user.id,
       user=user.mention,
@@ -88,7 +89,7 @@ class Target(AsDict):
   target_usericon: str
 
   @classmethod
-  def set(cls, user: BaseUser):
+  def set(cls, user: Union[Member, User]):
     return cls(
       target_userid=user.id,
       target_user=user.mention,
@@ -104,7 +105,7 @@ class Target(AsDict):
 class Command:
   ctx: InteractionContext
   caller_data: "Caller"
-  caller_user: BaseUser
+  caller_user: Union[Member, User]
   data: Optional["AsDict"] = None
   message: Optional[Message] = None
   state: Optional[StrEnum] = None
@@ -201,13 +202,13 @@ class WriterCommand(Command):
 
 class TargetMixin:
   target_data: "Target"
-  target_user: BaseUser
+  target_user: Union[Member, User]
 
   @property
   def target_id(self):
     return self.target_user.id
 
-  def set_target(self, target: BaseUser):
+  def set_target(self, target: Union[Member, User]):
     self.target_user = target
     self.target_data = Target.set(target)
 
