@@ -70,7 +70,7 @@ class UserInfo(TargetMixin, ReaderCommand):
     if isinstance(target, Member):
       pos = 0
       for role in target.roles:
-        if role.color != "#000000" and role.position > pos:
+        if role.color.value != 0 and role.position > pos:
           color = role.color.value
           pos = role.position
 
