@@ -68,8 +68,8 @@ async def shards_check(user_id: Snowflake, amount: int):
 # Daily functions
 
 
-async def daily_give(session: AsyncSession, user_id: Snowflake, amount: int, first: bool = False):
-  await _daily_add(session, user_id, amount, first=first)
+async def daily_give(session: AsyncSession, user_id: Snowflake, amount: int):
+  await _daily_add(session, user_id, amount)
 
 
 async def daily_check(user_id: Snowflake, reset_time: Optional[str] = None):
@@ -630,9 +630,10 @@ async def _shards_sub(session: AsyncSession, user_id: Snowflake, amount: int):
   await _shards_set(session, user_id, new_amount, daily=False)
 
 
-async def _daily_add(session: AsyncSession, user_id: Snowflake, amount: int, first: bool = False):
+async def _daily_add(session: AsyncSession, user_id: Snowflake, amount: int):
   current_amount = await _shards_get(user_id)
   new_amount = current_amount + amount
+  first = await daily_first_check(user_id)
 
   await _shards_set(session, user_id, new_amount, daily=True, first=first)
 
