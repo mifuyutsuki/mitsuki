@@ -116,6 +116,10 @@ class Command:
     o.set_ctx(ctx)
     return o
 
+  @classmethod
+  def from_other(cls, other_command: "Command"):
+    return cls.create(other_command.ctx)
+
   def set_ctx(self, ctx: InteractionContext):
     self.ctx = ctx
     self.caller_user = ctx.author
