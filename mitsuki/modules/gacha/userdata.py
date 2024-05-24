@@ -543,16 +543,12 @@ async def pity_check(user_id: Snowflake, pity_settings: Dict[int, int]):
   if len(user_pity) == 0:
     return None
 
-  pity_rarities = sorted(pity_settings.keys(), reverse=True)
-  for pity_rarity in pity_rarities:
-    if pity_settings[pity_rarity] <= 1:
-      continue
-    if pity_rarity not in user_pity.keys():
-      continue
-    if user_pity[pity_rarity] + 1 >= pity_settings[pity_rarity]:
-      return pity_rarity
+  pity_rarity = None
+  for rarity, pity in pity_settings.items():
+    if pity > 1 and user_pity.get(rarity, 0) >= pity - 1:
+      pity_rarity = max(rarity, pity_rarity or 0)
 
-  return pity_rarities[-1]
+  return pity_rarity
 
 
 async def pity_update(

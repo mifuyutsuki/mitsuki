@@ -23,9 +23,6 @@ T = TypeVar("T")
 
 
 class Gachaman:
-  of_rarity: Dict[int, SourceSettings]
-  rarities: List[int]
-
   cost: int
   currency_icon: str
   currency_name: str
@@ -55,6 +52,8 @@ class Gachaman:
   _data_roster: Dict[str, Dict]
   _settings_yaml: str
   _roster_yaml: str
+
+  arona: SystemRandom = SystemRandom()
 
 
   def __init__(self, settings_yaml: str, roster_yaml: str):
@@ -95,28 +94,22 @@ class Gachaman:
     return cards
 
 
-  def roll(self, min_rarity: Optional[int] = None):
-    rates = self.rates
-    arona = SystemRandom()
-    roll  = arona.random
-    pick  = arona.choice
+  def roll(self, min_rarity: Optional[int] = None, user_pity: Optional[Dict[int, int]] = None):
+    min_rarity  = min_rarity or self.rarities[0]
+    rarity_get  = self.rarities[0]
+    arona_value = self.arona.random()
 
-    # TODO: Replace min_rarity arg with dict of pity counter (soft pity?)
+    if user_pity:
+      for rarity, pity in self.pity.items():
+        if pity > 1 and user_pity.get(rarity, 0) >= pity - 1:
+          min_rarity = max(rarity, min_rarity)
 
-    rarities   = sorted(rates.keys())
-    rarity_1   = rarities[0]
-    rarity_min = max(min_rarity, rarity_1) if min_rarity else rarity_1
-
-    rarity_get  = rarity_min
-    arona_value = roll()
-
-    for rarity in rarities:
-      arona_value -= rates[rarity]
-      if rarity < rarity_min:
+    for rarity in self.rarities:
+      rarity_get   = rarity
+      arona_value -= self.rates[rarity]
+      if rarity < min_rarity:
         continue
-
       if arona_value < 0.0:
-        rarity_get = rarity
         break
 
     available_picks = None
@@ -124,8 +117,8 @@ class Gachaman:
       available_picks = self.rarity_map.get(rarity_get)
       rarity_get -= 1
 
-    picked = pick(available_picks)
-    return self.cards[picked]
+    arona_pick = self.arona.choice(available_picks)
+    return self.cards[arona_pick]
 
 
   @property
@@ -151,15 +144,13 @@ class Gachaman:
 
     self.of_rarity = self._parse_settings(_data)
 
-    # Due to how roll() works, rarities order is reversed
     rarities = self.of_rarity.keys()
-
     self.rates       = {r: self.of_rarity[r].rate for r in rarities}
     self.pity        = {r: self.of_rarity[r].pity for r in rarities}
     self.dupe_shards = {r: self.of_rarity[r].dupe_shards for r in rarities}
     self.colors      = {r: self.of_rarity[r].color for r in rarities}
     self.stars       = {r: self.of_rarity[r].stars for r in rarities}
-    self.rarities    = sorted(rarities, reverse=True)
+    self.rarities    = sorted(rarities)
 
 
   def _load_roster(self, filename: str):

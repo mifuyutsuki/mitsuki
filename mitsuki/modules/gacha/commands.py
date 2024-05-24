@@ -266,6 +266,7 @@ class Roll(CurrencyMixin, WriterCommand):
     def __attrs_post_init__(self):
       self.new_shards = self.shards + self.update_shards
 
+
   async def roll(self):
     user_shards = await userdata.shards(self.caller_id)
     roll_cost   = gacha.cost
@@ -276,9 +277,9 @@ class Roll(CurrencyMixin, WriterCommand):
       return False
 
     await self.defer(suppress_error=True)
-    pity   = await userdata.pity_check(self.caller_id, gacha.pity)
-    rolled = gacha.roll(min_rarity=pity)
-    card   = await userdata.card_roster(rolled.id)
+    user_pity = await userdata.pity_get(self.caller_id)
+    rolled    = gacha.roll(user_pity=user_pity)
+    card      = await userdata.card_roster(rolled.id)
 
     if await userdata.card_has(self.caller_id, rolled.id):
       self.set_state(self.States.DUPE)
@@ -286,6 +287,7 @@ class Roll(CurrencyMixin, WriterCommand):
     else:
       self.set_state(self.States.NEW)
       self.data  = self.Data.set(user_shards, -roll_cost)
+
     self.again = self.data.new_shards >= self.data.cost
     self.card  = card
     return True
