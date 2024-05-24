@@ -121,6 +121,17 @@ class Gachaman:
     return self.cards[arona_pick]
 
 
+  def roll_rarity(self, rarity: int):
+    rarity_get = rarity
+    available_picks = None
+    while available_picks is None and rarity_get > 0:
+      available_picks = self.rarity_map.get(rarity_get)
+      rarity_get -= 1
+
+    arona_pick = self.arona.choice(available_picks)
+    return self.cards[arona_pick]
+
+
   @property
   def currency(self):
     return f"{self.currency_icon} {self.currency_name}".strip()
@@ -264,3 +275,11 @@ def reload():
     settings_yaml=_settings_yaml,
     roster_yaml=_roster_yaml
   )
+
+
+def roll(min_rarity: Optional[int] = None, user_pity: Optional[Dict[int, int]] = None):
+  return gacha.roll(min_rarity=min_rarity, user_pity=user_pity)
+
+
+def roll_rarity(rarity: int):
+  return gacha.roll_rarity(rarity=rarity)
