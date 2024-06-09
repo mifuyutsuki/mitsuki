@@ -37,6 +37,8 @@ from interactions.client.errors import (
   CommandCheckFailure,
   CommandOnCooldown,
   MaxConcurrencyReached,
+  DiscordError,
+  HTTPException,
 )
 from interactions.client.const import CLIENT_FEATURE_FLAGS
 from interactions.client.mixins.send import SendMixin
@@ -153,6 +155,13 @@ class Bot(Client):
       message = ctx_load_message("error_denied_bot", data={"requires": event.error.requires})
     elif isinstance(event.error, UserDenied):
       message = ctx_load_message("error_denied_user", data={"requires": event.error.requires})
+    elif isinstance(event.error, HTTPException) and (
+      isinstance(event.error.code, int) and (500 <= event.error.code < 600)
+    ):
+      error_repr = str(event.error)
+      logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
+      message = ctx_load_message("error_server", data={"error_repr": error_repr})
+      ephemeral = False
     else:
       error_repr = _format_tb(event.error)
       logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
