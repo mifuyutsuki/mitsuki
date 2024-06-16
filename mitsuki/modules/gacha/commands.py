@@ -402,10 +402,10 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
     NO_RESULTS_USER     = "gacha_view_no_results"         # gacha_view_us_no_results
     NO_INVENTORY_USER   = "gacha_view_no_cards"           # gacha_view_us_no_cards
 
-    VIEW_OWNERS_UNACQ   = "gacha_view_card_2_unacquired"           # gacha_view_gs_owners_unacquired
-    VIEW_1OWNER_UNACQ   = "gacha_view_card_2_unacquired_one_owner" # gacha_view_gs_1owner_unacquired
-    VIEW_OWNERS_ACQ     = "gacha_view_card_2_acquired"             # gacha_view_gs_owners_acquired
-    VIEW_1OWNER_ACQ     = "gacha_view_card_2_acquired_one_owner"   # gacha_view_gs_1owner_acquired
+    VIEW_OWNERS_UNACQ   = "gacha_view_card_2_unacquired"           # gacha_view_global_unacquired
+    VIEW_1OWNER_UNACQ   = "gacha_view_card_2_unacquired_one_owner" # gacha_view_global_unacquired
+    VIEW_OWNERS_ACQ     = "gacha_view_card_2_acquired"             # gacha_view_global_acquired
+    VIEW_1OWNER_ACQ     = "gacha_view_card_2_acquired_one_owner"   # gacha_view_global_acquired
     VIEW_USER           = "gacha_view_card"                        # gacha_view_us_card
 
   @define(slots=False)
