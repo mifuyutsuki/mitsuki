@@ -20,6 +20,8 @@ from interactions import (
   process_color,
 )
 from yaml import safe_load
+from attrs import define, asdict as _asdict
+
 from mitsuki import settings
 from mitsuki.utils import escape_text
 from typing import (
@@ -45,21 +47,11 @@ FileName: TypeAlias = Union[str, bytes, PathLike]
 MessageTemplate: TypeAlias = Dict[str, Any]
 
 
+@define
 class Message:
-  content: Optional[str]
-  embed: Optional[Embed]
-  embeds: Optional[List[Embed]]
-
-  def __init__(
-    self,
-    content: Optional[str] = None,
-    embed: Optional[Embed] = None,
-    embeds: Optional[List[Embed]] = None
-  ):
-    self.content = content
-    self.embed = embed
-    self.embeds = embeds
-
+  content: Optional[str] = None
+  embed: Optional[Embed] = None
+  embeds: Optional[List[Embed]] = None
 
   def to_dict(self):
     """
@@ -68,10 +60,7 @@ class Message:
     Returns:
         dict
     """
-    return {
-      "content": self.content,
-      "embed": self.embed
-    }
+    return _asdict(self, recurse=False)
 
 
 class MessageMan:
@@ -211,21 +200,28 @@ class MessageMan:
     if target_user:
       data |= target_user_data(target_user)
 
-    loaded = self._load_template(template_name)
-    if isinstance(loaded.get("base_template"), str):
-      default = self._load_template(loaded["base_template"], copy=True)
-    else:
-      default = self._load_template("default", copy=True)
+    loaded_templates = self._load_template(template_name)
+    if not isinstance(loaded_templates, list):
+      loaded_templates = [loaded_templates]
 
-    template  = default | loaded
-    template  = _assign_data(template, data, escapes=escape_data_values)
-    template |= template_kwargs
+    content   = None
+    embeds    = []
+    for loaded in loaded_templates:
+      if isinstance(loaded.get("base_template"), str):
+        default = self._load_template(loaded["base_template"], copy=True)
+      else:
+        default = self._load_template("default", copy=True)
 
-    content = template.get("content")
+      template  = default | loaded
+      template  = _assign_data(template, data, escapes=escape_data_values)
+      template |= template_kwargs
+
+      content = content or template.get("content")
+      embeds.append(_create_embed(template, color_data=self.colors))
 
     return Message(
       content=str(content) if content else None,
-      embed=_create_embed(template, color_data=self.colors)
+      embeds=embeds
     )
 
 
