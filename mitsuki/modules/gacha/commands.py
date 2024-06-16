@@ -102,6 +102,15 @@ async def is_gacha_first(user: BaseUser):
 # Gacha commands
 
 
+class _Errors(CurrencyMixin, ReaderCommand):
+  async def insufficient_funds(self, shards: int, cost: int):
+    data = {
+      "shards": shards,
+      "cost": cost,
+    }
+    await self.send("gacha_insufficient_funds", other_data=data)
+
+
 class Details(CurrencyMixin, ReaderCommand):
   data: "Details.Data"
 
@@ -272,8 +281,7 @@ class Roll(CurrencyMixin, WriterCommand):
     roll_cost   = gacha.cost
 
     if user_shards < roll_cost:
-      self.set_state(self.States.INSUFFICIENT)
-      self.data  = self.Data.set(user_shards, 0)
+      self.data = self.Data.set(user_shards, 0)
       return False
 
     await self.defer(suppress_error=True)
@@ -297,8 +305,8 @@ class Roll(CurrencyMixin, WriterCommand):
     again_response = None
     while self.again:
       if not await self.roll():
-        await self.send()
-        return
+        # Roll fails due to insufficient shards
+        return await _Errors.from_other(self).insufficient_funds(self.data.shards, gacha.cost)
 
       again_btn = Button(style=ButtonStyle.BLURPLE, label="Roll again", disabled=not self.again)
       message   = await self.send_commit(
