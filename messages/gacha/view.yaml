@@ -79,89 +79,85 @@ gs_no_acquired: &no_acquired
     There are no acquired cards to view.
   color: error
 
-# View card, unobtained by user, multiple owners
-gs_card_owners_unacquired: &card_2_unacquired
+# View card, unobtained by user (new)
+global_unacquired: &global_unacquired
+- base_template: no_footer
   title: >-
     ${name}
   description: >-
     ${stars} • ${type} • ${series}
-
-
-    `${rolled}` rolled by `${users}` users
-
-    First acquired by ${first_user_mention}: ${first_user_acquired_f}
-
-    Last acquired by ${last_user_mention}: ${last_user_acquired_f}
-
-
-    Not yet acquired in your card collection
   image: >-
     ${image}
   color: >-
     ${color}
+- title: >-
+    Card Statistics
+  color: >-
+    ${color}
+  fields:
+  - name      : Rolled
+    value     : >-
+      **${rolled}** times
+      
+      **${users}** owners
+    inline    : true
+  - name      : Last acquired
+    value     : >-
+      ${last_user_acquired_f}
+      
+      by ${last_user_mention}
+    inline    : true
+  - name      : In your collection
+    value     : >-
+      Not yet acquired
+    inline    : true
+
+# View card, has been obtained by user (new)
+global_acquired: &global_acquired
+- base_template: no_footer
+  title: >-
+    ${name}
+  description: >-
+    ${stars} • ${type} • ${series}
+  image: >-
+    ${image}
+  color: >-
+    ${color}
+- title: >-
+    Card Statistics
+  color: >-
+    ${color}
+  fields:
+  - name      : Rolled
+    value     : >-
+      **${rolled}** times
+      
+      **${users}** owners
+    inline    : true
+  - name      : Last acquired
+    value     : >-
+      ${last_user_acquired_f}
+      
+      by ${last_user_mention}
+    inline    : true
+  - name      : In your collection
+    value     : >-
+      **${amount}** cards
+
+      Since ${first_acquired_f}
+    inline    : true
+
+# View card, unobtained by user, multiple owners
+gs_card_owners_unacquired: *global_unacquired
 
 # View card, unobtained by user, one owner
-gs_card_1owner_unacquired: &card_2_unacquired_one_owner
-  title: >-
-    ${name}
-  description: >-
-    ${stars} • ${type} • ${series}
-
-
-    `${rolled}` rolled by `${users}` users
-
-    First acquired by ${first_user_mention}: ${first_user_acquired_f}
-
-
-    Not yet acquired in your card collection
-  image: >-
-    ${image}
-  color: >-
-    ${color}
+gs_card_1owner_unacquired: *global_unacquired
 
 # View card, has been obtained by user, multiple owners
-gs_card_owners_acquired: &card_2_acquired
-  title: >-
-    ${name}
-  description: >-
-    ${stars} • ${type} • ${series}
-
-
-    `${rolled}` rolled by `${users}` users
-
-    First acquired by ${first_user_mention}: ${first_user_acquired_f}
-
-    Last acquired by ${last_user_mention}: ${last_user_acquired_f}
-
-
-    `${amount}` in your card collection
-
-    First acquired: ${first_acquired_f}
-  image: >-
-    ${image}
-  color: >-
-    ${color}
+gs_card_owners_acquired: *global_acquired
 
 # View card, has been obtained by user, one owner
-gs_card_1owner_acquired: &card_2_acquired_one_owner
-  title: >-
-    ${name}
-  description: >-
-    ${stars} • ${type} • ${series}
-
-
-    `${rolled}` rolled by `${users}` users
-
-    First acquired by ${first_user_mention}: ${first_user_acquired_f}
-
-
-    `${amount}` in your card collection
-
-    First acquired: ${first_acquired_f}
-  image: >-
-    ${image}
-  color: >-
-    ${color}
+gs_card_1owner_acquired: *global_acquired
 
 
 # -----------------------------------------------------------------------------
@@ -227,7 +223,7 @@ us_card: &card
 
     `${amount}` in ${target_user}'s card collection
 
-    First acquired by user: ${first_acquired_f}
+    Since ${first_acquired_f}
   image: >-
     ${image}
   color: >-
@@ -271,7 +267,7 @@ card: *card
 search_results_2: *search_results_2
 no_results_2: *no_results_2
 no_acquired: *no_acquired
-card_2_acquired: *card_2_acquired
-card_2_acquired_one_owner: *card_2_acquired_one_owner
-card_2_unacquired: *card_2_unacquired
-card_2_unacquired_one_owner: *card_2_unacquired_one_owner
+card_2_acquired: *global_acquired
+card_2_acquired_one_owner: *global_acquired
+card_2_unacquired: *global_unacquired
+card_2_unacquired_one_owner: *global_unacquired
