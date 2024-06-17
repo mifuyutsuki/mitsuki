@@ -573,6 +573,55 @@ async def pity_update(
     await session.execute(statement)
 
 
+async def stats_user(user_id: Snowflake):
+  subq_pity = (
+    select(Pity2.rarity, Pity2.count.label("pity_count"))
+    .where(Pity2.user == user_id)
+    .subquery()
+  )
+  subq_cards = (
+    select(Card.rarity, func.count(Inventory.count).label("cards"), func.sum(Inventory.count).label("rolled"))
+    .join(Inventory, Inventory.card == Card.id)
+    .where(Inventory.user == user_id)
+    .group_by(Card.rarity)
+    .subquery()
+  )
+
+  subq_latest_time = (
+    select(Card.rarity, func.max(Rolls.time).label("time"))
+    .join(Rolls, Rolls.card == Card.id)
+    .where(Rolls.user == user_id)
+    .group_by(Card.rarity)
+    .subquery()
+  )
+  subq_latest = (
+    select(Card)
+    .join(Rolls, Rolls.card == Card.id)
+    .join(subq_latest_time, subq_latest_time.c.time == Rolls.time)
+    .where(Rolls.user == user_id)
+    .subquery()
+  )
+
+  query = (
+    select(
+      Settings,
+      subq_pity,
+      subq_latest,
+      subq_latest.c.rarity.label("last_rarity"),
+      func.ifnull(subq_cards.c.cards, 0).label("cards"),
+      func.ifnull(subq_cards.c.rolled, 0).label("rolled"),
+    )
+    .join(subq_pity, subq_pity.c.rarity == Settings.rarity, isouter=True)
+    .join(subq_latest, subq_latest.c.rarity == Settings.rarity, isouter=True)
+    .join(subq_cards, subq_cards.c.rarity == Settings.rarity, isouter=True)
+  )
+
+  async with new_session() as session:
+    results = (await session.execute(query)).all()
+  
+  return UserStats.from_db_many(results)
+
+
 # =================================================================================================
 
 # ===================================================================

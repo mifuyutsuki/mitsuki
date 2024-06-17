@@ -389,6 +389,42 @@ class StatsCard:
 
 
 @define
+class UserStats:
+  rarity: int
+  stars: str
+  pity: Optional[int]
+  cards: int
+  rolled: int
+
+  last_id: str
+  last_name: str
+  last_rarity: int
+  last_type: str
+  last_series: str
+  last_image: Optional[str]
+
+  @classmethod
+  def from_db(cls, result: Row):
+    return cls(
+      rarity=result.Settings.rarity,
+      stars=result.Settings.stars,
+      pity=result.pity_count,
+      cards=result.cards,
+      rolled=result.rolled,
+
+      last_id=result.id,
+      last_name=result.name,
+      last_type=result.type,
+      last_series=result.series,
+      last_image=result.image
+    )
+
+  @classmethod
+  def from_db_many(cls, results: List[Row]):
+    return [cls.from_db(result) for result in results]
+
+
+@define
 class SourceCard:
   id: str
   name: str
