@@ -44,7 +44,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 FileName: TypeAlias = Union[str, bytes, PathLike]
-MessageTemplate: TypeAlias = Dict[str, Any]
 
 
 @define
@@ -64,8 +63,10 @@ class Message:
 
 
 class MessageMan:
-  _templates: Dict[str, MessageTemplate] = {}
-  _default: Optional[MessageTemplate] = None
+  _templates: Dict[str, Dict[str, Any]] = {}
+  _strings: Dict[str, str] = {}
+  _strings_blanks: Dict[str, str] = {}
+  _default: Optional[Dict[str, Any]] = None
   colors: Dict[str, int] = {}
 
 
@@ -84,25 +85,6 @@ class MessageMan:
     base = cls()
     base.load_dir(template_dir)
     return base
-
-
-  def load(self, template_file: FileName):
-    """
-    Load or reload a message templates file (YAML).
-
-    Args:
-        template_file: Name of YAML template file.
-    """
-    self._clear()
-    self._templates = self._load(template_file)
-    if "default" in self._templates.keys():
-      self._default = self._load_template("default")
-    if "_colors" in self._templates.keys():
-      self.colors = self._templates["_colors"]
-
-    logger.debug(
-      f"Loaded {len(self._templates)} message templates from file: '{template_file}'"
-    )
 
 
   def load_dir(self, template_dir: FileName, modify: bool = False):
@@ -140,6 +122,36 @@ class MessageMan:
         continue
 
 
+  def load(self, template_file: FileName):
+    """
+    Load or reload a message templates file (YAML).
+
+    Args:
+        template_file: Name of YAML template file.
+    """
+    self._clear()
+
+    templates = self._load(template_file)
+    for k, v in templates.items():
+      if isinstance(v, str):
+        self._strings |= {k: v}
+        self._strings_blanks |= {k: ""}
+      else:
+        self._templates |= {k: v}
+
+    if "default" in templates.keys():
+      self._default = templates["default"]
+    if "_colors" in templates.keys():
+      self.colors = templates["_colors"]
+
+    logger.debug(
+      f"Loaded {len(self._templates)} message templates from file: '{template_file}'"
+    )
+    logger.debug(
+      f"Loaded {len(self._strings)} string templates from file: '{template_file}'"
+    )
+
+
   def modify(self, template_file: FileName):
     """
     Modify current message templates using a message templates file.
@@ -151,7 +163,13 @@ class MessageMan:
         template_file: Name of YAML template file.
     """
     templates = self._load(template_file)
-    self._templates.update(templates)
+    for k, v in templates.items():
+      if isinstance(v, str):
+        self._strings |= {k: v}
+        self._strings_blanks |= {k: ""}
+      else:
+        self._templates |= {k: v}
+
     if "default" in templates.keys():
       self._default = self._load_template("default")
 
@@ -167,6 +185,7 @@ class MessageMan:
     user: Optional[BaseUser] = None,
     target_user: Optional[BaseUser] = None,
     escape_data_values: List[str] = [],
+    use_string_templates: List[str] = [],
     **template_kwargs
   ) -> Message:
     """
@@ -181,6 +200,7 @@ class MessageMan:
         user: User to include to data
         target_user: Target user to include to data
         escape_data_values: Data entries to be Markdown-escaped
+        use_string_templates: String templates to be shown, otherwise blanked
 
     Kwargs:
         template_kwargs: Template overrides
@@ -193,6 +213,9 @@ class MessageMan:
     """
     if template_name not in self._templates.keys():
       raise ValueError(f"Message template '{template_name}' is invalid or does not exist")
+    
+    string_data  = self._strings_blanks.copy()
+    string_data |= {k: v for k, v in self._strings.items() if k in use_string_templates}
 
     data = data or {}
     if user:
@@ -213,6 +236,7 @@ class MessageMan:
         default = self._load_template("default", copy=True)
 
       template  = default | loaded
+      template  = _assign_data(template, string_data)
       template  = _assign_data(template, data, escapes=escape_data_values)
       template |= template_kwargs
 
@@ -233,6 +257,7 @@ class MessageMan:
     user: Optional[BaseUser] = None,
     target_user: Optional[BaseUser] = None,
     escape_data_values: List[str] = [],
+    use_string_templates: List[str] = [],
     **template_kwargs
   ) -> Message:
     """
@@ -246,6 +271,7 @@ class MessageMan:
         user: User to include to data
         target_user: Target user to include to data
         escape_data_values: Data entries to be Markdown-escaped
+        use_string_templates: String templates to be shown, otherwise blanked
 
     Kwargs:
         template_kwargs: Template overrides for all pages
@@ -258,6 +284,9 @@ class MessageMan:
     """
     if template_name not in self._templates.keys():
       raise ValueError(f"Message template '{template_name}' is invalid or does not exist")
+
+    string_data  = self._strings_blanks.copy()
+    string_data |= {k: v for k, v in self._strings.items() if k in use_string_templates}
 
     base_data = base_data or {}
     if user:
@@ -272,6 +301,7 @@ class MessageMan:
       default = self._load_template("default", copy=True)
 
     base_template = default | loaded
+    base_template = _assign_data(base_template, string_data)
     base_template = _assign_data(base_template, base_data, escapes=escape_data_values)
 
     content = base_template.get("content")
@@ -304,6 +334,7 @@ class MessageMan:
     target_user: Optional[BaseUser] = None,
     fields_per_page: int = 6,
     escape_data_values: List[str] = [],
+    use_string_templates: List[str] = [],
     **template_kwargs
   ):
     """
@@ -318,6 +349,7 @@ class MessageMan:
         target_user: Target user to include to data
         fields_per_page: Number of fields for each page
         escape_data_values: Data entries to be Markdown-escaped
+        use_string_templates: String templates to be shown, otherwise blanked
 
     Kwargs:
         template_kwargs: Template overrides for all pages
@@ -330,6 +362,9 @@ class MessageMan:
     """
     if template_name not in self._templates.keys():
       raise ValueError(f"Message template '{template_name}' is invalid or does not exist")
+
+    string_data  = self._strings_blanks.copy()
+    string_data |= {k: v for k, v in self._strings.items() if k in use_string_templates}
 
     base_data = base_data or {}
     if user:
@@ -344,6 +379,7 @@ class MessageMan:
       default = self._load_template("default", copy=True)
 
     base_template  = default | loaded
+    base_template  = _assign_data(base_template, self._strings)
     base_template  = _assign_data(base_template, base_data, escapes=escape_data_values)
     field_template = base_template.get("field")
 
@@ -411,6 +447,8 @@ class MessageMan:
 
   def _clear(self):
     self._templates = {}
+    self._strings = {}
+    self._strings_blanks = {}
     self._default = None
 
 
@@ -458,6 +496,7 @@ def load_message(
   user: Optional[BaseUser] = None,
   target_user: Optional[BaseUser] = None,
   escape_data_values: List[str] = [],
+  use_string_templates: List[str] = [],
   **template_kwargs
 ) -> Message:
   """
@@ -475,6 +514,7 @@ def load_message(
       user: User to include to data
       target_user: Target user to include to data
       escape_data_values: Data entries to be Markdown-escaped
+      use_string_templates: String templates to be shown, otherwise blanked
 
   Kwargs:
       template_kwargs: Template overrides
@@ -491,6 +531,7 @@ def load_message(
     user=user,
     target_user=target_user,
     escape_data_values=escape_data_values,
+    use_string_templates=use_string_templates,
     **template_kwargs
   )
 
@@ -502,6 +543,7 @@ def load_multipage(
   user: Optional[BaseUser] = None,
   target_user: Optional[BaseUser] = None,
   escape_data_values: List[str] = [],
+  use_string_templates: List[str] = [],
   **template_kwargs
 ) -> Message:
   """
@@ -518,6 +560,7 @@ def load_multipage(
       user: User to include to data
       target_user: Target user to include to data
       escape_data_values: Data entries to be Markdown-escaped
+      use_string_templates: String templates to be shown, otherwise blanked
 
   Kwargs:
       template_kwargs: Template overrides for all pages
@@ -535,6 +578,7 @@ def load_multipage(
     user=user,
     target_user=target_user,
     escape_data_values=escape_data_values,
+    use_string_templates=use_string_templates,
     **template_kwargs
   )
 
@@ -547,6 +591,7 @@ def load_multifield(
   target_user: Optional[BaseUser] = None,
   fields_per_page: int = 6,
   escape_data_values: List[str] = [],
+  use_string_templates: List[str] = [],
   **template_kwargs
 ):
   """
@@ -564,6 +609,7 @@ def load_multifield(
       target_user: Target user to include to data
       fields_per_page: Number of fields for each page
       escape_data_values: Data entries to be Markdown-escaped
+      use_string_templates: String templates to be shown, otherwise blanked
 
   Kwargs:
       template_kwargs: Template overrides for all pages
@@ -582,6 +628,7 @@ def load_multifield(
     target_user=target_user,
     fields_per_page=fields_per_page,
     escape_data_values=escape_data_values,
+    use_string_templates=use_string_templates,
     **template_kwargs
   )
 
@@ -606,7 +653,7 @@ def target_user_data(user: BaseUser):
 
 
 def _assign_data(
-  template: MessageTemplate,
+  template: Dict[str, Any],
   data: Optional[Dict[str, Any]] = None,
   escapes: List[str] = []
 ):
@@ -644,7 +691,7 @@ def _assign_data(
       if isinstance(value, (Dict, List)) and recursions < DEPTH:
         assigned_value = _recurse_assign(value, recursions+1)
       elif isinstance(value, str):
-        assigned_value = Template(value).safe_substitute(**escaped_data)
+        assigned_value = Template(value).safe_substitute(**escaped_data).strip()
       else:
         assigned_value = value
 
@@ -659,7 +706,7 @@ def _assign_data(
   return assigned
 
 
-def _create_embed(template: MessageTemplate, color_data: Optional[Dict[str, int]] = None):
+def _create_embed(template: Dict[str, Any], color_data: Optional[Dict[str, int]] = None):
   title = template.get("title")
   description = template.get("description")
 
