@@ -39,7 +39,7 @@ from mitsuki.lib.commands import (
 
 from . import userdata
 from .schema import UserCard, StatsCard, RosterCard
-from .gachaman import gacha
+from .gachaman import gacha, daily_reset_time
 
 
 # =============================================================================
@@ -132,7 +132,7 @@ class Details(CurrencyMixin, ReaderCommand):
     # Daily info
     daily = gacha.daily_shards
 
-    reset_dt = Timestamp.fromtimestamp(userdata.daily_next())
+    reset_dt = Timestamp.fromdatetime(daily_reset_time())
     reset_str = reset_dt.strftime("%H:%M UTC%z")
     reset_dyn = reset_dt.format("R")
 
@@ -217,7 +217,7 @@ class Daily(CurrencyMixin, WriterCommand):
     user = self.caller_user
     available      = await userdata.daily_check(user.id)
     current_shards = await userdata.shards(user.id)
-    next_daily     = userdata.daily_next()
+    next_daily     = daily_reset_time().timestamp()
     guild_name     = user.guild.name if getattr(user, "guild", None) else "-"
 
     if not available:

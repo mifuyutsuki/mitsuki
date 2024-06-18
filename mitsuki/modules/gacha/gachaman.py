@@ -13,6 +13,7 @@
 from yaml import safe_load
 from typing import Dict, List, Optional, Any, Callable, TypeVar
 from random import SystemRandom
+from datetime import datetime, timedelta
 
 from mitsuki import settings
 
@@ -283,3 +284,15 @@ def roll(min_rarity: Optional[int] = None, user_pity: Optional[Dict[int, int]] =
 
 def roll_rarity(rarity: int):
   return gacha.roll_rarity(rarity=rarity)
+
+
+def daily_reset_time():
+  dt = datetime.strptime(settings.mitsuki.daily_reset, "%H:%M%z")
+
+  reset_tz = dt.tzinfo
+  last_daily_dt = datetime.now(tz=reset_tz)
+  next_daily_dt = last_daily_dt.replace(hour=dt.hour, minute=dt.minute, second=0, microsecond=0)
+  if last_daily_dt > next_daily_dt:
+    next_daily_dt = next_daily_dt + timedelta(days=1)
+
+  return next_daily_dt
