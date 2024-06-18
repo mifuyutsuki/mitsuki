@@ -119,11 +119,17 @@ class Details(CurrencyMixin, ReaderCommand):
     daily_info: str
     cost_info: str
     rarities_info: str
+    cost: int
+    daily: int
+    reset_str: str
+    reset_dyn: str
+    first_time_shards: int = 0
 
 
   async def run(self):
     currency_icon = gacha.currency_icon
     currency_name = gacha.currency_name
+    string_templates = []
 
     # Cost info
     cost = gacha.cost
@@ -136,9 +142,12 @@ class Details(CurrencyMixin, ReaderCommand):
     reset_str = reset_dt.strftime("%H:%M UTC%z")
     reset_dyn = reset_dt.format("R")
 
+    first_time_shards = 0
     daily_info = f"{currency_icon} **{daily}** {currency_name}\n※ Resets on {reset_str} {reset_dyn}"
     if gacha.first_time_shards and gacha.first_time_shards > 0:
-      daily_info = daily_info + f"\n※ First time daily bonus: {currency_icon} {gacha.first_time_shards}"
+      first_time_shards = gacha.first_time_shards
+      string_templates.append("gacha_details_first_time_info")
+      daily_info = daily_info + f"\n※ First time daily bonus: {currency_icon} {first_time_shards}"
 
     # Rarities info
     rarities = sorted(gacha.rarities)
@@ -157,8 +166,17 @@ class Details(CurrencyMixin, ReaderCommand):
       rarities_info_list.append(rarity_info.strip())
     rarities_info = "\n".join(rarities_info_list)
 
-    self.data = self.Data(daily_info=daily_info, cost_info=cost_info, rarities_info=rarities_info)
-    return await self.send("gacha_details")
+    self.data = self.Data(
+      daily_info=daily_info,
+      cost_info=cost_info,
+      rarities_info=rarities_info,
+      cost=cost,
+      daily=daily,
+      reset_str=reset_str,
+      reset_dyn=reset_dyn,
+      first_time_shards=first_time_shards,
+    )
+    return await self.send("gacha_details", template_kwargs=dict(use_string_templates=string_templates))
 
 
 class Shards(TargetMixin, CurrencyMixin, ReaderCommand):

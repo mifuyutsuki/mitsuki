@@ -9,11 +9,20 @@ _:
     Mitsuki Gacha
   fields:
   - name      : Cost
-    value     : ${cost_info}
+    value     : >-
+      ${currency_icon} **${cost}** ${currency_name}
     inline    : false # fields.inline
   - name      : Dailies
-    value     : ${daily_info}
+    value     : >-
+      ${currency_icon} **${daily}** ${currency_name}
+  
+      ※ Resets on ${reset_str} ${reset_dyn}
+
+      ${gacha_details_first_time_info}
     inline    : false # fields.inline
   - name      : Rarities
     value     : ${rarities_info}
     inline    : false # fields.inline
+
+first_time_info: >-
+  ※ First time daily bonus: ${currency_icon} ${first_time_shards}
