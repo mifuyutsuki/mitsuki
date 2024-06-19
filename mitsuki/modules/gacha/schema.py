@@ -392,31 +392,46 @@ class StatsCard:
 class UserStats:
   rarity: int
   stars: str
-  pity: Optional[int]
   cards: int
   rolled: int
 
-  last_id: str
-  last_name: str
-  last_rarity: int
-  last_type: str
-  last_series: str
-  last_image: Optional[str]
+  set_pity: Optional[int] = field(default=None)
+  user_pity: Optional[int] = field(default=None)
+
+  last_id: Optional[str] = field(default=None)
+  last_name: Optional[str] = field(default=None)
+  last_rarity: Optional[int] = field(default=None)
+  last_type: Optional[str] = field(default=None)
+  last_series: Optional[str] = field(default=None)
+  last_image: Optional[str] = field(default=None)
+
+  last_time_float: Optional[float] = field(default=None)
+  last_time: Optional[int] = field(default=None, init=False)
+  last_time_f: Optional[str] = field(default="-", init=False)
+  last_time_d: Optional[str] = field(default="-", init=False)
+
+  def __attrs_post_init__(self):
+    if self.last_time_float:
+      self.last_time = int(self.last_time_float)
+      self.last_time_f = f"<t:{self.last_time}:f>"
+      self.last_time_d = f"<t:{self.last_time}:D>"
 
   @classmethod
   def from_db(cls, result: Row):
     return cls(
       rarity=result.Settings.rarity,
       stars=result.Settings.stars,
-      pity=result.pity_count,
       cards=result.cards,
       rolled=result.rolled,
+      set_pity=result.Settings.pity,
+      user_pity=result.pity_count,
 
       last_id=result.id,
       last_name=result.name,
       last_type=result.type,
       last_series=result.series,
-      last_image=result.image
+      last_image=result.image,
+      last_time_float=result.time,
     )
 
   @classmethod

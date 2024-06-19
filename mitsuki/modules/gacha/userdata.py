@@ -595,7 +595,7 @@ async def stats_user(user_id: Snowflake):
     .subquery()
   )
   subq_latest = (
-    select(Card)
+    select(Card, subq_latest_time)
     .join(Rolls, Rolls.card == Card.id)
     .join(subq_latest_time, subq_latest_time.c.time == Rolls.time)
     .where(Rolls.user == user_id)
@@ -607,7 +607,6 @@ async def stats_user(user_id: Snowflake):
       Settings,
       subq_pity,
       subq_latest,
-      subq_latest.c.rarity.label("last_rarity"),
       func.ifnull(subq_cards.c.cards, 0).label("cards"),
       func.ifnull(subq_cards.c.rolled, 0).label("rolled"),
     )
