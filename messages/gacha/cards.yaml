@@ -1,5 +1,5 @@
 # /gacha cards
-# [FUTURE] /gacha gallery
+# /gacha gallery
 # /system gacha cards (/gacha admin cards)
 # View a user's collection of gacha cards.
 
@@ -44,8 +44,8 @@ _:
       `${amount}` • ${type} • ${series} • ${first_acquired_f}
     inline    : false
 
-# Deck mode
-# [FUTURE] /gacha gallery
+# Deck view
+# /gacha gallery
 deck:
   author:
     name: >-
