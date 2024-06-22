@@ -135,6 +135,20 @@ class Command:
   def message_template(self, template: str, other_data: Optional[dict] = None, **kwargs):
     return messages.load_message(template, data=self.asdict() | (other_data or {}), **kwargs)
 
+  def message_template_multiline(
+    self,
+    template: str,
+    lines_data: List[Dict[str, Any]],
+    other_data: Optional[dict] = None,
+    **kwargs
+  ):
+    return messages.load_multiline(
+      template,
+      lines_data=lines_data,
+      base_data=self.asdict() | (other_data or {}),
+      **kwargs
+    )
+
   async def send(
     self,
     template: Optional[str] = None,
@@ -142,6 +156,7 @@ class Command:
     other_data: Optional[dict] = None,
     template_kwargs: Optional[dict] = None,
     edit_origin: bool = False,
+    lines_data: Optional[List[Dict[str, Any]]] = None,
     **kwargs
   ):
     if not template:
@@ -155,9 +170,13 @@ class Command:
       send = self.ctx.edit_origin
     else:
       send = self.ctx.send
-    self.message = await send(
-      **self.message_template(template, other_data, **template_kwargs).to_dict(), **kwargs
-    )
+    
+    if lines_data:
+      message_template = self.message_template_multiline(template, lines_data, other_data, **template_kwargs)
+    else:
+      message_template = self.message_template(template, other_data, **template_kwargs)
+
+    self.message = await send(**message_template.to_dict(), **kwargs)
     return self.message
 
   async def defer(self, ephemeral: bool = False, edit_origin: bool = False, suppress_error: bool = False):

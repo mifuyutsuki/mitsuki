@@ -379,7 +379,7 @@ class MessageMan:
       default = self._load_template("default", copy=True)
 
     base_template  = default | loaded
-    base_template  = _assign_data(base_template, self._strings)
+    base_template  = _assign_data(base_template, string_data)
     base_template  = _assign_data(base_template, base_data, escapes=escape_data_values)
     field_template = base_template.get("field")
 
@@ -411,6 +411,95 @@ class MessageMan:
 
       cursor += fields_per_page
       page += 1
+
+    return Message(
+      content=str(content) if content else None,
+      embeds=embeds
+    )
+
+
+  def multiline(
+    self,
+    template_name: str,
+    lines_data: Dict[str, List[Dict[str, Any]]],
+    base_data: Optional[dict] = None,
+    user: Optional[BaseUser] = None,
+    target_user: Optional[BaseUser] = None,
+    escape_data_values: List[str] = [],
+    use_string_templates: List[str] = [],
+    **template_kwargs
+  ):
+    if template_name not in self._templates.keys():
+      raise ValueError(f"Message template '{template_name}' is invalid or does not exist")
+
+    string_data  = self._strings_blanks.copy()
+    string_data |= {k: v for k, v in self._strings.items() if k in use_string_templates}
+
+    base_data = base_data or {}
+    if user:
+      base_data |= user_data(user)
+    if target_user:
+      base_data |= target_user_data(target_user)
+
+    loaded_templates = self._load_template(template_name)
+    if not isinstance(loaded_templates, list):
+      loaded_templates = [loaded_templates]
+
+    content   = None
+    embeds    = []
+    for loaded in loaded_templates:
+      if isinstance(loaded.get("base_template"), str):
+        default = self._load_template(loaded["base_template"], copy=True)
+      else:
+        default = self._load_template("default", copy=True)
+
+      template  = default | loaded
+      template  = _assign_data(template, string_data)
+      template  = _assign_data(template, base_data, escapes=escape_data_values)
+
+      # message_template = {
+      #   ...,
+      #   multiline: [
+      #     {id: m_1, value: "this string"},
+      #     {id: m_2, value: "this_string"}
+      #   ]
+      # }
+
+      # lines_data = {
+      #   m_1: [
+      #     {a: 1, b: 1},
+      #     {a: 2, b: 3}
+      #   ],
+      #   m_2: ...
+      # }
+
+      multiline_settings = template.get("multiline")
+      multiline_assigned = {m["id"]: "" for m in multiline_settings if m.get("id")}
+      for m in multiline_settings:
+        m_id = m.get("id")
+        m_value = m.get("value")
+        if m_id not in multiline_assigned.keys():
+          continue
+        if m_id not in lines_data.keys():
+          continue
+        if not isinstance(m_value, str):
+          continue
+
+        multiline_assigns = [
+          _assign_string(_assign_string(m_value, string_data), base_data | line_data, escapes=escape_data_values)
+          for line_data in lines_data[m_id]
+        ]
+        if len(multiline_assigns) > 0:
+          if m.get("inline") and m.get("separator"):
+            multiline_assigned[m_id] = m["separator"].join(multiline_assigns)
+          else:
+            multiline_assigned[m_id] = (" " if m.get("inline") else "\n").join(multiline_assigns)
+
+      template  = _assign_data(template, multiline_assigned)
+      template |= template_kwargs
+
+      content = content or template.get("content")
+      embeds.append(_create_embed(template, color_data=self.colors))
 
     return Message(
       content=str(content) if content else None,
@@ -633,6 +722,28 @@ def load_multifield(
   )
 
 
+def load_multiline(
+  template_name: str,
+  lines_data: Dict[str, List[Dict[str, Any]]],
+  base_data: Optional[dict] = None,
+  user: Optional[BaseUser] = None,
+  target_user: Optional[BaseUser] = None,
+  escape_data_values: List[str] = [],
+  use_string_templates: List[str] = [],
+  **template_kwargs
+):
+  return root.multiline(
+    template_name=template_name,
+    lines_data=lines_data,
+    base_data=base_data,
+    user=user,
+    target_user=target_user,
+    escape_data_values=escape_data_values,
+    use_string_templates=use_string_templates,
+    **template_kwargs
+  )
+
+
 def user_data(user: BaseUser):
   return {
     "username": user.tag,
@@ -704,6 +815,15 @@ def _assign_data(
 
   assigned = _recurse_assign(assigned)
   return assigned
+
+
+def _assign_string(string: str, data: Dict[str, Any], escapes: List[str] = []):
+  escaped_data = data.copy()
+  for key, value in data.items():
+    if key in escapes and isinstance(value, str):
+      escaped_data[key] = escape_text(value)
+
+  return Template(string).safe_substitute(**escaped_data).strip()
 
 
 def _create_embed(template: Dict[str, Any], color_data: Optional[Dict[str, int]] = None):
