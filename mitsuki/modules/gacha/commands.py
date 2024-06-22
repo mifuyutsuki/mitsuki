@@ -179,6 +179,109 @@ class Details(CurrencyMixin, ReaderCommand):
     return await self.send("gacha_details", template_kwargs=dict(use_string_templates=string_templates))
 
 
+class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
+  data: "Profile.Data"
+
+  @define(slots=False)
+  class Data(AsDict):
+    user_shards: int
+    total_cards: int
+    total_rolled: int
+
+  async def run(self, target: Optional[BaseUser] = None):
+    self.set_target(target or self.caller_user)
+    await self.defer(suppress_error=True)
+
+    user_shards = await userdata.shards(self.target_id)
+    user_stats = await userdata.stats_user(self.target_id)
+
+    m_pity_counter = []
+    m_cards = []
+    m_rolled = []
+    total_cards = 0
+    total_rolled = 0
+    last_time_max = 0.0
+    last_card = None
+
+    for user_stat in user_stats:
+      if user_stat.last_time_float and user_stat.last_time_float > last_time_max:
+        last_time_max = user_stat.last_time_float
+        last_card = {
+          "last_card_stars": user_stat.stars,
+          "last_card_id": user_stat.last_id,
+          "last_card_name": user_stat.last_name,
+          "last_card_type": user_stat.last_type,
+          "last_card_series": user_stat.last_series,
+          "last_card_image": user_stat.last_image,
+          "last_card_time_float": user_stat.last_time_float,
+          "last_card_time": user_stat.last_time,
+          "last_card_time_f": user_stat.last_time_f,
+          "last_card_time_d": user_stat.last_time_d,
+        }
+
+      if user_stat.set_pity and user_stat.set_pity > 0:
+        m_pity_counter.append({
+          "pity_stars": user_stat.stars,
+          "pity_count": user_stat.user_pity or 0,
+          "pity_value": user_stat.set_pity,
+        })
+      if user_stat.cards > 0:
+        m_cards.append({
+          "cards_stars": user_stat.stars,
+          "cards_count": user_stat.cards,
+        })
+      if user_stat.rolled > 0:
+        m_rolled.append({
+          "rolled_stars": user_stat.stars,
+          "rolled_count": user_stat.rolled,
+        })
+      total_cards += user_stat.cards
+      total_rolled += user_stat.rolled
+
+    lines_data = {}
+    other_data = {
+      "m_pity_counter_none": "",
+      "m_cards_none": "",
+      "m_rolled_none": "",
+    }
+    string_templates = []
+
+    if last_card:
+      string_templates.append("gacha_profile_last_card")
+      other_data |= last_card
+
+    if len(m_pity_counter) > 0:
+      lines_data |= {"m_pity_counter": m_pity_counter}
+    else:
+      other_data |= {"m_pity_counter_none": "-"}
+
+    if len(m_cards) > 0:
+      lines_data |= {"m_cards": m_cards}
+    else:
+      other_data |= {"m_cards_none": "-"}
+
+    if len(m_rolled) > 0:
+      lines_data |= {"m_rolled": m_rolled}
+    else:
+      other_data |= {"m_rolled_none": "-"}
+
+    color = None
+    if isinstance(self.target_user, Member):
+      pos = 0
+      for role in self.target_user.roles:
+        if role.color.value != 0 and role.position > pos:
+          color = role.color.value
+          pos = role.position
+
+    self.data = self.Data(user_shards=user_shards, total_cards=total_cards, total_rolled=total_rolled)
+    return await self.send(
+      "gacha_profile",
+      lines_data=lines_data,
+      other_data=other_data,
+      template_kwargs=dict(use_string_templates=string_templates, color=color),
+    )
+
+
 class Shards(TargetMixin, CurrencyMixin, ReaderCommand):
   data: "Shards.Data"
 

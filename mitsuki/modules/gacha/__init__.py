@@ -75,6 +75,8 @@ class GachaModule(Extension):
   async def details_cmd(self, ctx: SlashContext):
     await commands.Details.create(ctx).run()
 
+  # ===========================================================================
+  # ===========================================================================
 
   @gacha_cmd.subcommand(
     sub_cmd_name="shards",
@@ -90,6 +92,24 @@ class GachaModule(Extension):
   )
   async def shards_cmd(self, ctx: SlashContext, user: Optional[BaseUser] = None):
     await commands.Shards.create(ctx).run(user)
+
+  # ===========================================================================
+  # ===========================================================================
+
+  @gacha_cmd.subcommand(
+    sub_cmd_name="profile",
+    sub_cmd_description="View your or another user's gacha profile"
+  )
+  @auto_defer(time_until_defer=2.0)
+  @cooldown(Buckets.USER, 1, 3.0)
+  @slash_option(
+    name="user",
+    description="User to view",
+    required=False,
+    opt_type=OptionType.USER
+  )
+  async def profile_cmd(self, ctx: SlashContext, user: Optional[BaseUser] = None):
+    await commands.Profile.create(ctx).run(user)
 
   # ===========================================================================
   # ===========================================================================

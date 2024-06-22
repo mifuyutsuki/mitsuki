@@ -1,0 +1,54 @@
+# /gacha profile
+# View your or another user's gacha progress.
+
+_namespace: gacha_profile
+
+# General fields
+# -----------------------------------------------------------------------------
+# user            : Calling user (mention)
+# username        : Calling username (tag)
+# usericon        : Calling user avatar, uses server profile avatar if available
+# target_user     : Target user (mention), defaults to self
+# target_username : Target username (tag)
+# target_usericon : Target user avatar, uses server profile avatar if available
+# -----------------------------------------------------------------------------
+
+# [Multiline]
+_:
+  title: >-
+    ${target_username}'s Gacha Profile
+  description: >-
+    **${currency_name}** — ${currency_icon} **${user_shards}**
+
+    ${gacha_profile_last_card}
+  thumbnail   : ${target_usericon}
+  fields:
+  - name: Pity counter
+    value: >-
+      ${m_pity_counter_none}${m_pity_counter}
+    inline: false
+  - name: Rolled cards
+    value: >-
+      **${total_cards}** — ${m_rolled_none}${m_rolled}
+  - name: Unique cards
+    value: >-
+      **${total_cards}** — ${m_cards_none}${m_cards}
+  multiline:
+  - id: m_pity_counter
+    value: >-
+      ${pity_stars} **${pity_count}**/${pity_value}
+    inline: true
+  - id: m_rolled
+    value: >-
+      ${rolled_stars} **${rolled_count}**
+    inline: true
+  - id: m_cards
+    value: >-
+      ${cards_stars} **${cards_count}**
+    inline: true
+
+
+last_card: >-
+  **Last rolled card** — ${last_card_stars} ${last_card_name}
+  
+  **Last roll time** — ${last_card_time_f}
