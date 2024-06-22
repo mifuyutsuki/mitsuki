@@ -20,6 +20,8 @@ from interactions import (
   SlashContext,
   SlashCommandChoice,
   StringSelectMenu,
+  component_callback,
+  ComponentContext,
   OptionType,
   BaseUser,
   User,
@@ -172,6 +174,15 @@ class GachaModule(Extension):
   ):
     await commands.Cards.create(ctx).run(user, sort)
 
+  @component_callback(commands.Cards.CUSTOM_ID_RE)
+  @auto_defer(time_until_defer=2.0)
+  @cooldown(Buckets.USER, 1, 15.0)
+  async def cards_btn_cmd(self, ctx: ComponentContext):
+    if target := await commands.Cards.target_from_custom_id(ctx.custom_id):
+      await commands.Cards.create(ctx).run(target)
+    else:
+      await ctx.edit_origin()
+
 
   # ===========================================================================
   # ===========================================================================
@@ -209,6 +220,15 @@ class GachaModule(Extension):
     user: Optional[BaseUser] = None
   ):
     await commands.Gallery.create(ctx).run(user, sort)
+
+  @component_callback(commands.Gallery.CUSTOM_ID_RE)
+  @auto_defer(time_until_defer=2.0)
+  @cooldown(Buckets.USER, 1, 15.0)
+  async def gallery_btn_cmd(self, ctx: ComponentContext):
+    if target := await commands.Gallery.target_from_custom_id(ctx.custom_id):
+      await commands.Gallery.create(ctx).run(target)
+    else:
+      await ctx.edit_origin()
 
 
   # ===========================================================================

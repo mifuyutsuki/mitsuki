@@ -10,6 +10,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
+import re
 from attrs import define, field
 from typing import Optional, Union, List, Dict, Any, NamedTuple
 from enum import Enum, StrEnum
@@ -273,13 +274,34 @@ class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
           color = role.color.value
           pos = role.position
 
+    cards_btn = Button(
+      style=ButtonStyle.BLURPLE,
+      label="Cards",
+      custom_id=Cards.custom_id(self.target_id),
+    )
+    gallery_btn = Button(
+      style=ButtonStyle.BLURPLE,
+      label="Gallery",
+      custom_id=Gallery.custom_id(self.target_id),
+    )
+    nav_btns = [cards_btn, gallery_btn]
+    show_btns = total_cards > 0
+
     self.data = self.Data(user_shards=user_shards, total_cards=total_cards, total_rolled=total_rolled)
-    return await self.send(
+    message = await self.send(
       "gacha_profile",
       lines_data=lines_data,
       other_data=other_data,
       template_kwargs=dict(use_string_templates=string_templates, color=color),
+      components=nav_btns if show_btns else [],
     )
+    while show_btns:
+      try:
+        _ = await bot.wait_for_component(message, nav_btns, timeout=600)
+      except TimeoutError:
+        if message:
+          await message.edit(components=[])
+        return
 
 
 class Shards(TargetMixin, CurrencyMixin, ReaderCommand):
@@ -454,6 +476,7 @@ class Roll(CurrencyMixin, WriterCommand):
 
 
 class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
+  CUSTOM_ID_RE = re.compile(r"gacha_cards\|[0-9]+")
   state: "Cards.States"
   data: "Cards.Data"
 
@@ -464,6 +487,17 @@ class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
   @define(slots=False)
   class Data(AsDict):
     total_cards: int
+
+  @staticmethod
+  def custom_id(user_id: Snowflake):
+    return f"gacha_cards|{user_id}"
+
+  @staticmethod
+  async def target_from_custom_id(custom_id: str):
+    try:
+      return await bot.fetch_user(Snowflake(custom_id.split("|")[-1]))
+    except ValueError:
+      return None
 
 
   async def run(self, target: Optional[BaseUser] = None, sort: Optional[str] = None):
@@ -481,6 +515,7 @@ class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
 
 
 class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
+  CUSTOM_ID_RE = re.compile(r"gacha_gallery\|[0-9]+")
   state: "Cards.States"
   data: "Cards.Data"
 
@@ -491,6 +526,17 @@ class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
   @define(slots=False)
   class Data(AsDict):
     total_cards: int
+
+  @staticmethod
+  def custom_id(user_id: Snowflake):
+    return f"gacha_gallery|{user_id}"
+
+  @staticmethod
+  async def target_from_custom_id(custom_id: str):
+    try:
+      return await bot.fetch_user(Snowflake(custom_id.split("|")[-1]))
+    except ValueError:
+      return None
 
 
   async def run(self, target: Optional[BaseUser] = None, sort: Optional[str] = None):
@@ -508,6 +554,7 @@ class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
 
 
 class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, ReaderCommand):
+  CUSTOM_ID_RE = re.compile(r"gacha_view\|@.+")
   state: "View.States"
   data: "View.Data"
   card: StatsCard
@@ -534,6 +581,15 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
     search_key: str
     total_cards: int
     # total_results: int [FUTURE]
+
+  @staticmethod
+  def custom_id(card_id: str):
+    return f"gacha_view|@{card_id}"
+
+  @staticmethod
+  async def search_key_from_custom_id(custom_id: str):
+    return custom_id.split("|")[-1]
+
 
   @property
   def search_key(self):
