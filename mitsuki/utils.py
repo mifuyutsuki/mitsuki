@@ -24,7 +24,6 @@ from rapidfuzz.utils import default_process
 
 import unicodedata
 import regex as re
-import contextlib
 
 __all__ = (
   "UserDenied",
@@ -33,7 +32,6 @@ __all__ = (
   "process_text",
   "remove_accents",
   "is_caller",
-  "suppressed_defer",
 )
 
 
@@ -99,18 +97,3 @@ def is_caller(ctx: BaseContext):
       )
     return c
   return check
-
-
-async def suppressed_defer(ctx: InteractionContext, ephemeral: bool = False):
-  """
-  Defer a command without emitting an error.
-
-  Warning: This function is now a built feature in interactions.py as
-  defer(suppress_error=True) and is deprecated.
-
-  Args:
-      ctx: Interaction context object
-  """
-
-  with contextlib.suppress(AlreadyDeferred, HTTPException):
-    await ctx.defer(ephemeral=ephemeral)
