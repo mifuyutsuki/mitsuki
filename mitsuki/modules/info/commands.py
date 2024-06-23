@@ -15,7 +15,7 @@ from attrs import define, field
 from enum import StrEnum
 from typing import Optional, Union
 
-from mitsuki.utils import is_caller
+from mitsuki.utils import is_caller, get_member_color_value
 from mitsuki.lib.commands import AsDict, ReaderCommand, TargetMixin
 
 
@@ -54,7 +54,7 @@ class UserInfo(TargetMixin, ReaderCommand):
       "target_nickname",
       "guild_name",
     ]
-    color = None
+
     try:
       fetched = await self.ctx.bot.fetch_user(self.target_user, force=True)
       banner = fetched.banner.url if fetched and fetched.banner else None
@@ -68,12 +68,6 @@ class UserInfo(TargetMixin, ReaderCommand):
       created_at=target.created_at.format("f"),
     )
     if isinstance(target, Member):
-      pos = 0
-      for role in target.roles:
-        if role.color.value != 0 and role.position > pos:
-          color = role.color.value
-          pos = role.position
-
       self.member_data = self.MemberData(
         guild_name=target.guild.name,
         guild_id=target.guild.id,
@@ -84,11 +78,11 @@ class UserInfo(TargetMixin, ReaderCommand):
       self.set_state(self.States.MEMBER)
       await self.send(
         other_data=self.member_data.asdict(),
-        template_kwargs=dict(escape_data_values=escapes, color=color),
+        template_kwargs=dict(escape_data_values=escapes, color=get_member_color_value(target)),
       )
     else:
       self.set_state(self.States.USER)
-      await self.send(template_kwargs=dict(escape_data_values=escapes))
+      await self.send(template_kwargs=dict(escape_data_values=escapes, color=None))
 
 
 class AvatarInfo(TargetMixin, ReaderCommand):

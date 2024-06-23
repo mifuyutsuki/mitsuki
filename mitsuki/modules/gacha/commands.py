@@ -28,7 +28,7 @@ from interactions import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mitsuki import bot
-from mitsuki.utils import escape_text, is_caller, process_text
+from mitsuki.utils import escape_text, is_caller, process_text, get_member_color_value
 from mitsuki.lib.commands import (
   AsDict,
   ReaderCommand,
@@ -266,13 +266,7 @@ class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
     else:
       other_data |= {"m_rolled_none": "-"}
 
-    color = None
-    if isinstance(self.target_user, Member):
-      pos = 0
-      for role in self.target_user.roles:
-        if role.color.value != 0 and role.position > pos:
-          color = role.color.value
-          pos = role.position
+    color = get_member_color_value(self.target_user)
 
     cards_btn = Button(
       style=ButtonStyle.BLURPLE,
