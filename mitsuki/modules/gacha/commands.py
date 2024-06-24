@@ -203,12 +203,14 @@ class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
     total_rolled = 0
     last_time_max = 0.0
     last_card = None
+    last_card_id = None
 
     for user_stat in user_stats:
       if user_stat.last_time_float and user_stat.last_time_float > last_time_max:
         last_time_max = user_stat.last_time_float
         last_card  = {k: v for k, v in user_stat.asdict().items() if k.startswith("last_")}
         last_card |= {"last_stars": user_stat.stars}
+        last_card_id = user_stat.last_id
       if user_stat.set_pity and user_stat.set_pity > 0:
         m_pity_counter.append({
           "pity_stars": user_stat.stars,
@@ -257,18 +259,28 @@ class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
 
     color = get_member_color_value(self.target_user)
 
-    cards_btn = Button(
-      style=ButtonStyle.BLURPLE,
-      label="Cards",
-      custom_id=Cards.custom_id(self.target_id),
-    )
-    gallery_btn = Button(
-      style=ButtonStyle.BLURPLE,
-      label="Gallery",
-      custom_id=Gallery.custom_id(self.target_id),
-    )
-    nav_btns = [cards_btn, gallery_btn]
-    show_btns = total_cards > 0
+    nav_btns = []
+    if show_cards := total_cards > 1:
+      nav_btns.extend([
+        Button(
+          style=ButtonStyle.BLURPLE,
+          label="Cards",
+          custom_id=Cards.custom_id(self.target_id),
+        ),
+        Button(
+          style=ButtonStyle.BLURPLE,
+          label="Gallery",
+          custom_id=Gallery.custom_id(self.target_id),
+        ),
+      ])
+    if last_card_id:
+      nav_btns.extend([
+        Button(
+          style=ButtonStyle.BLURPLE,
+          label="View last rolled",
+          custom_id=View.custom_id("@" + last_card_id)
+        ),
+      ])
 
     self.data = self.Data(user_shards=user_shards, total_cards=total_cards, total_rolled=total_rolled)
     message = await self.send(
@@ -276,15 +288,20 @@ class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
       lines_data=lines_data,
       other_data=other_data,
       template_kwargs=dict(use_string_templates=string_templates, color=color),
-      components=nav_btns if show_btns else [],
+      components=nav_btns,
     )
-    while show_btns:
+    active = len(nav_btns) > 0
+    while active:
       try:
-        _ = await bot.wait_for_component(message, nav_btns, timeout=600)
+        _ = await bot.wait_for_component(message, nav_btns, timeout=45)
       except TimeoutError:
-        if message:
+        active = False
+      except Exception:
+        active = False
+        raise
+      finally:
+        if message and not active:
           await message.edit(components=[])
-        return
 
 
 class Shards(TargetMixin, CurrencyMixin, ReaderCommand):
@@ -566,8 +583,8 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
     # total_results: int [FUTURE]
 
   @staticmethod
-  def custom_id(card_id: str):
-    return f"gacha_view|@{card_id}"
+  def custom_id(search_key: str):
+    return f"gacha_view|{search_key}"
 
   @staticmethod
   async def search_key_from_custom_id(custom_id: str):
@@ -588,6 +605,7 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
     self.user_mode = target is not None
 
     results: List[StatsCard] = await self.search(search_key)
+    prompted_card = None
     if len(results) <= 0: # no results
       if self.total_cards <= 0:
         self.set_state(self.States.NO_INVENTORY_USER if self.user_mode else self.States.NO_INVENTORY)
@@ -601,10 +619,10 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
     elif len(results) > 1: # multiple matches
       await self.defer(suppress_error=True)
       self.set_state(self.States.SEARCH_RESULTS_USER if self.user_mode else self.States.SEARCH_RESULTS)
-      card = await self.prompt()
-      if not card:
+      prompted_card = await self.prompt()
+      if not prompted_card:
         return
-      self.card = card
+      self.card = prompted_card
 
     if self.user_mode:
       self.card_user = await userdata.card_user(self.target_id, self.card.id)
@@ -619,7 +637,7 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
     await self.send(
       other_data=self.card.asdict() | (self.card_user.asdict() if self.card_user else {}),
       template_kwargs=dict(escape_data_values=["search_key", "name", "type", "series"]),
-      edit_origin=True,
+      edit_origin=bool(prompted_card),
       components=[]
     )
 

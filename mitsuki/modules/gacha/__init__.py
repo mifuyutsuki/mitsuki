@@ -263,6 +263,14 @@ class GachaModule(Extension):
   ):
     await commands.View.create(ctx).run(name, user)
 
+  @component_callback(commands.View.CUSTOM_ID_RE)
+  @auto_defer(time_until_defer=2.0)
+  @cooldown(Buckets.USER, 1, 15.0)
+  async def view_btn_cmd(self, ctx: ComponentContext):
+    if search_key := await commands.View.search_key_from_custom_id(ctx.custom_id):
+      await commands.View.create(ctx).run(search_key)
+    else:
+      await ctx.edit_origin()
 
   @view_cmd.autocomplete("name")
   async def view_cmd_autocomplete(self, ctx: AutocompleteContext):
