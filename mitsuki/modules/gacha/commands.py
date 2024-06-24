@@ -207,19 +207,8 @@ class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
     for user_stat in user_stats:
       if user_stat.last_time_float and user_stat.last_time_float > last_time_max:
         last_time_max = user_stat.last_time_float
-        last_card = {
-          "last_card_stars": user_stat.stars,
-          "last_card_id": user_stat.last_id,
-          "last_card_name": user_stat.last_name,
-          "last_card_type": user_stat.last_type,
-          "last_card_series": user_stat.last_series,
-          "last_card_image": user_stat.last_image,
-          "last_card_time_float": user_stat.last_time_float,
-          "last_card_time": user_stat.last_time,
-          "last_card_time_f": user_stat.last_time_f,
-          "last_card_time_d": user_stat.last_time_d,
-        }
-
+        last_card  = {k: v for k, v in user_stat.asdict().items() if k.startswith("last_")}
+        last_card |= {"last_stars": user_stat.stars}
       if user_stat.set_pity and user_stat.set_pity > 0:
         m_pity_counter.append({
           "pity_stars": user_stat.stars,

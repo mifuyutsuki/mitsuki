@@ -17,7 +17,7 @@ from typing import Optional, List, Callable
 from attrs import define, field
 from attrs import asdict as _asdict
 
-from mitsuki.lib.userdata import Base
+from mitsuki.lib.userdata import Base, AsDict
 from mitsuki.utils import escape_text
 
 
@@ -389,7 +389,7 @@ class StatsCard:
 
 
 @define
-class UserStats:
+class UserStats(AsDict):
   rarity: int
   stars: str
   cards: int

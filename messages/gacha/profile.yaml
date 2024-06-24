@@ -49,6 +49,6 @@ _:
 
 
 last_card: >-
-  **Last rolled card** — ${last_card_stars} ${last_card_name}
+  **Last rolled card** — ${last_stars} ${last_name}
   
-  **Last roll time** — ${last_card_time_f}
+  **Last roll time** — ${last_time_f}
