@@ -851,30 +851,40 @@ def _create_embed(template: Dict[str, Any], color_data: Optional[Dict[str, int]]
   fields = []
   for field_get in fields_get:
     if isinstance(field_get, Dict):
-      field = EmbedField(
-        name=field_get.get("name") or "",
-        value=field_get.get("value") or "",
+      name = field_get.get("name") or ""
+      value = field_get.get("value") or ""
+      if len(name.strip()) <= 0 or len(value.strip()) <= 0:
+        continue
+      fields.append(EmbedField(
+        name=name.strip(),
+        value=value.strip(),
         inline=bool(field_get.get("inline"))
-      )
-      fields.append(field)
+      ))
 
+  author = None
   author_get = template.get("author")
-  author = EmbedAuthor(
-    name=author_get.get("name"),
-    url=_valid_url_or_none(author_get.get("url")),
-    icon_url=_valid_url_or_none(author_get.get("icon_url"))
-  ) if author_get else None
+  if author_get and len(author_get.get("name").strip() or "") > 0:
+    author = EmbedAuthor(
+      name=author_get["name"],
+      url=_valid_url_or_none(author_get.get("url")),
+      icon_url=_valid_url_or_none(author_get.get("icon_url"))
+    )
 
-  thumbnail = EmbedAttachment(url=_valid_url_or_none(template.get("thumbnail")))
+  thumbnail = None
+  if thumbnail_url := _valid_url_or_none(template.get("thumbnail")):
+    thumbnail = EmbedAttachment(url=thumbnail_url)
 
-  image = EmbedAttachment(url=_valid_url_or_none(template.get("image")))
-  images = [image]
+  images = []
+  if image_url := _valid_url_or_none(template.get("image")):
+    images = [EmbedAttachment(url=image_url)]
 
+  footer = None
   footer_get = template.get("footer")
-  footer = EmbedFooter(
-    text=footer_get.get("text") or "",
-    icon_url=_valid_url_or_none(footer_get.get("icon_url"))
-  ) if footer_get else None
+  if footer_get and len(footer_get.get("text").strip() or "") > 0:
+    footer = EmbedFooter(
+      text=footer_get["text"].strip(),
+      icon_url=_valid_url_or_none(footer_get.get("icon_url"))
+    )
 
   return Embed(
     title=title,
