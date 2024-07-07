@@ -301,11 +301,22 @@ class Shards(TargetMixin, CurrencyMixin, ReaderCommand):
 
   async def run(self, target: Optional[BaseUser] = None):
     self.set_target(target or self.caller_user)
+
     shards     = await userdata.shards(self.target_id)
     is_premium = is_gacha_premium(self.target_user)
     guild_name = self.target_user.guild.name if getattr(self.target_user, "guild", None) else "-"
     self.data  = self.Data(shards=shards, is_premium=is_premium, guild_name=guild_name)
-    return await self.send("gacha_shards", template_kwargs=dict(escape_data_values=["guild_name"]))
+
+    string_templates = []    
+    if not await userdata.daily_first_check(self.target_id) and await userdata.daily_check(self.target_id):
+      string_templates.append("gacha_shards_daily_available")
+
+    return await self.send(
+      "gacha_shards",
+      template_kwargs=dict(
+        use_string_templates=string_templates,
+        escape_data_values=["guild_name"])
+    )
 
 
 class Daily(CurrencyMixin, WriterCommand):
