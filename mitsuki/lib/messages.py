@@ -494,6 +494,8 @@ class MessageMan:
             multiline_assigned[m_id] = m["separator"].join(multiline_assigns)
           else:
             multiline_assigned[m_id] = (" " if m.get("inline") else "\n").join(multiline_assigns)
+        elif value_ifnone := m.get("value_ifnone"):
+            multiline_assigned[m_id] = value_ifnone
 
       template  = _assign_data(template, multiline_assigned)
       template |= template_kwargs
