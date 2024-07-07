@@ -231,36 +231,25 @@ class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
       total_rolled += user_stat.rolled
 
     lines_data = {}
-    other_data = {
-      "m_pity_counter_none": "",
-      "m_cards_none": "",
-      "m_rolled_none": "",
-    }
+    other_data = {}
     string_templates = []
 
     if last_card:
       string_templates.append("gacha_profile_last_card")
       other_data |= last_card
 
-    if len(m_pity_counter) > 0:
-      lines_data |= {"m_pity_counter": m_pity_counter}
-    else:
-      other_data |= {"m_pity_counter_none": "-"}
+    if not await userdata.daily_first_check(self.target_id) and await userdata.daily_check(self.target_id):
+      string_templates.append("gacha_profile_daily_available")
 
-    if len(m_cards) > 0:
-      lines_data |= {"m_cards": m_cards}
-    else:
-      other_data |= {"m_cards_none": "-"}
-
-    if len(m_rolled) > 0:
-      lines_data |= {"m_rolled": m_rolled}
-    else:
-      other_data |= {"m_rolled_none": "-"}
-
+    lines_data |= {
+      "m_pity_counter": m_pity_counter,
+      "m_cards": m_cards,
+      "m_rolled": m_rolled,
+    }
     color = get_member_color_value(self.target_user)
 
     nav_btns = []
-    if show_cards := total_cards > 1:
+    if total_cards > 1:
       nav_btns.extend([
         Button(
           style=ButtonStyle.BLURPLE,
@@ -296,9 +285,6 @@ class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
         _ = await bot.wait_for_component(message, nav_btns, timeout=45)
       except TimeoutError:
         active = False
-      except Exception:
-        active = False
-        raise
       finally:
         if message and not active:
           await message.edit(components=[])

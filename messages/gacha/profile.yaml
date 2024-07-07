@@ -20,35 +20,45 @@ _:
   description: >-
     **${currency_name}** — ${currency_icon} **${user_shards}**
 
-    ${gacha_profile_last_card}
+    ${gacha_profile_daily_available}
   thumbnail   : ${target_usericon}
   fields:
   - name: Pity counter
     value: >-
-      ${m_pity_counter_none}${m_pity_counter}
+      ${m_pity_counter}
     inline: false
   - name: Rolled cards
     value: >-
-      **${total_cards}** — ${m_rolled_none}${m_rolled}
+      **${total_cards}** — ${m_rolled}
   - name: Unique cards
     value: >-
-      **${total_cards}** — ${m_cards_none}${m_cards}
+      **${total_cards}** — ${m_cards}
+  - name: Last rolled
+    value: >-
+      ${gacha_profile_last_card}
   multiline:
   - id: m_pity_counter
     value: >-
       ${pity_stars} **${pity_count}**/${pity_value}
+    value_ifnone: "-"
     inline: true
   - id: m_rolled
     value: >-
       ${rolled_stars} **${rolled_count}**
+    value_ifnone: No cards
     inline: true
   - id: m_cards
     value: >-
       ${cards_stars} **${cards_count}**
+    value_ifnone: No cards
     inline: true
 
 
 last_card: >-
-  **Last rolled card** — ${last_stars} ${last_name}
+  ${last_stars} **${last_name}**
   
-  **Last roll time** — ${last_time_f}
+  ${last_time_f}
+
+
+daily_available: >-
+  ※ **Daily available**
