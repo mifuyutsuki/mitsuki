@@ -23,7 +23,7 @@ user_member:
     name: >-
       ${target_username} (${target_userid})
   title: >-
-    ${target_nickname} / ${target_globalname}
+    ${info_user_has_nickname} ${target_globalname}
   description: >-
     ${target_user}
 
@@ -37,3 +37,17 @@ user_member:
 
       **Server booster** — ${is_booster}
     inline    : false # fields.inline
+
+# View user avatar
+avatar:
+  author:
+    name: >-
+      ${target_username} (${target_userid})
+  title: >-
+    Avatar of ${target_username}
+  url: ${target_avatar}
+  description: >-
+    Viewing **${avatar_mode}** avatar of ${target_user}
+  image: ${target_avatar}
+
+user_has_nickname: ${target_nickname} / 

@@ -10,6 +10,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
+import re
 from attrs import define, field
 from typing import Optional, Union, List, Dict, Any, NamedTuple
 from enum import Enum, StrEnum
@@ -27,7 +28,7 @@ from interactions import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mitsuki import bot
-from mitsuki.utils import escape_text, is_caller, process_text
+from mitsuki.utils import escape_text, is_caller, process_text, get_member_color_value
 from mitsuki.lib.commands import (
   AsDict,
   ReaderCommand,
@@ -39,7 +40,7 @@ from mitsuki.lib.commands import (
 
 from . import userdata
 from .schema import UserCard, StatsCard, RosterCard
-from .gachaman import gacha
+from .gachaman import gacha, daily_reset_time
 
 
 # =============================================================================
@@ -102,6 +103,15 @@ async def is_gacha_first(user: BaseUser):
 # Gacha commands
 
 
+class _Errors(CurrencyMixin, ReaderCommand):
+  async def insufficient_funds(self, shards: int, cost: int):
+    data = {
+      "shards": shards,
+      "cost": cost,
+    }
+    await self.send("gacha_insufficient_funds", other_data=data)
+
+
 class Details(CurrencyMixin, ReaderCommand):
   data: "Details.Data"
 
@@ -110,11 +120,17 @@ class Details(CurrencyMixin, ReaderCommand):
     daily_info: str
     cost_info: str
     rarities_info: str
+    cost: int
+    daily: int
+    reset_str: str
+    reset_dyn: str
+    first_time_shards: int = 0
 
 
   async def run(self):
     currency_icon = gacha.currency_icon
     currency_name = gacha.currency_name
+    string_templates = []
 
     # Cost info
     cost = gacha.cost
@@ -123,13 +139,16 @@ class Details(CurrencyMixin, ReaderCommand):
     # Daily info
     daily = gacha.daily_shards
 
-    reset_dt = Timestamp.fromtimestamp(userdata.daily_next())
+    reset_dt = Timestamp.fromdatetime(daily_reset_time())
     reset_str = reset_dt.strftime("%H:%M UTC%z")
     reset_dyn = reset_dt.format("R")
 
+    first_time_shards = 0
     daily_info = f"{currency_icon} **{daily}** {currency_name}\n※ Resets on {reset_str} {reset_dyn}"
     if gacha.first_time_shards and gacha.first_time_shards > 0:
-      daily_info = daily_info + f"\n※ First time daily bonus: {currency_icon} {gacha.first_time_shards}"
+      first_time_shards = gacha.first_time_shards
+      string_templates.append("gacha_details_first_time_info")
+      daily_info = daily_info + f"\n※ First time daily bonus: {currency_icon} {first_time_shards}"
 
     # Rarities info
     rarities = sorted(gacha.rarities)
@@ -144,12 +163,131 @@ class Details(CurrencyMixin, ReaderCommand):
       if dupe > 0:
         rarity_info = rarity_info + f" • {currency_icon} **{dupe}**"
       if pity > 0:
-        rarity_info = rarity_info + f" • one guaranteed after {pity} rolls"
+        rarity_info = rarity_info + f" • one guaranteed in **{pity}** rolls"
       rarities_info_list.append(rarity_info.strip())
     rarities_info = "\n".join(rarities_info_list)
 
-    self.data = self.Data(daily_info=daily_info, cost_info=cost_info, rarities_info=rarities_info)
-    return await self.send("gacha_details")
+    self.data = self.Data(
+      daily_info=daily_info,
+      cost_info=cost_info,
+      rarities_info=rarities_info,
+      cost=cost,
+      daily=daily,
+      reset_str=reset_str,
+      reset_dyn=reset_dyn,
+      first_time_shards=first_time_shards,
+    )
+    return await self.send("gacha_details", template_kwargs=dict(use_string_templates=string_templates))
+
+
+class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
+  data: "Profile.Data"
+
+  @define(slots=False)
+  class Data(AsDict):
+    user_shards: int
+    total_cards: int
+    total_rolled: int
+
+  async def run(self, target: Optional[BaseUser] = None):
+    self.set_target(target or self.caller_user)
+    await self.defer(suppress_error=True)
+
+    user_shards = await userdata.shards(self.target_id)
+    user_stats = await userdata.stats_user(self.target_id)
+
+    m_pity_counter = []
+    m_cards = []
+    m_rolled = []
+    total_cards = 0
+    total_rolled = 0
+    last_time_max = 0.0
+    last_card = None
+    last_card_id = None
+
+    for user_stat in user_stats:
+      if user_stat.last_time_float and user_stat.last_time_float > last_time_max:
+        last_time_max = user_stat.last_time_float
+        last_card  = {k: v for k, v in user_stat.asdict().items() if k.startswith("last_")}
+        last_card |= {"last_stars": user_stat.stars}
+        last_card_id = user_stat.last_id
+      if user_stat.set_pity and user_stat.set_pity > 0:
+        m_pity_counter.append({
+          "pity_stars": user_stat.stars,
+          "pity_count": user_stat.user_pity or 0,
+          "pity_value": user_stat.set_pity,
+        })
+      if user_stat.cards > 0:
+        m_cards.append({
+          "cards_stars": user_stat.stars,
+          "cards_count": user_stat.cards,
+        })
+      if user_stat.rolled > 0:
+        m_rolled.append({
+          "rolled_stars": user_stat.stars,
+          "rolled_count": user_stat.rolled,
+        })
+      total_cards += user_stat.cards
+      total_rolled += user_stat.rolled
+
+    lines_data = {}
+    other_data = {}
+    string_templates = []
+
+    if last_card:
+      string_templates.append("gacha_profile_last_card")
+      other_data |= last_card
+
+    if not await userdata.daily_first_check(self.target_id) and await userdata.daily_check(self.target_id):
+      string_templates.append("gacha_profile_daily_available")
+
+    lines_data |= {
+      "m_pity_counter": m_pity_counter,
+      "m_cards": m_cards,
+      "m_rolled": m_rolled,
+    }
+    color = get_member_color_value(self.target_user)
+
+    nav_btns = []
+    if total_cards > 1:
+      nav_btns.extend([
+        Button(
+          style=ButtonStyle.BLURPLE,
+          label="Cards",
+          custom_id=Cards.custom_id(self.target_id),
+        ),
+        Button(
+          style=ButtonStyle.BLURPLE,
+          label="Gallery",
+          custom_id=Gallery.custom_id(self.target_id),
+        ),
+      ])
+    if last_card_id:
+      nav_btns.extend([
+        Button(
+          style=ButtonStyle.BLURPLE,
+          label="View last rolled",
+          custom_id=View.custom_id("@" + last_card_id)
+        ),
+      ])
+
+    self.data = self.Data(user_shards=user_shards, total_cards=total_cards, total_rolled=total_rolled)
+    message = await self.send(
+      "gacha_profile",
+      lines_data=lines_data,
+      other_data=other_data,
+      template_kwargs=dict(use_string_templates=string_templates, color=color),
+      components=nav_btns,
+    )
+    active = len(nav_btns) > 0
+    while active:
+      try:
+        _ = await bot.wait_for_component(message, nav_btns, timeout=180)
+      except TimeoutError:
+        active = False
+      finally:
+        if message and not active:
+          await message.edit(components=[])
 
 
 class Shards(TargetMixin, CurrencyMixin, ReaderCommand):
@@ -163,11 +301,22 @@ class Shards(TargetMixin, CurrencyMixin, ReaderCommand):
 
   async def run(self, target: Optional[BaseUser] = None):
     self.set_target(target or self.caller_user)
+
     shards     = await userdata.shards(self.target_id)
     is_premium = is_gacha_premium(self.target_user)
     guild_name = self.target_user.guild.name if getattr(self.target_user, "guild", None) else "-"
     self.data  = self.Data(shards=shards, is_premium=is_premium, guild_name=guild_name)
-    return await self.send("gacha_shards", template_kwargs=dict(escape_data_values=["guild_name"]))
+
+    string_templates = []    
+    if not await userdata.daily_first_check(self.target_id) and await userdata.daily_check(self.target_id):
+      string_templates.append("gacha_shards_daily_available")
+
+    return await self.send(
+      "gacha_shards",
+      template_kwargs=dict(
+        use_string_templates=string_templates,
+        escape_data_values=["guild_name"])
+    )
 
 
 class Daily(CurrencyMixin, WriterCommand):
@@ -208,7 +357,7 @@ class Daily(CurrencyMixin, WriterCommand):
     user = self.caller_user
     available      = await userdata.daily_check(user.id)
     current_shards = await userdata.shards(user.id)
-    next_daily     = userdata.daily_next()
+    next_daily     = daily_reset_time().timestamp()
     guild_name     = user.guild.name if getattr(user, "guild", None) else "-"
 
     if not available:
@@ -266,19 +415,19 @@ class Roll(CurrencyMixin, WriterCommand):
     def __attrs_post_init__(self):
       self.new_shards = self.shards + self.update_shards
 
+
   async def roll(self):
     user_shards = await userdata.shards(self.caller_id)
     roll_cost   = gacha.cost
 
     if user_shards < roll_cost:
-      self.set_state(self.States.INSUFFICIENT)
-      self.data  = self.Data.set(user_shards, 0)
+      self.data = self.Data.set(user_shards, 0)
       return False
 
     await self.defer(suppress_error=True)
-    pity   = await userdata.pity_check(self.caller_id, gacha.pity)
-    rolled = gacha.roll(min_rarity=pity)
-    card   = await userdata.card_roster(rolled.id)
+    user_pity = await userdata.pity_get(self.caller_id)
+    rolled    = gacha.roll(user_pity=user_pity)
+    card      = await userdata.card_roster(rolled.id)
 
     if await userdata.card_has(self.caller_id, rolled.id):
       self.set_state(self.States.DUPE)
@@ -286,6 +435,7 @@ class Roll(CurrencyMixin, WriterCommand):
     else:
       self.set_state(self.States.NEW)
       self.data  = self.Data.set(user_shards, -roll_cost)
+
     self.again = self.data.new_shards >= self.data.cost
     self.card  = card
     return True
@@ -295,8 +445,8 @@ class Roll(CurrencyMixin, WriterCommand):
     again_response = None
     while self.again:
       if not await self.roll():
-        await self.send()
-        return
+        # Roll fails due to insufficient shards
+        return await _Errors.from_other(self).insufficient_funds(self.data.shards, gacha.cost)
 
       again_btn = Button(style=ButtonStyle.BLURPLE, label="Roll again", disabled=not self.again)
       message   = await self.send_commit(
@@ -323,6 +473,7 @@ class Roll(CurrencyMixin, WriterCommand):
 
 
 class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
+  CUSTOM_ID_RE = re.compile(r"gacha_cards\|[0-9]+")
   state: "Cards.States"
   data: "Cards.Data"
 
@@ -334,6 +485,17 @@ class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
   class Data(AsDict):
     total_cards: int
 
+  @staticmethod
+  def custom_id(user_id: Snowflake):
+    return f"gacha_cards|{user_id}"
+
+  @staticmethod
+  async def target_from_custom_id(custom_id: str):
+    try:
+      return await bot.fetch_user(Snowflake(custom_id.split("|")[-1]))
+    except ValueError:
+      return None
+
 
   async def run(self, target: Optional[BaseUser] = None, sort: Optional[str] = None):
     self.set_target(target or self.caller_user)
@@ -343,13 +505,14 @@ class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
 
     if self.data.total_cards <= 0:
       self.set_state(self.States.NO_CARDS)
+      await self.send()
     else:
       self.set_state(self.States.CARDS)
-
-    await self.send_multifield(template_kwargs=dict(escape_data_values=["name", "type", "series"]), timeout=45)
+      await self.send_multifield(template_kwargs=dict(escape_data_values=["name", "type", "series"]), timeout=45)
 
 
 class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
+  CUSTOM_ID_RE = re.compile(r"gacha_gallery\|[0-9]+")
   state: "Cards.States"
   data: "Cards.Data"
 
@@ -361,6 +524,17 @@ class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
   class Data(AsDict):
     total_cards: int
 
+  @staticmethod
+  def custom_id(user_id: Snowflake):
+    return f"gacha_gallery|{user_id}"
+
+  @staticmethod
+  async def target_from_custom_id(custom_id: str):
+    try:
+      return await bot.fetch_user(Snowflake(custom_id.split("|")[-1]))
+    except ValueError:
+      return None
+
 
   async def run(self, target: Optional[BaseUser] = None, sort: Optional[str] = None):
     self.set_target(target or self.caller_user)
@@ -370,13 +544,14 @@ class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
 
     if self.data.total_cards <= 0:
       self.set_state(self.States.NO_CARDS)
+      await self.send()
     else:
       self.set_state(self.States.CARDS)
-
-    await self.send_multipage(template_kwargs=dict(escape_data_values=["type", "series"]), timeout=45)
+      await self.send_multipage(template_kwargs=dict(escape_data_values=["type", "series"]), timeout=45)
 
 
 class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, ReaderCommand):
+  CUSTOM_ID_RE = re.compile(r"gacha_view\|@.+")
   state: "View.States"
   data: "View.Data"
   card: StatsCard
@@ -392,10 +567,10 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
     NO_RESULTS_USER     = "gacha_view_no_results"         # gacha_view_us_no_results
     NO_INVENTORY_USER   = "gacha_view_no_cards"           # gacha_view_us_no_cards
 
-    VIEW_OWNERS_UNACQ   = "gacha_view_card_2_unacquired"           # gacha_view_gs_owners_unacquired
-    VIEW_1OWNER_UNACQ   = "gacha_view_card_2_unacquired_one_owner" # gacha_view_gs_1owner_unacquired
-    VIEW_OWNERS_ACQ     = "gacha_view_card_2_acquired"             # gacha_view_gs_owners_acquired
-    VIEW_1OWNER_ACQ     = "gacha_view_card_2_acquired_one_owner"   # gacha_view_gs_1owner_acquired
+    VIEW_OWNERS_UNACQ   = "gacha_view_card_2_unacquired"           # gacha_view_global_unacquired
+    VIEW_1OWNER_UNACQ   = "gacha_view_card_2_unacquired_one_owner" # gacha_view_global_unacquired
+    VIEW_OWNERS_ACQ     = "gacha_view_card_2_acquired"             # gacha_view_global_acquired
+    VIEW_1OWNER_ACQ     = "gacha_view_card_2_acquired_one_owner"   # gacha_view_global_acquired
     VIEW_USER           = "gacha_view_card"                        # gacha_view_us_card
 
   @define(slots=False)
@@ -403,6 +578,15 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
     search_key: str
     total_cards: int
     # total_results: int [FUTURE]
+
+  @staticmethod
+  def custom_id(search_key: str):
+    return f"gacha_view|{search_key}"
+
+  @staticmethod
+  async def search_key_from_custom_id(custom_id: str):
+    return custom_id.split("|")[-1]
+
 
   @property
   def search_key(self):
@@ -418,6 +602,7 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
     self.user_mode = target is not None
 
     results: List[StatsCard] = await self.search(search_key)
+    prompted_card = None
     if len(results) <= 0: # no results
       if self.total_cards <= 0:
         self.set_state(self.States.NO_INVENTORY_USER if self.user_mode else self.States.NO_INVENTORY)
@@ -431,16 +616,19 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
     elif len(results) > 1: # multiple matches
       await self.defer(suppress_error=True)
       self.set_state(self.States.SEARCH_RESULTS_USER if self.user_mode else self.States.SEARCH_RESULTS)
-      card = await self.prompt()
-      if not card:
+      prompted_card = await self.prompt()
+      if not prompted_card:
         return
-      self.card = card
+      self.card = prompted_card
 
+    string_templates = []
     if self.user_mode:
       self.card_user = await userdata.card_user(self.target_id, self.card.id)
       self.set_state(self.States.VIEW_USER)
     else:
       self.card_user = await userdata.card_user(self.caller_id, self.card.id)
+      if self.card.users > 1:
+        string_templates.append("gacha_view_multiple_owners")
       if self.card_user:
         self.set_state(self.States.VIEW_1OWNER_ACQ if self.card.users <= 1 else self.States.VIEW_OWNERS_ACQ)
       else:
@@ -448,8 +636,11 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
 
     await self.send(
       other_data=self.card.asdict() | (self.card_user.asdict() if self.card_user else {}),
-      template_kwargs=dict(escape_data_values=["search_key", "name", "type", "series"]),
-      edit_origin=True,
+      template_kwargs=dict(
+        escape_data_values=["search_key", "name", "type", "series"],
+        use_string_templates=string_templates,
+      ),
+      edit_origin=bool(prompted_card),
       components=[]
     )
 

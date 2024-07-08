@@ -23,6 +23,8 @@ _:
     ${currency_icon} ${shards}
   description: >-
     Amount held by ${target_user}
+
+    ${gacha_shards_daily_available}
   thumbnail   : ${target_usericon}
 
 # Shards - Server booster in a server with premium shards enabled
@@ -35,5 +37,11 @@ premium:
     Amount held by ${target_user}
 
     **'${guild_name}' boosted**
+
+    ${gacha_shards_daily_available}
   thumbnail   : ${target_usericon}
   color: gold
+
+# [string] Daily available
+daily_available: >-
+  ※ **Daily available**

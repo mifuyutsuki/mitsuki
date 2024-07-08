@@ -20,6 +20,8 @@ from interactions import (
   SlashContext,
   SlashCommandChoice,
   StringSelectMenu,
+  component_callback,
+  ComponentContext,
   OptionType,
   BaseUser,
   User,
@@ -75,6 +77,8 @@ class GachaModule(Extension):
   async def details_cmd(self, ctx: SlashContext):
     await commands.Details.create(ctx).run()
 
+  # ===========================================================================
+  # ===========================================================================
 
   @gacha_cmd.subcommand(
     sub_cmd_name="shards",
@@ -90,6 +94,24 @@ class GachaModule(Extension):
   )
   async def shards_cmd(self, ctx: SlashContext, user: Optional[BaseUser] = None):
     await commands.Shards.create(ctx).run(user)
+
+  # ===========================================================================
+  # ===========================================================================
+
+  @gacha_cmd.subcommand(
+    sub_cmd_name="profile",
+    sub_cmd_description="View your or another user's gacha profile"
+  )
+  @auto_defer(time_until_defer=2.0)
+  @cooldown(Buckets.USER, 1, 3.0)
+  @slash_option(
+    name="user",
+    description="User to view",
+    required=False,
+    opt_type=OptionType.USER
+  )
+  async def profile_cmd(self, ctx: SlashContext, user: Optional[BaseUser] = None):
+    await commands.Profile.create(ctx).run(user)
 
   # ===========================================================================
   # ===========================================================================
@@ -152,6 +174,15 @@ class GachaModule(Extension):
   ):
     await commands.Cards.create(ctx).run(user, sort)
 
+  @component_callback(commands.Cards.CUSTOM_ID_RE)
+  @auto_defer(time_until_defer=2.0)
+  @cooldown(Buckets.USER, 1, 15.0)
+  async def cards_btn_cmd(self, ctx: ComponentContext):
+    if target := await commands.Cards.target_from_custom_id(ctx.custom_id):
+      await commands.Cards.create(ctx).run(target)
+    else:
+      await ctx.edit_origin()
+
 
   # ===========================================================================
   # ===========================================================================
@@ -190,6 +221,15 @@ class GachaModule(Extension):
   ):
     await commands.Gallery.create(ctx).run(user, sort)
 
+  @component_callback(commands.Gallery.CUSTOM_ID_RE)
+  @auto_defer(time_until_defer=2.0)
+  @cooldown(Buckets.USER, 1, 15.0)
+  async def gallery_btn_cmd(self, ctx: ComponentContext):
+    if target := await commands.Gallery.target_from_custom_id(ctx.custom_id):
+      await commands.Gallery.create(ctx).run(target)
+    else:
+      await ctx.edit_origin()
+
 
   # ===========================================================================
   # ===========================================================================
@@ -223,6 +263,14 @@ class GachaModule(Extension):
   ):
     await commands.View.create(ctx).run(name, user)
 
+  @component_callback(commands.View.CUSTOM_ID_RE)
+  @auto_defer(time_until_defer=2.0)
+  @cooldown(Buckets.USER, 1, 15.0)
+  async def view_btn_cmd(self, ctx: ComponentContext):
+    if search_key := await commands.View.search_key_from_custom_id(ctx.custom_id):
+      await commands.View.create(ctx).run(search_key)
+    else:
+      await ctx.edit_origin()
 
   @view_cmd.autocomplete("name")
   async def view_cmd_autocomplete(self, ctx: AutocompleteContext):

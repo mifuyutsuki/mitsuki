@@ -17,7 +17,7 @@ from typing import Optional, List, Callable
 from attrs import define, field
 from attrs import asdict as _asdict
 
-from mitsuki.lib.userdata import Base
+from mitsuki.lib.userdata import Base, AsDict
 from mitsuki.utils import escape_text
 
 
@@ -168,6 +168,7 @@ class UserCard:
 
   mention: str = field(init=False)
   first_acquired_f: str = field(init=False)
+  first_acquired_d: str = field(init=False)
   linked_name: str = field(init=False)
 
   @classmethod
@@ -195,6 +196,7 @@ class UserCard:
   def __attrs_post_init__(self):
     self.mention = f"<@{self.user}>"
     self.first_acquired_f = f"<t:{self.first_acquired}:f>"
+    self.first_acquired_d = f"<t:{self.first_acquired}:D>"
     self.linked_name = f"[{escape_text(self.name)}]({self.image})" if self.image else self.name
 
   def asdict(self):
@@ -386,6 +388,57 @@ class StatsCard:
 
   def asdict(self):
     return _asdict(self)
+
+
+@define
+class UserStats(AsDict):
+  rarity: int
+  stars: str
+  cards: int
+  rolled: int
+
+  set_pity: Optional[int] = field(default=None)
+  user_pity: Optional[int] = field(default=None)
+
+  last_id: Optional[str] = field(default=None)
+  last_name: Optional[str] = field(default=None)
+  last_rarity: Optional[int] = field(default=None)
+  last_type: Optional[str] = field(default=None)
+  last_series: Optional[str] = field(default=None)
+  last_image: Optional[str] = field(default=None)
+
+  last_time_float: Optional[float] = field(default=None)
+  last_time: Optional[int] = field(default=None, init=False)
+  last_time_f: Optional[str] = field(default="-", init=False)
+  last_time_d: Optional[str] = field(default="-", init=False)
+
+  def __attrs_post_init__(self):
+    if self.last_time_float:
+      self.last_time = int(self.last_time_float)
+      self.last_time_f = f"<t:{self.last_time}:f>"
+      self.last_time_d = f"<t:{self.last_time}:D>"
+
+  @classmethod
+  def from_db(cls, result: Row):
+    return cls(
+      rarity=result.Settings.rarity,
+      stars=result.Settings.stars,
+      cards=result.cards,
+      rolled=result.rolled,
+      set_pity=result.Settings.pity,
+      user_pity=result.pity_count,
+
+      last_id=result.id,
+      last_name=result.name,
+      last_type=result.type,
+      last_series=result.series,
+      last_image=result.image,
+      last_time_float=result.time,
+    )
+
+  @classmethod
+  def from_db_many(cls, results: List[Row]):
+    return [cls.from_db(result) for result in results]
 
 
 @define

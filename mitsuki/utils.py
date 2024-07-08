@@ -13,6 +13,7 @@
 from interactions import (
   BaseContext,
   InteractionContext,
+  Member,
 )
 from interactions.client.errors import (
   AlreadyDeferred,
@@ -24,7 +25,6 @@ from rapidfuzz.utils import default_process
 
 import unicodedata
 import regex as re
-import contextlib
 
 __all__ = (
   "UserDenied",
@@ -33,7 +33,8 @@ __all__ = (
   "process_text",
   "remove_accents",
   "is_caller",
-  "suppressed_defer",
+  "get_member_color",
+  "get_member_color_value",
 )
 
 
@@ -101,16 +102,38 @@ def is_caller(ctx: BaseContext):
   return check
 
 
-async def suppressed_defer(ctx: InteractionContext, ephemeral: bool = False):
+def get_member_color(member: Member):
   """
-  Defer a command without emitting an error.
-
-  Warning: This function is now a built feature in interactions.py as
-  defer(suppress_error=True) and is deprecated.
+  Obtain the member color, based on their top colored role.
 
   Args:
-      ctx: Interaction context object
+      member: Guild (server) member object
+
+  Returns:
+      Color object
+  """
+  if not hasattr(member, "roles"):
+    # Not a guild member object
+    return None
+
+  pos, color = 0, None
+  for role in member.roles:
+    if role.color.value != 0 and role.position > pos:
+      pos, color = role.position, role.color
+  return color
+
+
+def get_member_color_value(member: Member):
+  """
+  Obtain as an int value the member color, based on their top colored role.
+
+  Args:
+      member: Guild (server) member object
+
+  Returns:
+      Color object
   """
 
-  with contextlib.suppress(AlreadyDeferred, HTTPException):
-    await ctx.defer(ephemeral=ephemeral)
+  if color := get_member_color(member):
+    return color.value
+  return None

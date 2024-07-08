@@ -48,3 +48,18 @@ class InfoModule(Extension):
   )
   async def user_cmd(self, ctx: SlashContext, user: BaseUser = None):
     await commands.UserInfo.create(ctx).run(user)
+
+
+  @info_cmd.subcommand(
+    sub_cmd_name="avatar",
+    sub_cmd_description="View avatar of user"
+  )
+  @cooldown(Buckets.USER, 1, 5.0)
+  @slash_option(
+    name="user",
+    description="User to view, defaults to self",
+    required=False,
+    opt_type=OptionType.USER
+  )
+  async def avatar_cmd(self, ctx: SlashContext, user: BaseUser = None):
+    await commands.AvatarInfo.create(ctx).run(user)

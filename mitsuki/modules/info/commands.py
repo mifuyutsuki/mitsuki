@@ -10,12 +10,12 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from interactions import User, Member
+from interactions import User, Member, Button, ButtonStyle
 from attrs import define, field
 from enum import StrEnum
 from typing import Optional, Union
 
-from mitsuki import bot
+from mitsuki.utils import is_caller, get_member_color_value
 from mitsuki.lib.commands import AsDict, ReaderCommand, TargetMixin
 
 
@@ -54,9 +54,9 @@ class UserInfo(TargetMixin, ReaderCommand):
       "target_nickname",
       "guild_name",
     ]
-    color = None
+
     try:
-      fetched = await bot.fetch_user(self.target_user, force=True)
+      fetched = await self.ctx.bot.fetch_user(self.target_user, force=True)
       banner = fetched.banner.url if fetched and fetched.banner else None
     except Exception:
       banner = None
@@ -68,12 +68,7 @@ class UserInfo(TargetMixin, ReaderCommand):
       created_at=target.created_at.format("f"),
     )
     if isinstance(target, Member):
-      pos = 0
-      for role in target.roles:
-        if role.color.value != 0 and role.position > pos:
-          color = role.color.value
-          pos = role.position
-
+      has_nickname = ["info_user_has_nickname"] if target.nick else []
       self.member_data = self.MemberData(
         guild_name=target.guild.name,
         guild_id=target.guild.id,
@@ -84,8 +79,68 @@ class UserInfo(TargetMixin, ReaderCommand):
       self.set_state(self.States.MEMBER)
       await self.send(
         other_data=self.member_data.asdict(),
-        template_kwargs=dict(escape_data_values=escapes, color=color),
+        template_kwargs=dict(
+          escape_data_values=escapes,
+          use_string_templates=has_nickname,
+          color=get_member_color_value(target)
+        ),
       )
     else:
       self.set_state(self.States.USER)
-      await self.send(template_kwargs=dict(escape_data_values=escapes))
+      await self.send(template_kwargs=dict(escape_data_values=escapes, color=None))
+
+
+class AvatarInfo(TargetMixin, ReaderCommand):
+  state: "AvatarInfo.States"
+
+  class States(StrEnum):
+    AVATAR = "info_avatar"
+
+
+  async def run(self, target: Optional[Union[User, Member]] = None):
+    self.set_target(target or self.caller_user)
+    self.set_state(self.States.AVATAR)
+    await self.defer(suppress_error=True)
+
+    if isinstance(self.target_user, Member) and self.target_user.guild_avatar:
+      await self._run_with_server_avatar()
+    else:
+      await self._run_without_server_avatar()
+
+
+  async def _run_with_server_avatar(self):
+    guild_name = self.target_user.guild.name
+    view_global = False
+
+    while True:
+      if view_global:
+        avatar = self.target_user.user.avatar.url
+        btn = Button(label="Server Avatar", style=ButtonStyle.BLURPLE)
+      else:
+        avatar = self.target_user.guild_avatar.url
+        btn = Button(label="Global Avatar", style=ButtonStyle.BLURPLE)
+
+      _ = await self.send(
+        other_data={
+          "guild_name": guild_name,
+          "target_avatar": avatar,
+          "avatar_mode": "global" if view_global else "server"
+        },
+        edit_origin=True,
+        components=btn
+      )
+      try:
+        response = await self.ctx.bot.wait_for_component(components=btn, timeout=45, check=is_caller(self.ctx))
+      except TimeoutError:
+        if response.ctx.message:
+          await response.ctx.message.edit(components=[])
+        return
+      else:
+        self.set_ctx(response.ctx)
+        view_global = not view_global
+
+
+  async def _run_without_server_avatar(self):
+    guild_name = self.target_user.guild.name
+    avatar = self.target_user.avatar_url
+    _ = await self.send(other_data={"guild_name": guild_name, "target_avatar": avatar, "avatar_mode": "global"})

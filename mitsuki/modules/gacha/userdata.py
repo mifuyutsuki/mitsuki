@@ -543,16 +543,12 @@ async def pity_check(user_id: Snowflake, pity_settings: Dict[int, int]):
   if len(user_pity) == 0:
     return None
 
-  pity_rarities = sorted(pity_settings.keys(), reverse=True)
-  for pity_rarity in pity_rarities:
-    if pity_settings[pity_rarity] <= 1:
-      continue
-    if pity_rarity not in user_pity.keys():
-      continue
-    if user_pity[pity_rarity] + 1 >= pity_settings[pity_rarity]:
-      return pity_rarity
+  pity_rarity = None
+  for rarity, pity in pity_settings.items():
+    if pity > 1 and user_pity.get(rarity, 0) >= pity - 1:
+      pity_rarity = max(rarity, pity_rarity or 0)
 
-  return pity_rarities[-1]
+  return pity_rarity
 
 
 async def pity_update(
@@ -575,6 +571,54 @@ async def pity_update(
       )
     )
     await session.execute(statement)
+
+
+async def stats_user(user_id: Snowflake):
+  subq_pity = (
+    select(Pity2.rarity, Pity2.count.label("pity_count"))
+    .where(Pity2.user == user_id)
+    .subquery()
+  )
+  subq_cards = (
+    select(Card.rarity, func.count(Inventory.count).label("cards"), func.sum(Inventory.count).label("rolled"))
+    .join(Inventory, Inventory.card == Card.id)
+    .where(Inventory.user == user_id)
+    .group_by(Card.rarity)
+    .subquery()
+  )
+
+  subq_latest_time = (
+    select(Card.rarity, func.max(Rolls.time).label("time"))
+    .join(Rolls, Rolls.card == Card.id)
+    .where(Rolls.user == user_id)
+    .group_by(Card.rarity)
+    .subquery()
+  )
+  subq_latest = (
+    select(Card, subq_latest_time)
+    .join(Rolls, Rolls.card == Card.id)
+    .join(subq_latest_time, subq_latest_time.c.time == Rolls.time)
+    .where(Rolls.user == user_id)
+    .subquery()
+  )
+
+  query = (
+    select(
+      Settings,
+      subq_pity,
+      subq_latest,
+      func.ifnull(subq_cards.c.cards, 0).label("cards"),
+      func.ifnull(subq_cards.c.rolled, 0).label("rolled"),
+    )
+    .join(subq_pity, subq_pity.c.rarity == Settings.rarity, isouter=True)
+    .join(subq_latest, subq_latest.c.rarity == Settings.rarity, isouter=True)
+    .join(subq_cards, subq_cards.c.rarity == Settings.rarity, isouter=True)
+  )
+
+  async with new_session() as session:
+    results = (await session.execute(query)).all()
+  
+  return UserStats.from_db_many(results)
 
 
 # =================================================================================================

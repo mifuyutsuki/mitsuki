@@ -25,7 +25,8 @@ from typing import Optional, Union, List, Dict, Any
 from enum import StrEnum
 from interactions import (
   Snowflake,
-  BaseUser,
+  User,
+  Member,
   InteractionContext,
   AutocompleteContext,
   Message,
@@ -67,7 +68,7 @@ class Caller(AsDict):
   usericon: str
 
   @classmethod
-  def set(cls, user: BaseUser):
+  def set(cls, user: Union[Member, User]):
     return cls(
       userid=user.id,
       user=user.mention,
@@ -88,7 +89,7 @@ class Target(AsDict):
   target_usericon: str
 
   @classmethod
-  def set(cls, user: BaseUser):
+  def set(cls, user: Union[Member, User]):
     return cls(
       target_userid=user.id,
       target_user=user.mention,
@@ -104,7 +105,7 @@ class Target(AsDict):
 class Command:
   ctx: InteractionContext
   caller_data: "Caller"
-  caller_user: BaseUser
+  caller_user: Union[Member, User]
   data: Optional["AsDict"] = None
   message: Optional[Message] = None
   state: Optional[StrEnum] = None
@@ -114,6 +115,10 @@ class Command:
     o = cls()
     o.set_ctx(ctx)
     return o
+
+  @classmethod
+  def from_other(cls, other_command: "Command"):
+    return cls.create(other_command.ctx)
 
   def set_ctx(self, ctx: InteractionContext):
     self.ctx = ctx
@@ -130,6 +135,20 @@ class Command:
   def message_template(self, template: str, other_data: Optional[dict] = None, **kwargs):
     return messages.load_message(template, data=self.asdict() | (other_data or {}), **kwargs)
 
+  def message_template_multiline(
+    self,
+    template: str,
+    lines_data: List[Dict[str, Any]],
+    other_data: Optional[dict] = None,
+    **kwargs
+  ):
+    return messages.load_multiline(
+      template,
+      lines_data=lines_data,
+      base_data=self.asdict() | (other_data or {}),
+      **kwargs
+    )
+
   async def send(
     self,
     template: Optional[str] = None,
@@ -137,6 +156,7 @@ class Command:
     other_data: Optional[dict] = None,
     template_kwargs: Optional[dict] = None,
     edit_origin: bool = False,
+    lines_data: Optional[List[Dict[str, Any]]] = None,
     **kwargs
   ):
     if not template:
@@ -150,9 +170,13 @@ class Command:
       send = self.ctx.edit_origin
     else:
       send = self.ctx.send
-    self.message = await send(
-      **self.message_template(template, other_data, **template_kwargs).to_dict(), **kwargs
-    )
+    
+    if lines_data:
+      message_template = self.message_template_multiline(template, lines_data, other_data, **template_kwargs)
+    else:
+      message_template = self.message_template(template, other_data, **template_kwargs)
+
+    self.message = await send(**message_template.to_dict(), **kwargs)
     return self.message
 
   async def defer(self, ephemeral: bool = False, edit_origin: bool = False, suppress_error: bool = False):
@@ -201,13 +225,13 @@ class WriterCommand(Command):
 
 class TargetMixin:
   target_data: "Target"
-  target_user: BaseUser
+  target_user: Union[Member, User]
 
   @property
   def target_id(self):
     return self.target_user.id
 
-  def set_target(self, target: BaseUser):
+  def set_target(self, target: Union[Member, User]):
     self.target_user = target
     self.target_data = Target.set(target)
 

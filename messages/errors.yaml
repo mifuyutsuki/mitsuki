@@ -12,6 +12,20 @@ error:
   color: error
 
 
+# Message if a server error has occured, including Discord and 5xx errors.
+error_server:
+  title: >-
+    Server Error
+  description: >-
+    A server error has occured - please try again later.
+    
+    ```
+    
+    ${error_repr}
+    ```
+  color: error
+
+
 # Message if a user is not permitted to run the command.
 error_denied_user:
   title: >-
