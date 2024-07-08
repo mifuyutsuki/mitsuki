@@ -163,7 +163,7 @@ class Details(CurrencyMixin, ReaderCommand):
       if dupe > 0:
         rarity_info = rarity_info + f" • {currency_icon} **{dupe}**"
       if pity > 0:
-        rarity_info = rarity_info + f" • one guaranteed after {pity} rolls"
+        rarity_info = rarity_info + f" • one guaranteed in **{pity}** rolls"
       rarities_info_list.append(rarity_info.strip())
     rarities_info = "\n".join(rarities_info_list)
 
