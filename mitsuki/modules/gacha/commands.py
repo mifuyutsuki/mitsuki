@@ -505,10 +505,10 @@ class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
 
     if self.data.total_cards <= 0:
       self.set_state(self.States.NO_CARDS)
+      await self.send()
     else:
       self.set_state(self.States.CARDS)
-
-    await self.send_multifield(template_kwargs=dict(escape_data_values=["name", "type", "series"]), timeout=45)
+      await self.send_multifield(template_kwargs=dict(escape_data_values=["name", "type", "series"]), timeout=45)
 
 
 class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
@@ -544,10 +544,10 @@ class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
 
     if self.data.total_cards <= 0:
       self.set_state(self.States.NO_CARDS)
+      await self.send()
     else:
       self.set_state(self.States.CARDS)
-
-    await self.send_multipage(template_kwargs=dict(escape_data_values=["type", "series"]), timeout=45)
+      await self.send_multipage(template_kwargs=dict(escape_data_values=["type", "series"]), timeout=45)
 
 
 class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, ReaderCommand):
