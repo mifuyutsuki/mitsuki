@@ -282,7 +282,7 @@ class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
     active = len(nav_btns) > 0
     while active:
       try:
-        _ = await bot.wait_for_component(message, nav_btns, timeout=45)
+        _ = await bot.wait_for_component(message, nav_btns, timeout=180)
       except TimeoutError:
         active = False
       finally:
