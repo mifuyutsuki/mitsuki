@@ -29,7 +29,7 @@ _:
     inline: false
   - name: Rolled cards
     value: >-
-      **${total_cards}** — ${m_rolled}
+      **${total_rolled}** — ${m_rolled}
   - name: Unique cards
     value: >-
       **${total_cards}** — ${m_cards}
