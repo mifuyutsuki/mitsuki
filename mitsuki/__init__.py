@@ -30,6 +30,7 @@ from interactions.api.events import (
   Ready,
   CommandError,
   CommandCompletion,
+  ComponentError,
   ComponentCompletion,
   AutocompleteCompletion,
 )
@@ -47,6 +48,7 @@ from os.path import dirname, abspath
 from datetime import datetime, timezone
 from random import Random
 from functools import partial
+from typing import Union
 
 import asyncio
 import logging
@@ -140,6 +142,15 @@ class Bot(Client):
 
   @listen(CommandError, disable_default_listeners=True)
   async def on_command_error(self, event: CommandError):
+    return await self.error_handler(event)
+
+
+  @listen(ComponentError, disable_default_listeners=True)
+  async def on_component_error(self, event: ComponentError):
+    return await self.error_handler(event)
+  
+
+  async def error_handler(self, event: Union[CommandError, ComponentError]):
     # default ephemeral to true unless it's an unknown exception
     ephemeral = True
     ctx_load_message = partial(load_message, user=event.ctx.author)
