@@ -86,31 +86,34 @@ global_unacquired: &global_unacquired
     ${name}
   description: >-
     ${stars} • ${type} • ${series}
-  image: >-
-    ${image}
-  color: >-
-    ${color}
-- title: >-
-    Card Statistics
-  color: >-
-    ${color}
   fields:
   - name      : Rolled
     value     : >-
       **${rolled}** times
-      
-      **${users}** owners
     inline    : true
-  - name      : Last acquired
+  - name      : Owners
     value     : >-
-      ${last_user_acquired_f}
-      
-      by ${last_user_mention}
+      **${users}** users
     inline    : true
   - name      : In your collection
     value     : >-
-      Not yet acquired
+      No cards
     inline    : true
+  - name      : First acquired
+    value     : >-
+      ${first_user_acquired_f}
+
+      by ${first_user_mention}
+    inline    : true
+  - name      : Last acquired
+    value     : ${gacha_view_multiple_owners}
+    inline    : true
+  color: >-
+    ${color}
+- image: >-
+    ${image}
+  color: >-
+    ${color}
 
 # View card, has been obtained by user (new)
 global_acquired: &global_acquired
@@ -119,33 +122,37 @@ global_acquired: &global_acquired
     ${name}
   description: >-
     ${stars} • ${type} • ${series}
-  image: >-
-    ${image}
-  color: >-
-    ${color}
-- title: >-
-    Card Statistics
-  color: >-
-    ${color}
+
+
+    You first acquired this on ${first_acquired_f}
   fields:
   - name      : Rolled
     value     : >-
       **${rolled}** times
-      
-      **${users}** owners
     inline    : true
-  - name      : Last acquired
+  - name      : Owners
     value     : >-
-      ${last_user_acquired_f}
-      
-      by ${last_user_mention}
+      **${users}** users
     inline    : true
   - name      : In your collection
     value     : >-
       **${amount}** cards
-
-      Since ${first_acquired_f}
     inline    : true
+  - name      : First acquired
+    value     : >-
+      ${first_user_acquired_f}
+      
+      by ${first_user_mention}
+    inline    : true
+  - name      : Last acquired
+    value     : ${gacha_view_multiple_owners}
+    inline    : true
+  color: >-
+    ${color}
+- image: >-
+    ${image}
+  color: >-
+    ${color}
 
 # View card, unobtained by user, multiple owners
 gs_card_owners_unacquired: *global_unacquired
@@ -159,6 +166,10 @@ gs_card_owners_acquired: *global_acquired
 # View card, has been obtained by user, one owner
 gs_card_1owner_acquired: *global_acquired
 
+multiple_owners: >-
+  ${last_user_acquired_f}
+
+  by ${last_user_mention}
 
 # -----------------------------------------------------------------------------
 # User search

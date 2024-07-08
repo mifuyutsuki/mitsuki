@@ -621,11 +621,14 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
         return
       self.card = prompted_card
 
+    string_templates = []
     if self.user_mode:
       self.card_user = await userdata.card_user(self.target_id, self.card.id)
       self.set_state(self.States.VIEW_USER)
     else:
       self.card_user = await userdata.card_user(self.caller_id, self.card.id)
+      if self.card.users > 1:
+        string_templates.append("gacha_view_multiple_owners")
       if self.card_user:
         self.set_state(self.States.VIEW_1OWNER_ACQ if self.card.users <= 1 else self.States.VIEW_OWNERS_ACQ)
       else:
@@ -633,7 +636,10 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
 
     await self.send(
       other_data=self.card.asdict() | (self.card_user.asdict() if self.card_user else {}),
-      template_kwargs=dict(escape_data_values=["search_key", "name", "type", "series"]),
+      template_kwargs=dict(
+        escape_data_values=["search_key", "name", "type", "series"],
+        use_string_templates=string_templates,
+      ),
       edit_origin=bool(prompted_card),
       components=[]
     )
