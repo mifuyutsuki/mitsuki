@@ -168,6 +168,7 @@ class UserCard:
 
   mention: str = field(init=False)
   first_acquired_f: str = field(init=False)
+  first_acquired_d: str = field(init=False)
   linked_name: str = field(init=False)
 
   @classmethod
@@ -195,6 +196,7 @@ class UserCard:
   def __attrs_post_init__(self):
     self.mention = f"<@{self.user}>"
     self.first_acquired_f = f"<t:{self.first_acquired}:f>"
+    self.first_acquired_d = f"<t:{self.first_acquired}:D>"
     self.linked_name = f"[{escape_text(self.name)}]({self.image})" if self.image else self.name
 
   def asdict(self):
