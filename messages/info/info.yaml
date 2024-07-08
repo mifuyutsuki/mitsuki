@@ -23,7 +23,7 @@ user_member:
     name: >-
       ${target_username} (${target_userid})
   title: >-
-    ${target_nickname} / ${target_globalname}
+    ${info_user_has_nickname} ${target_globalname}
   description: >-
     ${target_user}
 
@@ -49,3 +49,5 @@ avatar:
   description: >-
     Viewing **${avatar_mode}** avatar of ${target_user}
   image: ${target_avatar}
+
+user_has_nickname: ${target_nickname} / 

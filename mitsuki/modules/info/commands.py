@@ -68,6 +68,7 @@ class UserInfo(TargetMixin, ReaderCommand):
       created_at=target.created_at.format("f"),
     )
     if isinstance(target, Member):
+      has_nickname = ["info_user_has_nickname"] if target.nick else []
       self.member_data = self.MemberData(
         guild_name=target.guild.name,
         guild_id=target.guild.id,
@@ -78,7 +79,11 @@ class UserInfo(TargetMixin, ReaderCommand):
       self.set_state(self.States.MEMBER)
       await self.send(
         other_data=self.member_data.asdict(),
-        template_kwargs=dict(escape_data_values=escapes, color=get_member_color_value(target)),
+        template_kwargs=dict(
+          escape_data_values=escapes,
+          use_string_templates=has_nickname,
+          color=get_member_color_value(target)
+        ),
       )
     else:
       self.set_state(self.States.USER)
