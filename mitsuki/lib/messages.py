@@ -241,7 +241,8 @@ class MessageMan:
       template |= template_kwargs
 
       content = content or template.get("content")
-      embeds.append(_create_embed(template, color_data=self.colors))
+      if em := _create_embed(template, color_data=self.colors):
+        embeds.append(em)
 
     return Message(
       content=str(content) if content else None,
@@ -317,7 +318,8 @@ class MessageMan:
         escapes=escape_data_values
       )
       page_template |= template_kwargs
-      embeds.append(_create_embed(page_template, color_data=self.colors))
+      if em := _create_embed(page_template, color_data=self.colors):
+        embeds.append(em)
 
     return Message(
       content=str(content) if content else None,
@@ -407,7 +409,8 @@ class MessageMan:
         escapes=escape_data_values
       )
       page_template |= template_kwargs
-      embeds.append(_create_embed(page_template, color_data=self.colors))
+      if em := _create_embed(page_template, color_data=self.colors):
+        embeds.append(em)
 
       cursor += fields_per_page
       page += 1
@@ -501,7 +504,8 @@ class MessageMan:
       template |= template_kwargs
 
       content = content or template.get("content")
-      embeds.append(_create_embed(template, color_data=self.colors))
+      if em := _create_embed(template, color_data=self.colors):
+        embeds.append(em)
 
     return Message(
       content=str(content) if content else None,
@@ -896,7 +900,7 @@ def _create_embed(template: Dict[str, Any], color_data: Optional[Dict[str, int]]
     thumbnail=thumbnail,
     images=images,
     footer=footer
-  )
+  ) if title or description or fields or author or images or footer else None
 
 
 def _valid_url_or_none(url: str):
