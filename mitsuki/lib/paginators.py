@@ -33,7 +33,7 @@ class Paginator(_Paginator):
 
   def __attrs_post_init__(self):
     super().__attrs_post_init__()
-    if len(self.pages) > 1:
+    if len(self.pages) > 3:
       self.callback = self.callback_cmd
       self.show_callback_button = True
 
