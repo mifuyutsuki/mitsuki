@@ -26,9 +26,11 @@ from attrs import asdict as _asdict
 from datetime import datetime, timezone
 from croniter import croniter
 from typing import List, Tuple, Optional, Any, Callable, TypeVar, Self
+from string import Template
 
 from . import schema
 
+from mitsuki import bot
 from mitsuki.lib.userdata import new_session, AsDict
 
 
@@ -39,6 +41,11 @@ def separated_list(type: Callable[[str], T], separator: str = ","):
     return [type(li) for li in ls.split(separator)] if ls else None
   return wrapper
 
+def option(type: Callable[[Any], T]):
+  return lambda s: type(s) if s else None
+
+
+SCHEDULE_COLUMNS = schema.Schedule().columns.copy()
 
 @define
 class Schedule(AsDict):
@@ -59,7 +66,7 @@ class Schedule(AsDict):
   # number_offset: int = field(default=0)
   format: str = field(default="${message}", converter=lambda s: s.strip())
 
-  channel: Optional[Snowflake] = field(default=None, converter=Snowflake)
+  channel: Optional[Snowflake] = field(default=None, converter=option(Snowflake))
   manager_roles: Optional[str] = field(default=None)
 
   def get_cron(self, start_time: Optional[datetime] = None):
@@ -114,6 +121,12 @@ class Schedule(AsDict):
     return result or 0
 
 
+  async def fetch_manager_roles(self):
+    if not self.manager_roles:
+      return []
+    return separated_list(Snowflake, " ")
+
+
   @classmethod
   def create(
     cls,
@@ -139,22 +152,23 @@ class Schedule(AsDict):
       cycle=cycle,
       pin=pin,
       randomize=randomize,
-      number_current=start_at_number,
+      number_current=start_at_number or 0,
     )
 
 
   async def add(self, session: AsyncSession):
-    statement = (
-      insert(schema.Schedule)
-      .values(**self.asdict())
-    )
+    values = self.asdbdict()
+    for key in ["id"]:
+      values.pop(key)
+
+    statement = insert(schema.Schedule).values(values)
     await session.execute(statement)
 
 
   async def update(self, session: AsyncSession):
-    values = self.asdict()
+    values = self.asdbdict()
     for key in ["id", "title"]:
-      values.drop(key)
+      values.pop(key)
   
     statement = (
       update(schema.Schedule)
@@ -164,12 +178,16 @@ class Schedule(AsDict):
     await session.execute(statement)
 
 
-  def asdict(self):
-    return super().asdict()
+  def asdbdict(self):
+    return {k: v for k, v in self.asdict().items() if k in SCHEDULE_COLUMNS}
 
+
+MESSAGE_COLUMNS = schema.Message().columns.copy()
 
 @define
 class Message(AsDict):
+  schedule_object: Schedule
+
   schedule: int
   creator: Snowflake
   date_created: float
@@ -185,9 +203,18 @@ class Message(AsDict):
   message_id: Optional[Snowflake] = field(default=None)
   date_posted: Optional[float] = field(default=None)
 
+  date_created_f: str = field(init=False)
+  date_modified_f: str = field(init=False)
+  date_posted_f: str = field(init=False)
+
+  def __attrs_post_init__(self):
+    self.date_created_f = f"<t:{int(self.date_created)}:f>"
+    self.date_modified_f = f"<t:{int(self.date_modified)}:f>"
+    self.date_posted_f = f"<t:{int(self.date_posted)}:f>" if self.date_posted else "-"
+
 
   @classmethod
-  async def fetch_schedule(
+  async def fetch_from_schedule(
     cls,
     schedule_title: str,
     include_backlog: bool = False,
@@ -220,13 +247,13 @@ class Message(AsDict):
       results = (await session.execute(query)).all()
 
     return [
-      cls(**result.Message.asdict())
+      cls(**result.Message.asdict(), schedule_object=Schedule(**result.Schedule.asdict()))
       for result in results
     ]
 
 
   @classmethod
-  async def fetch_next_backlog(cls, schedule_title: str) -> Tuple["Message", "Schedule"]:
+  async def fetch_next_backlog(cls, schedule_title: str) -> "Message":
     query = (
       select(schema.Message, schema.Schedule)
       .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule)
@@ -240,34 +267,43 @@ class Message(AsDict):
 
     if result is None:
       return None, None
-    return cls(**result.Message.asdict()), Schedule(**result.Schedule.asdict())
+    return cls(**result.Message.asdict(), schedule_object=Schedule(**result.Schedule.asdict()))
 
 
   @classmethod
   def create(cls, ctx: InteractionContext, schedule: Schedule, message: str):
     date_created = datetime.now(tz=timezone.utc).timestamp()
     return cls(
+      schedule_object=schedule,
       schedule=schedule.id,
       creator=ctx.author.id,
       date_created=date_created,
       date_modified=date_created,
       number=schedule.number_current + 1,
+      order=schedule.number_current + 1.0,
       message=message,
     )
 
 
   async def add(self, session: AsyncSession):
-    values = self.asdict()
-    for key in ["id", "number_offset"]:
+    values = self.asdbdict()
+    for key in ["id"]:
       values.pop(key)
 
     statement = insert(schema.Message).values(values)
     await session.execute(statement)
 
+    statement = (
+      update(schema.Schedule)
+      .where(schema.Schedule.id == self.schedule_object.id)
+      .values(number_current=schema.Schedule.__table__.c.number_current + 1)
+    )
+    await session.execute(statement)
+
 
   async def update(self, session: AsyncSession):
-    values = self.asdict()
-    for key in ["id", "title", "number_offset"]:
+    values = self.asdbdict()
+    for key in ["id", "title"]:
       values.pop(key)
 
     statement = (
@@ -278,7 +314,15 @@ class Message(AsDict):
     await session.execute(statement)
 
 
+  def asdbdict(self):
+    return {k: v for k, v in self.asdict().items() if k in MESSAGE_COLUMNS}
+
+
   def add_posted_message(self, message: DiscordMessage):
     self.message_id = message.id
     self.date_posted = message.timestamp.timestamp()
     return self
+
+
+  def assign_to(self, schedule: Schedule):
+    return Template(schedule.format).safe_substitute(**self.asdict())
