@@ -46,7 +46,16 @@ class _Errors(ReaderCommand):
     await self.send("schedule_error_not_in_guild")
 
   async def schedule_not_found(self, schedule_title: str):
-    await self.send("schedule_error_schedule_not_found", other_data={"schedule_title": schedule_title})
+    await self.send(
+      "schedule_error_schedule_not_found",
+      other_data={"schedule_title": escape_text(schedule_title)},
+    )
+
+  async def message_too_long(self, length: int):
+    await self.send(
+      "schedule_error_message_too_long",
+      other_data={"length": length}
+    )
 
 
 class CreateSchedule(WriterCommand):
@@ -55,18 +64,18 @@ class CreateSchedule(WriterCommand):
   schedule: Schedule
 
   class States(StrEnum):
-    SUCCESS = "schedule_create_schedule_success"
+    SUCCESS = "schedule_create"
 
   @define(slots=False)
   class Data(AsDict):
-    title: str
+    schedule_title: str
     guild_name: str
 
 
   async def run(self, schedule_title: str):
     if not self.ctx.guild:
       return await _Errors.create(self.ctx).not_in_guild()
-    self.data = self.Data(title=schedule_title, guild_name=self.ctx.guild.name)
+    self.data = self.Data(schedule_title=schedule_title, guild_name=self.ctx.guild.name)
 
     self.schedule = Schedule.create(self.ctx, schedule_title)
     await self.send_commit(self.States.SUCCESS)
@@ -80,14 +89,15 @@ class AddMessage(WriterCommand):
   state: "AddMessage.States"
   data: "AddMessage.Data"
   schedule: Schedule
-  message: ScheduleMessage
+  schedule_message: ScheduleMessage
 
   class States(StrEnum):
-    SUCCESS = "schedule_add_message_success"
+    SUCCESS = "schedule_add"
 
   @define(slots=False)
   class Data(AsDict):
     schedule_title: str
+    guild_name: str
     message: str
     number: int
 
@@ -100,13 +110,22 @@ class AddMessage(WriterCommand):
     if not schedule:
       return await _Errors.create(self.ctx).schedule_not_found(schedule_title)
 
-    self.message  = ScheduleMessage.create(self.ctx, self.schedule, message)
-    self.data = self.Data(schedule_title=schedule_title, message=message, number=self.message.number)
-    await self.send_commit(self.States.SUCCESS)
+    self.schedule_message = ScheduleMessage.create(self.ctx, schedule, message)
+    if len(self.schedule_message.assign_to(schedule)) >= 2000:
+      return await _Errors.create(self.ctx).message_too_long()
+
+    message_data = {"message_" + k: v for k, v in self.schedule_message.asdbdict().items()}
+    self.data = self.Data(
+      schedule_title=escape_text(schedule_title),
+      guild_name=self.ctx.guild.name,
+      message=message,
+      number=self.schedule_message.number
+    )
+    await self.send_commit(self.States.SUCCESS, other_data=message_data)
 
 
   async def transaction(self, session: AsyncSession):
-    await self.message.add(session)
+    await self.schedule_message.add(session)
 
 
 class ListMessages(MultifieldMixin, ReaderCommand):

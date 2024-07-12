@@ -1,0 +1,16 @@
+_namespace: schedule_create
+
+_:
+  title: >-
+    Schedule created
+  description: >-
+    This Schedule is not yet active. Configure and activate in `/schedule manage`
+    
+    You can add messages to this Schedule using `/schedule add`
+  fields:
+  - name   : Server
+    value  : ${guild_name}
+    inline : true
+  - name   : Schedule
+    value  : ${schedule_title}
+    inline : true

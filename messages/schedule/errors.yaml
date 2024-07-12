@@ -1,0 +1,21 @@
+_namespace: schedule_error
+
+not_in_guild:
+  title: >-
+    Command Unavailable
+  description: >-
+    This feature is only available in servers.
+  color: error
+
+schedule_not_found:
+  title: >-
+    Schedule Not Found
+  description: >-
+    Could not find a Schedule with the title "${schedule_title}".
+  color: error
+
+message_too_long:
+  title: >-
+    Message Too Long
+  description: >-
+    Resulting scheduled message is too long (**${length}** > 2000).

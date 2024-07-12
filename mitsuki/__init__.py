@@ -256,6 +256,7 @@ def run():
   bot.load_extension("mitsuki.modules.system")
   bot.load_extension("mitsuki.modules.info")
   bot.load_extension("mitsuki.modules.gacha")
+  bot.load_extension("mitsuki.modules.schedule")
 
   # fixes image loading issues?
   # CLIENT_FEATURE_FLAGS["FOLLOWUP_INTERACTIONS_FOR_IMAGES"] = True
