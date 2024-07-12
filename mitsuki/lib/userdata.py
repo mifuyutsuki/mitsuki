@@ -57,8 +57,8 @@ new_session = async_sessionmaker(engine, expire_on_commit=False)
 
 
 class AsDict:
-  def asdict(self):
-    return _asdict(self)
+  def asdict(self, recurse: bool = False):
+    return _asdict(self, recurse=recurse)
 
 
 class Base(DeclarativeBase, AsyncAttrs):
