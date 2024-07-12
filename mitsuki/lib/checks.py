@@ -16,6 +16,8 @@ from interactions import (
   User,
   Permissions,
   is_owner,
+  Client,
+  Snowflake,
 )
 from interactions.api.events import Component
 
@@ -30,8 +32,10 @@ __all__ = (
   "BotDenied",
   "assert_user_permissions",
   "assert_bot_permissions",
+  "assert_bot_channel_permissions",
   "has_user_permissions",
   "has_bot_permissions",
+  "has_bot_channel_permissions",
 )
 
 
@@ -50,8 +54,6 @@ async def assert_user_permissions(
   permissions: Union[List[Permissions] | Permissions],
   message: str
 ):
-  if not isinstance(permissions, list):
-    permissions = [permissions]
   if not await has_user_permissions(ctx, permissions):
     raise UserDenied(message)
 
@@ -69,8 +71,6 @@ async def assert_bot_permissions(
   permissions: Union[List[Permissions] | Permissions],
   message: str
 ):
-  if not isinstance(permissions, list):
-    permissions = [permissions]
   if not await has_bot_permissions(ctx, permissions):
     raise BotDenied(message)
 
@@ -86,6 +86,30 @@ async def has_bot_permissions(ctx: BaseContext, permissions: Union[List[Permissi
   if not isinstance(permissions, list):
     permissions = [permissions]
   return bot_member.has_permission(*permissions)
+
+
+async def assert_bot_channel_permissions(
+  bot: Client,
+  channel_id: Snowflake,
+  permissions: Union[List[Permissions] | Permissions],
+  message: str
+):
+  if not await has_bot_channel_permissions(bot, channel_id, permissions):
+    raise BotDenied(message)
+
+
+async def has_bot_channel_permissions(
+  bot: Client,
+  channel_id: Snowflake,
+  permissions: Union[List[Permissions] | Permissions]
+):
+  channel = await bot.fetch_channel(channel_id)
+  if not channel:
+    return False
+  if not isinstance(permissions, list):
+    permissions = [permissions]
+
+  return all(permission in channel.permissions_for(bot.user.id) for permission in permissions)
 
 
 def is_caller(ctx: BaseContext, message: Optional[str] = None):
