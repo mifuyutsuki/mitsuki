@@ -15,6 +15,7 @@ from interactions import (
   Member,
   User,
   Permissions,
+  is_owner,
 )
 from interactions.api.events import Component
 
@@ -60,7 +61,7 @@ async def has_user_permissions(ctx: BaseContext, permissions: Union[List[Permiss
     return False
   if not isinstance(permissions, list):
     permissions = [permissions]
-  return ctx.author.has_permission(*permissions)
+  return ctx.author.has_permission(*permissions) or is_owner()(ctx)
 
 
 async def assert_bot_permissions(
