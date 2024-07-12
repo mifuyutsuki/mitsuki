@@ -66,6 +66,10 @@ class Base(DeclarativeBase, AsyncAttrs):
     #: Source: https://stackoverflow.com/a/1960546
     return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
+  @property
+  def columns(self):
+    return [c.name for c in self.__table__.columns]
+
 
 async def initialize():
   global engine
