@@ -44,23 +44,18 @@ from mitsuki import init_event, bot
 from mitsuki.utils import UserDenied
 
 from .userdata import Schedule, Message
+from .daemon import Daemon
 from . import commands
 
 class ScheduleModule(Extension):
-  tasks: Dict[str, Task] = {}
+  daemon: Daemon
 
   @listen(Startup)
   async def on_startup(self):
     await init_event.wait()
+    self.daemon = Daemon(self.bot)
+    await self.daemon.init()
 
-    # WIP
-
-    # scheds = await Schedule.fetch_active_crons()
-    # if len(scheds) > 1:
-    #   for sched_title, sched_cron in scheds.items():
-    #     task = Task(self.post_message_task(sched_title), CronTrigger(sched_cron))
-    #     task.start()
-    #     self.tasks[sched_title] = task
 
   async def post_message_task(self, schedule_title: str):
     async def wrapper():
