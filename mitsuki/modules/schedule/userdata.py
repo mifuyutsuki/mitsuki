@@ -253,7 +253,7 @@ class Message(AsDict):
 
 
   @classmethod
-  async def fetch_next_backlog(cls, schedule_title: str) -> "Message":
+  async def fetch_next_backlog(cls, schedule_title: str) -> Optional["Message"]:
     query = (
       select(schema.Message, schema.Schedule)
       .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule)
@@ -266,7 +266,7 @@ class Message(AsDict):
       result = (await session.execute(query)).first()
 
     if result is None:
-      return None, None
+      return None
     return cls(**result.Message.asdict(), schedule_object=Schedule(**result.Schedule.asdict()))
 
 
