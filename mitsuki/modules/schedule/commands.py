@@ -24,6 +24,7 @@ from interactions import (
   Button,
   ButtonStyle,
   StringSelectMenu,
+  Permissions,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,6 +37,10 @@ from mitsuki.lib.commands import (
   TargetMixin,
   MultifieldMixin,
   AutocompleteMixin
+)
+from mitsuki.lib.checks import (
+  assert_bot_permissions,
+  assert_user_permissions,
 )
 
 from .userdata import Schedule, Message as ScheduleMessage
@@ -75,6 +80,8 @@ class CreateSchedule(WriterCommand):
   async def run(self, schedule_title: str):
     if not self.ctx.guild:
       return await _Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(self.ctx, Permissions.ADMINISTRATOR)
+
     self.data = self.Data(schedule_title=schedule_title, guild_name=self.ctx.guild.name)
 
     self.schedule = Schedule.create(self.ctx, schedule_title)
