@@ -138,3 +138,27 @@ class AddMessage(WriterCommand):
 class ListMessages(MultifieldMixin, ReaderCommand):
   state: "ListMessages.States"
   data: "ListMessages.Data"
+  schedule: Schedule
+  schedule_messages: List[ScheduleMessage]
+
+  class States(StrEnum):
+    LIST = "schedule_list"
+    NO_LIST = "schedule_list_no_messages"
+
+  @define(slots=False)
+  class Data(AsDict):
+    pass
+
+
+  async def run(self, schedule_title: str):
+    self.schedule = await Schedule.fetch(schedule_title)
+    if not self.schedule:
+      return await _Errors.create(self.ctx).schedule_not_found(schedule_title)
+
+    self.schedule_messages = await ScheduleMessage.fetch_from_schedule(schedule_title)
+    if len(self.schedule_messages) <= 0:
+      await self.send(self.States.NO_LIST, other_data={"schedule_title": schedule_title})
+      return
+
+    self.field_data = self.schedule_messages
+    await self.send_multifield(self.States.LIST, other_data={"schedule_title": schedule_title})
