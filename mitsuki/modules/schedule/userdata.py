@@ -212,6 +212,9 @@ class Message(AsDict):
     self.date_modified_f = f"<t:{int(self.date_modified)}:f>"
     self.date_posted_f = f"<t:{int(self.date_posted)}:f>" if self.date_posted else "-"
 
+  @property
+  def channel(self):
+    return self.schedule_object.channel
 
   @classmethod
   async def fetch_from_schedule(
