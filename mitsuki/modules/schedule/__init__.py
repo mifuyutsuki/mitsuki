@@ -56,19 +56,6 @@ class ScheduleModule(Extension):
     self.daemon = Daemon(self.bot)
     await self.daemon.init()
 
-
-  async def post_message_task(self, schedule_title: str):
-    async def wrapper():
-      message, schedule = await Message.fetch_next_backlog(schedule_title)
-
-      channel = await bot.fetch_channel(schedule.channel)
-      assigned_message = Template(schedule.format).safe_substitute(**message.asdict())
-      posted_message = await channel.send(content=assigned_message)
-
-      message.add_posted_message(posted_message)
-
-    return wrapper
-
   # ===========================================================================
   # ===========================================================================
 
