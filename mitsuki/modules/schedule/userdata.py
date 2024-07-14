@@ -15,6 +15,7 @@ from interactions import (
   Timestamp,
   Message as DiscordMessage,
   InteractionContext,
+  Permissions,
 )
 
 from sqlalchemy import select, insert, update
@@ -22,17 +23,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import func
 
 from attrs import define, field
-from attrs import asdict as _asdict
 from datetime import datetime, timezone
 from croniter import croniter
-from typing import List, Tuple, Optional, Any, Callable, TypeVar, Self
+from typing import List, Union, Optional, Any, Callable, TypeVar
 from string import Template
+from enum import IntEnum
 
 from . import schema
 
 from mitsuki import bot
+from mitsuki.lib.checks import has_bot_channel_permissions
 from mitsuki.lib.userdata import new_session, AsDict
 
+
+# =================================================================================================
+# Utility functions
 
 T = TypeVar("T")
 
@@ -44,6 +49,21 @@ def separated_list(type: Callable[[str], T], separator: str = ","):
 def option(type: Callable[[Any], T]):
   return lambda s: type(s) if s else None
 
+def timestamp_now():
+  return datetime.now(tz=timezone.utc).timestamp()
+
+# =================================================================================================
+# Utility functions
+
+class ScheduleTypes(IntEnum):
+  QUEUE = 0
+  RANDOM_QUEUE = 1
+  RANDOM = 2
+  ONE_MESSAGE = 3
+
+
+# =================================================================================================
+# Schedule
 
 SCHEDULE_COLUMNS = schema.Schedule().columns.copy()
 
@@ -51,80 +71,190 @@ SCHEDULE_COLUMNS = schema.Schedule().columns.copy()
 class Schedule(AsDict):
   title: str
   guild: Snowflake = field(converter=Snowflake)
-  creator: Snowflake = field(converter=Snowflake)
+  created_by: Snowflake = field(converter=Snowflake)
+  modified_by: Snowflake = field(converter=Snowflake)
   date_created: float
   date_modified: float
-
   id: Optional[int] = field(default=None)
-  post_cron: str = field(default="0 0 * * *")
-  replacement: bool = field(default=False, converter=bool)
-  cycle: bool = field(default=False, converter=bool)
+
   active: bool = field(default=False, converter=bool)
+  discoverable: bool = field(default=False, converter=bool)
   pin: bool = field(default=False, converter=bool)
-  randomize: bool = field(default=False, converter=bool)
-  number_current: int = field(default=0)
-  # number_offset: int = field(default=0)
+  type: int = field(default=0)
   format: str = field(default="${message}", converter=lambda s: s.strip())
 
-  channel: Optional[Snowflake] = field(default=None, converter=option(Snowflake))
+  post_routine: str = field(default="0 0 * * *")
+  post_channel: Optional[Snowflake] = field(default=None, converter=option(Snowflake))
   manager_roles: Optional[str] = field(default=None)
 
-  def get_cron(self, start_time: Optional[datetime] = None):
-    return croniter(self.post_cron, start_time=start_time or datetime.now(tz=timezone.utc))
+  current_number: int = field(default=0)
+  current_pin: Optional[int] = field(default=None, converter=option(Snowflake))
+  last_fire: Optional[float] = field(default=None)
+
+  @post_routine.validator
+  def is_valid_routine(self, attribute, value):
+    if not croniter.is_valid(value):
+      raise ValueError(f"Invalid routine {value}")
+
+  @property
+  def manager_role_objects(self):
+    return separated_list(Snowflake, " ")(self.manager_roles)
+
+  def cron(self, start_time: Optional[Union[datetime, float]] = None):
+    return croniter(self.post_routine, start_time=start_time or datetime.now(tz=timezone.utc))
+
+  def has_unsent(self) -> bool:
+    if self.last_fire is None:
+      return False
+    return self.cron().next(datetime, start_time=self.last_fire) < datetime.now(tz=timezone.utc)
+
+  def asdbdict(self):
+    return {k: v for k, v in self.asdict().items() if k in SCHEDULE_COLUMNS}
+
+  def __eq__(self, other):
+    if not isinstance(other, Schedule):
+      return False
+    if self.id and other.id:
+      return self.id == other.id and self.title == other.title
+    return self.title == other.title
 
 
   @classmethod
   async def fetch(cls, title: str):
     query = select(schema.Schedule).where(schema.Schedule.title == title)
     async with new_session() as session:
-      sched = await session.scalar(query)
-    if sched is None:
+      result = await session.scalar(query)
+    if result is None:
       return None
 
-    return cls(**sched.asdict())
+    return cls(**result.asdict())
 
 
   @classmethod
-  async def fetch_all(cls, active: Optional[bool] = None):
+  async def fetch_many(cls, active: Optional[bool] = None):
     query = select(schema.Schedule)
     if active is not None:
       query = query.where(schema.Schedule.active == active)
 
     async with new_session() as session:
-      scheds = (await session.scalars(query)).all()
-    return [cls(**sched.asdict()) for sched in scheds]
+      results = (await session.scalars(query)).all()
+    return [cls(**result.asdict()) for result in results]
 
 
   @staticmethod
   async def fetch_active_crons():
     query = (
-      select(schema.Schedule.title, schema.Schedule.post_cron)
+      select(schema.Schedule.title, schema.Schedule.post_routine)
       .where(schema.Schedule.active == True)
     )
 
     async with new_session() as session:
       results = (await session.execute(query)).all()
-    return {result.title: result.post_cron for result in results}
+    return {result.title: result.post_routine for result in results}
 
 
   @staticmethod
   async def fetch_number(schedule_title: str):
     query = (
       select(func.count(schema.Message.id))
-      .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule)
+      .join(schema.Schedule, schema.Schedule.title == schema.Message.schedule)
       .where(schema.Schedule.title == schedule_title)
       .where(schema.Message.message_id != None)
     )
 
     async with new_session() as session:
-      result = await session.scalar(query)
-    return result or 0
+      return await session.scalar(query) or 0
 
 
-  async def fetch_manager_roles(self):
-    if not self.manager_roles:
-      return []
-    return separated_list(Snowflake, " ")
+  @staticmethod
+  async def fetch_type(schedule_title: str):
+    query = select(schema.Schedule.type).where(schema.Schedule.title == schedule_title)
+    async with new_session() as session:
+      return ScheduleTypes(await session.scalar(query))
+
+
+  @staticmethod
+  async def fetch_last_fire(schedule_title: str):
+    query = select(schema.Schedule.last_fire).where(schema.Schedule.title == schedule_title)
+    async with new_session() as session:
+      return await session.scalar(query)
+
+
+  async def next(self):
+    query = (
+      select(schema.Message)
+      .join(schema.Schedule, schema.Schedule.title == schema.Message.schedule)
+      .where(schema.Schedule.title == self.title)
+    )
+    match self.type:
+      case ScheduleTypes.QUEUE:
+        query = query.where(schema.Message.message_id == None).order_by(schema.Message.number)
+      case ScheduleTypes.RANDOM_QUEUE:
+        query = query.where(schema.Message.message_id == None).order_by(func.random())
+      case ScheduleTypes.RANDOM:
+        query = query.order_by(func.random())
+      case ScheduleTypes.ONE_MESSAGE:
+        pass
+      case _:
+        raise ValueError(f"Unknown schedule type '{self.type}'")
+    query = query.limit(1)
+
+    async with new_session() as session:
+      result = (await session.scalars(query)).first()
+    if not result:
+      return None
+    return Message(**result.asdict(), schedule_object=self)
+
+
+  def activate(self):
+    self.active    = True
+    self.last_fire = timestamp_now()
+    return self
+
+
+  def deactivate(self):
+    self.active    = False
+    self.last_fire = timestamp_now()
+    return self
+
+
+  def assign(self, message: "Message"):
+    return Template(self.format).safe_substitute(message.asdbdict())
+
+
+  @staticmethod
+  async def exists(schedule_title: str):
+    query = select(schema.Schedule.id).where(schema.Schedule.title == schedule_title)
+    async with new_session() as session:
+      return await session.scalar(query) is not None
+
+
+  async def is_valid(self):
+    if not self.type == ScheduleTypes.ONE_MESSAGE:
+      if (
+        "${message}" not in self.format
+        or await Message.fetch_count(self.title) <= 0
+      ):
+        return False
+    if (
+      not self.post_channel
+      or not len(self.format.strip()) <= 0
+      or not croniter.is_valid(self.post_routine)
+    ):
+      return False
+
+    required_permissions = [Permissions.SEND_MESSAGES]
+    if self.pin:
+      required_permissions.extend([
+        Permissions.MANAGE_MESSAGES,      # for pin
+        Permissions.VIEW_CHANNEL,         # for fetching previous pin
+        Permissions.READ_MESSAGE_HISTORY, # for fetching previous pin
+      ])
+      required_permissions.append(Permissions.MANAGE_MESSAGES)
+    if not await has_bot_channel_permissions(bot, self.post_channel, required_permissions):
+      return False
+
+    return True
 
 
   @classmethod
@@ -132,28 +262,33 @@ class Schedule(AsDict):
     cls,
     ctx: InteractionContext,
     title: str,
-    replacement: bool = False,
-    cycle: bool = False,
+    type: Union[ScheduleTypes, int] = ScheduleTypes.QUEUE,
     pin: bool = False,
-    randomize: bool = False,
-    start_at_number: Optional[int] = None,
+    discoverable: bool = False,
   ):
     if not ctx.guild:
       raise ValueError("Schedules can only be created in a server")
 
-    date_created = datetime.now(tz=timezone.utc).timestamp()
+    date_created = timestamp_now()
     return cls(
       title=title,
       guild=ctx.guild.id,
-      creator=ctx.author.id,
+      created_by=ctx.author.id,
+      modified_by=ctx.author.id,
       date_created=date_created,
       date_modified=date_created,
-      replacement=replacement,
-      cycle=cycle,
+      type=type,
       pin=pin,
-      randomize=randomize,
-      number_current=start_at_number or 0,
+      discoverable=discoverable,
     )
+
+
+  def create_message(self, author: Snowflake, message: str):
+    return Message.create(author, self.title, message)
+
+
+  async def add_message(self, session: AsyncSession, author: Snowflake, message: str):
+    return await Message.create(author, self.title, message).add(session)
 
 
   async def add(self, session: AsyncSession):
@@ -163,6 +298,12 @@ class Schedule(AsDict):
 
     statement = insert(schema.Schedule).values(values)
     await session.execute(statement)
+
+
+  async def update_modify(self, session: AsyncSession, modified_by: Snowflake):
+    self.modified_by = modified_by
+    self.date_modified = timestamp_now()
+    await self.update(session)
 
 
   async def update(self, session: AsyncSession):
@@ -178,66 +319,74 @@ class Schedule(AsDict):
     await session.execute(statement)
 
 
-  def asdbdict(self):
-    return {k: v for k, v in self.asdict().items() if k in SCHEDULE_COLUMNS}
-
+# =================================================================================================
+# Schedule Message
 
 MESSAGE_COLUMNS = schema.Message().columns.copy()
 
 @define
 class Message(AsDict):
-  schedule_object: Schedule
-
-  schedule: int
-  creator: Snowflake
+  schedule: str
+  created_by: Snowflake
+  modified_by: Snowflake
   date_created: float
   date_modified: float
 
-  number: int
   message: str
-  order: float
-
-  id: Optional[int] = field(default=None)
   tags: Optional[str] = field(default=None)
-  number_posted: Optional[int] = field(default=None)
+  id: Optional[int] = field(default=None)
+
+  number: Optional[int] = field(default=None)
   message_id: Optional[Snowflake] = field(default=None)
   date_posted: Optional[float] = field(default=None)
+
+  schedule_object: Optional[Schedule] = field(default=None)
 
   date_created_f: str = field(init=False)
   date_modified_f: str = field(init=False)
   date_posted_f: str = field(init=False)
+
 
   def __attrs_post_init__(self):
     self.date_created_f = f"<t:{int(self.date_created)}:f>"
     self.date_modified_f = f"<t:{int(self.date_modified)}:f>"
     self.date_posted_f = f"<t:{int(self.date_posted)}:f>" if self.date_posted else "-"
 
-  @property
-  def channel(self):
-    return self.schedule_object.channel
 
   @classmethod
-  async def fetch_from_schedule(
+  async def fetch(
     cls,
     schedule_title: str,
-    include_backlog: bool = False,
+    discoverable: Optional[bool] = None,
+    backlog: Optional[bool] = None,
     sort: Optional[str] = None,
     limit: Optional[int] = None,
     offset: Optional[int] = None,
   ):
     query = (
       select(schema.Message, schema.Schedule)
-      .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule)
+      .join(schema.Schedule, schema.Schedule.title == schema.Message.schedule)
       .where(schema.Schedule.title == schedule_title)
     )
 
-    if not include_backlog:
+    if discoverable == True:
+      query = query.where(schema.Schedule.discoverable == True)
+    elif discoverable == False:
+      query = query.where(schema.Schedule.discoverable == False)
+
+    if backlog == True:
+      query = query.where(schema.Message.message_id == None)
+    elif backlog == False:
       query = query.where(schema.Message.message_id != None)
 
     sort = sort or "number"
     match sort:
       case "number":
         query = query.order_by(schema.Message.number.desc())
+      case "created":
+        query = query.order_by(schema.Message.date_created.desc())
+      case "modified":
+        query = query.order_by(schema.Message.date_modified.desc())
       case _:
         raise ValueError(f"Invalid sort option '{sort}'")
 
@@ -245,7 +394,7 @@ class Message(AsDict):
       query = query.limit(limit)
       if offset:
         query = query.offset(offset)
-    
+
     async with new_session() as session:
       results = (await session.execute(query)).all()
 
@@ -255,40 +404,44 @@ class Message(AsDict):
     ]
 
 
-  @classmethod
-  async def fetch_next_backlog(cls, schedule_title: str) -> Optional["Message"]:
-    query = (
-      select(schema.Message, schema.Schedule)
-      .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule)
-      .where(schema.Schedule.title == schedule_title)
-      .where(schema.Message.message_id == None)
-      .order_by(schema.Message.number)
-      .limit(1)
-    )
+  @staticmethod
+  async def fetch_count(schedule_title: str):
+    query = select(func.count(schema.Message.id)).where(schema.Message.schedule == schedule_title)
     async with new_session() as session:
-      result = (await session.execute(query)).first()
-
-    if result is None:
-      return None
-    return cls(**result.Message.asdict(), schedule_object=Schedule(**result.Schedule.asdict()))
+      return await session.scalar(query) or 0
 
 
   @classmethod
-  def create(cls, ctx: InteractionContext, schedule: Schedule, message: str):
-    date_created = datetime.now(tz=timezone.utc).timestamp()
+  def create(
+    cls,
+    author: Snowflake,
+    schedule_title: str,
+    message: str,
+    tags: Optional[str] = None,
+  ):
+    date_created = timestamp_now()
     return cls(
-      schedule_object=schedule,
-      schedule=schedule.id,
-      creator=ctx.author.id,
+      schedule=schedule_title,
+      created_by=author,
+      modified_by=author,
       date_created=date_created,
       date_modified=date_created,
-      number=schedule.number_current + 1,
-      order=schedule.number_current + 1.0,
       message=message,
+      tags=tags,
     )
 
 
   async def add(self, session: AsyncSession):
+    statement = (
+      update(schema.Schedule)
+      .where(schema.Schedule.title == self.schedule)
+      .values(current_number=schema.Schedule.__table__.c.current_number + 1)
+      .returning(schema.Schedule.current_number, schema.Schedule.type)
+    )
+    number, type = (await session.execute(statement)).first().tuple()
+    if type == ScheduleTypes.QUEUE:
+      self.number = number
+
     values = self.asdbdict()
     for key in ["id"]:
       values.pop(key)
@@ -296,12 +449,12 @@ class Message(AsDict):
     statement = insert(schema.Message).values(values)
     await session.execute(statement)
 
-    statement = (
-      update(schema.Schedule)
-      .where(schema.Schedule.id == self.schedule_object.id)
-      .values(number_current=schema.Schedule.__table__.c.number_current + 1)
-    )
-    await session.execute(statement)
+
+  async def update_modify(self, session: AsyncSession, modified_by: Snowflake):
+    self.modified_by = modified_by
+    self.date_modified = timestamp_now()
+    self.__attrs_post_init__()
+    await self.update(session)
 
 
   async def update(self, session: AsyncSession):
@@ -317,15 +470,15 @@ class Message(AsDict):
     await session.execute(statement)
 
 
-  def asdbdict(self):
-    return {k: v for k, v in self.asdict().items() if k in MESSAGE_COLUMNS}
-
-
   def add_posted_message(self, message: DiscordMessage):
     self.message_id = message.id
     self.date_posted = message.timestamp.timestamp()
     return self
 
 
-  def assign_to(self, schedule: Schedule):
-    return Template(schedule.format).safe_substitute(**self.asdict())
+  def asdbdict(self):
+    return {k: v for k, v in self.asdict().items() if k in MESSAGE_COLUMNS}
+
+
+  def assign_to(self, format: str):
+    return Template(format).safe_substitute(**self.asdict())

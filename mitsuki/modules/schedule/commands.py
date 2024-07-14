@@ -43,7 +43,7 @@ from mitsuki.lib.checks import (
   assert_user_permissions,
 )
 
-from .userdata import Schedule, Message as ScheduleMessage
+from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes
 
 
 class _Errors(ReaderCommand):
@@ -80,11 +80,14 @@ class CreateSchedule(WriterCommand):
   async def run(self, schedule_title: str):
     if not self.ctx.guild:
       return await _Errors.create(self.ctx).not_in_guild()
-    await assert_user_permissions(self.ctx, Permissions.ADMINISTRATOR)
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
 
     self.data = self.Data(schedule_title=schedule_title, guild_name=self.ctx.guild.name)
-
     self.schedule = Schedule.create(self.ctx, schedule_title)
+
     await self.send_commit(self.States.SUCCESS)
 
 
@@ -106,19 +109,28 @@ class AddMessage(WriterCommand):
     schedule_title: str
     guild_name: str
     message: str
-    number: int
+    number: str
 
 
   async def run(self, schedule_title: str, message: str):
     if not self.ctx.guild:
       return await _Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin or Schedule manager role(s)"
+    )
 
     schedule = await Schedule.fetch(schedule_title)
     if not schedule:
       return await _Errors.create(self.ctx).schedule_not_found(schedule_title)
+    self.schedule = schedule
+    if schedule.type == ScheduleTypes.QUEUE:
+      number = str(schedule.current_number + 1)
+    else:
+      number = "???"
 
-    self.schedule_message = ScheduleMessage.create(self.ctx, schedule, message)
-    if len(self.schedule_message.assign_to(schedule)) >= 2000:
+    self.schedule_message = schedule.create_message(self.caller_id, message)
+    if len(self.schedule_message.assign_to(schedule.format)) >= 2000:
       return await _Errors.create(self.ctx).message_too_long()
 
     message_data = {"message_" + k: v for k, v in self.schedule_message.asdbdict().items()}
@@ -126,7 +138,7 @@ class AddMessage(WriterCommand):
       schedule_title=escape_text(schedule_title),
       guild_name=self.ctx.guild.name,
       message=message,
-      number=self.schedule_message.number
+      number=number,
     )
     await self.send_commit(self.States.SUCCESS, other_data=message_data)
 
@@ -155,7 +167,7 @@ class ListMessages(MultifieldMixin, ReaderCommand):
     if not self.schedule:
       return await _Errors.create(self.ctx).schedule_not_found(schedule_title)
 
-    self.schedule_messages = await ScheduleMessage.fetch_from_schedule(schedule_title)
+    self.schedule_messages = await ScheduleMessage.fetch(schedule_title, discoverable=True, backlog=False)
     if len(self.schedule_messages) <= 0:
       await self.send(self.States.NO_LIST, other_data={"schedule_title": schedule_title})
       return

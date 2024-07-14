@@ -17,87 +17,124 @@ from interactions import (
   Permissions,
 )
 from attrs import define, field
-from typing import Dict, Optional, Union
 from croniter import croniter
+from typing import Dict, List, Optional, Union
+from datetime import datetime, timezone
+from contextlib import suppress
 
 from mitsuki.lib.userdata import new_session
 from mitsuki.lib.checks import has_bot_channel_permissions
-from .userdata import Schedule, Message as ScheduleMessage
+from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes
+
+
+class DaemonTask:
+  def __init__(self, bot: Client, schedule: Schedule):
+    self.bot      = bot
+    self.schedule = schedule
+    self.task     = Task(self.post_task(bot, schedule), CronTrigger(schedule.post_routine))
+
+
+  @property
+  def running(self):
+    return self.task.running
+
+
+  def start(self):
+    if not self.running:
+      self.task.start()
+
+
+  def stop(self):
+    if self.running:
+      self.task.stop()
+
+
+  @staticmethod
+  def post_task(bot: Client, schedule: Schedule):
+    async def post():
+      if not await schedule.is_valid() or not schedule.active:
+        return
+      channel = await bot.fetch_channel(schedule.post_channel)
+      if not channel:
+        return
+
+      if schedule.type == ScheduleTypes.ONE_MESSAGE:
+        assigned_message = schedule.format
+      else:
+        message = await schedule.next()
+        if not message:
+          return
+        assigned_message = schedule.assign(message)
+
+      async with new_session() as session:
+        try:
+          current_pin = None
+          if schedule.current_pin:
+            current_pin = await channel.fetch_message(schedule.current_pin)
+
+          if current_pin:
+            with suppress(Exception):
+              await current_pin.unpin()
+
+          posted_message = await channel.send(assigned_message)
+          if schedule.pin:
+            await posted_message.pin()
+          await message.add_posted_message(posted_message).update(session)
+
+          schedule.last_fire = posted_message.timestamp.timestamp()
+          await schedule.update(session)
+        except Exception:
+          await session.rollback()
+          raise
+        else:
+          await session.commit()
+    return post
 
 
 class Daemon:
-  active_schedules: Dict[str, Task] = {}
+  active_schedules: Dict[str, DaemonTask] = {}
 
   def __init__(self, bot: Client):
     self.bot = bot
 
 
   async def init(self):
-    active_crons = await Schedule.fetch_active_crons()
-    if len(active_crons) > 0:
-      for sched_title, sched_cron in active_crons.items():
-        if not await self.is_valid_schedule(sched_title):
-          continue
-        task = Task(self.post_task(sched_title), CronTrigger(sched_cron))
-        task.start()
-        self.active_schedules[sched_title] = task
+    active_schedules = await Schedule.fetch_many(active=True)
+    if len(active_schedules) <= 0:
+      return
+
+    for schedule in active_schedules:
+      if not await schedule.is_valid() or not schedule.active:
+        continue
+
+      # post unsent backlog
+      if schedule.has_unsent():
+        await DaemonTask.post_task(self.bot, schedule)()
+
+      # post task
+      task = DaemonTask(self.bot, schedule)
+      task.start()
+      self.active_schedules[schedule.title] = task
 
 
-  async def activate(self, schedule_title: str):
-    schedule = await Schedule.fetch(schedule_title)
-    if not await self.is_valid_schedule(schedule):
+  async def activate(self, schedule: Union[Schedule, str]):
+    if isinstance(schedule, str):
+      schedule = await Schedule.fetch(schedule)
+    if not await schedule.is_valid():
       raise ValueError("Schedule not ready or doesn't exist")
 
-    task = Task(self.post_task(schedule_title), CronTrigger(schedule.post_cron))
+    if active_schedule := self.active_schedules.get(schedule.title):
+      if active_schedule.running:
+        return
+
+    task = DaemonTask(self.bot, schedule)
     task.start()
-    self.active_schedules[schedule_title] = task
+    self.active_schedules[schedule.title] = task
 
 
-  async def deactivate(self, schedule_title: str):
+  async def deactivate(self, schedule: Union[Schedule, str]):
+    schedule_title = schedule if isinstance(schedule, str) else schedule.title
     if post_task := self.active_schedules.get(schedule_title):
       if post_task.running:
         post_task.stop()
       self.active_schedules.pop(schedule_title)
-
-
-  async def is_valid_schedule(self, schedule: Union[Schedule, str]):
-    if isinstance(schedule, str):
-      schedule = await Schedule.fetch(schedule)
-    if not schedule:
-      return False
-
-    required_permissions = [Permissions.SEND_MESSAGES]
-    if schedule.pin:
-      required_permissions.append(Permissions.MANAGE_MESSAGES)
-
-    return bool(
-      schedule.channel
-      and "${messages}" in schedule.format
-      and await has_bot_channel_permissions(self.bot, schedule.channel, required_permissions)
-    )
-
-
-  async def post_task(self, schedule_title: str):
-    async def wrapped():
-      message = await ScheduleMessage.fetch_next_backlog(schedule_title)
-      if not message:
-        return
-
-      channel = await self.bot.fetch_channel(message.channel)
-      if not channel:
-        return
-
-      assigned_message = message.assign_to(message.schedule_object)
-      async with new_session() as session:
-        try:
-          posted_message = await channel.send(assigned_message)
-          if message.schedule_object.pin:
-            await posted_message.pin()
-          await message.add_posted_message(posted_message).update(session)
-        except Exception:
-          await session.rollback()
-          raise
-        else:
-          await session.commit()
-
-    return wrapped

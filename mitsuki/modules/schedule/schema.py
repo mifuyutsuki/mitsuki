@@ -30,38 +30,39 @@ class Schedule(Base):
   id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
   title: Mapped[str] = mapped_column(unique=True)
   guild: Mapped[int] = mapped_column(BigInteger)
-  creator: Mapped[int] = mapped_column(BigInteger)
+  created_by: Mapped[int] = mapped_column(BigInteger)
+  modified_by: Mapped[int] = mapped_column(BigInteger)
   date_created: Mapped[float]
   date_modified: Mapped[float]
-  active: Mapped[bool] = mapped_column(server_default=text("FALSE"))
 
-  post_cron: Mapped[str] = mapped_column(server_default="0 0 * * *") # daily
-  replacement: Mapped[bool] = mapped_column(server_default=text("FALSE"))
-  cycle: Mapped[bool] = mapped_column(server_default=text("FALSE"))
+  active: Mapped[bool] = mapped_column(server_default=text("FALSE"))
+  discoverable: Mapped[bool] = mapped_column(server_default=text("FALSE"))
   pin: Mapped[bool] = mapped_column(server_default=text("FALSE"))
-  randomize: Mapped[bool] = mapped_column(server_default=text("FALSE"))
-  number_current: Mapped[int] = mapped_column(server_default=text("0"))
-  # number_offset: Mapped[int] = mapped_column(server_default=text("0"))
+  type: Mapped[int]
   format: Mapped[str] = mapped_column(server_default="${message}")
 
-  channel: Mapped[Optional[int]] = mapped_column(BigInteger)
+  post_routine: Mapped[str] = mapped_column(server_default="0 0 * * *") # daily
+  post_channel: Mapped[Optional[int]] = mapped_column(BigInteger)
   manager_roles: Mapped[Optional[str]]
+
+  current_number: Mapped[int] = mapped_column(server_default=text("0"))
+  current_pin: Mapped[Optional[int]] = mapped_column(BigInteger)
+  last_fire: Mapped[Optional[float]]
 
 
 class Message(Base):
   __tablename__ = "schedule_messages"
 
   id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-  schedule: Mapped[int]
-  creator: Mapped[int] = mapped_column(BigInteger)
+  schedule: Mapped[str]
+  created_by: Mapped[int] = mapped_column(BigInteger)
+  modified_by: Mapped[int] = mapped_column(BigInteger)
   date_created: Mapped[float]
   date_modified: Mapped[float]
 
-  number: Mapped[int]
   message: Mapped[str]
-  order: Mapped[float]
-
   tags: Mapped[Optional[str]]
-  number_posted: Mapped[Optional[int]]
+
+  number: Mapped[Optional[int]]
   message_id: Mapped[Optional[int]] = mapped_column(BigInteger)
   date_posted: Mapped[Optional[float]]
