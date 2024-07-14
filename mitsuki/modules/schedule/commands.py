@@ -25,6 +25,9 @@ from interactions import (
   ButtonStyle,
   StringSelectMenu,
   Permissions,
+  Modal,
+  ShortText,
+  ParagraphText,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -115,6 +118,37 @@ class AddMessage(WriterCommand):
     number: str
 
 
+  async def prompt(self, schedule_title: str):
+    if not self.ctx.guild:
+      return await _Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin or Schedule manager role(s)"
+    )
+
+    if not await Schedule.exists(schedule_title):
+      return await _Errors.create(self.ctx).schedule_not_found(schedule_title)
+    return await self.ctx.send_modal(
+      modal=Modal(
+        ShortText(
+          label="Schedule Name",
+          custom_id="schedule",
+          value=schedule_title,
+          min_length=1,
+        ),
+        ParagraphText(
+          label="Message",
+          custom_id="message",
+          placeholder="Which anime school uniform is your favorite?",
+          min_length=1,
+          max_length=2000
+        ),
+        title="Message",
+        custom_id="schedule_add"
+      )
+    )
+
+
   async def run(self, schedule_title: str, message: str):
     if not self.ctx.guild:
       return await _Errors.create(self.ctx).not_in_guild()
@@ -127,12 +161,13 @@ class AddMessage(WriterCommand):
     schedule = await Schedule.fetch(schedule_title)
     if not schedule:
       return await _Errors.create(self.ctx).schedule_not_found(schedule_title)
-    self.schedule = schedule
+
     if schedule.type == ScheduleTypes.QUEUE:
       number = str(schedule.current_number + 1)
     else:
       number = "???"
 
+    self.schedule = schedule
     self.schedule_message = schedule.create_message(self.caller_id, message)
     if len(self.schedule_message.assign_to(schedule.format)) >= 2000:
       return await _Errors.create(self.ctx).message_too_long()

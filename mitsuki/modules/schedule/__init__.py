@@ -22,6 +22,8 @@ from interactions import (
   StringSelectMenu,
   component_callback,
   ComponentContext,
+  modal_callback,
+  ModalContext,
   OptionType,
   BaseUser,
   User,
@@ -97,13 +99,12 @@ class ScheduleModule(Extension):
     required=True,
     min_length=3,
   )
-  @slash_option(
-    name="message",
-    description="Schedule message content",
-    opt_type=OptionType.STRING,
-    required=True,
-    min_length=3,
-  )
-  async def message_add(self, ctx: SlashContext, schedule: str, message: str):
-    return await commands.AddMessage.create(ctx).run(schedule, message)
+  async def message_add(self, ctx: SlashContext, schedule: str):
+    return await commands.AddMessage.create(ctx).prompt(schedule)
 
+  # ===========================================================================
+  # ===========================================================================
+
+  @modal_callback("schedule_add")
+  async def message_add_response(self, ctx: ModalContext, schedule: str, message: str):
+    return await commands.AddMessage.create(ctx).run(schedule, message)
