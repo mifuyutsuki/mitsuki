@@ -48,18 +48,20 @@ from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes
 
 class _Errors(ReaderCommand):
   async def not_in_guild(self):
-    await self.send("schedule_error_not_in_guild")
+    await self.send("schedule_error_not_in_guild", ephemeral=True)
 
   async def schedule_not_found(self, schedule_title: str):
     await self.send(
       "schedule_error_schedule_not_found",
       other_data={"schedule_title": escape_text(schedule_title)},
+      ephemeral=True,
     )
 
   async def message_too_long(self, length: int):
     await self.send(
       "schedule_error_message_too_long",
-      other_data={"length": length}
+      other_data={"length": length},
+      ephemeral=True,
     )
 
 
@@ -84,6 +86,7 @@ class CreateSchedule(WriterCommand):
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
     )
+    await self.defer(ephemeral=True)
 
     self.data = self.Data(schedule_title=schedule_title, guild_name=self.ctx.guild.name)
     self.schedule = Schedule.create(self.ctx, schedule_title)
@@ -119,6 +122,7 @@ class AddMessage(WriterCommand):
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin or Schedule manager role(s)"
     )
+    await self.defer(ephemeral=True)
 
     schedule = await Schedule.fetch(schedule_title)
     if not schedule:
