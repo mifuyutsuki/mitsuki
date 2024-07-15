@@ -238,7 +238,7 @@ class Schedule(AsDict):
         return False
     if (
       not self.post_channel
-      or not len(self.format.strip()) <= 0
+      or len(self.format.strip()) <= 0
       or not croniter.is_valid(self.post_routine)
     ):
       return False
@@ -250,7 +250,6 @@ class Schedule(AsDict):
         Permissions.VIEW_CHANNEL,         # for fetching previous pin
         Permissions.READ_MESSAGE_HISTORY, # for fetching previous pin
       ])
-      required_permissions.append(Permissions.MANAGE_MESSAGES)
     if not await has_bot_channel_permissions(bot, self.post_channel, required_permissions):
       return False
 
@@ -459,7 +458,7 @@ class Message(AsDict):
 
   async def update(self, session: AsyncSession):
     values = self.asdbdict()
-    for key in ["id", "title"]:
+    for key in ["id", "schedule"]:
       values.pop(key)
 
     statement = (
