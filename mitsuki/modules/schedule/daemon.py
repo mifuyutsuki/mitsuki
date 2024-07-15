@@ -62,12 +62,16 @@ class DaemonTask:
         return
 
       # Processing: Obtain formatted message
+      message = None
       formatted_message = None
       if schedule.type == ScheduleTypes.ONE_MESSAGE:
         formatted_message = schedule.format
       elif message := await schedule.next():
         formatted_message = schedule.assign(message)
-      has_next_post = formatted_message is not None
+      has_next_post = (
+        formatted_message is not None                         # Next message exists
+        and (message.message_id is None if message else True) # Not already posted
+      )
 
       # Execution: Unpin current message
       if schedule.current_pin:
