@@ -97,7 +97,7 @@ class Schedule(AsDict):
       raise ValueError(f"Invalid routine {value}")
 
   @property
-  def manager_role_objects(self):
+  def manager_role_objects(self) -> Optional[List[Snowflake]]:
     return separated_list(Snowflake, " ")(self.manager_roles)
 
   def cron(self, start_time: Optional[Union[datetime, float]] = None):
