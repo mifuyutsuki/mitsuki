@@ -44,6 +44,10 @@ from mitsuki.lib.commands import (
 from mitsuki.lib.checks import (
   assert_bot_permissions,
   assert_user_permissions,
+  assert_user_roles,
+  has_user_permissions,
+  has_user_roles,
+  UserDenied,
 )
 
 from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes
@@ -121,13 +125,18 @@ class AddMessage(WriterCommand):
   async def prompt(self, schedule_title: str):
     if not self.ctx.guild:
       return await _Errors.create(self.ctx).not_in_guild()
-    await assert_user_permissions(
-      self.ctx, Permissions.ADMINISTRATOR,
-      "Server admin or Schedule manager role(s)"
-    )
 
-    if not await Schedule.exists(schedule_title):
+    has_role  = False
+    has_admin = await has_user_permissions(self.ctx, Permissions.ADMINISTRATOR)
+    schedule  = await Schedule.fetch(schedule_title)
+    if schedule and schedule.manager_role_objects:
+      has_role = await has_user_roles(self.ctx, schedule.manager_role_objects)
+    if not has_role and not has_admin:
+      raise UserDenied("Server admin or Schedule manager role(s)")
+
+    if not schedule:
       return await _Errors.create(self.ctx).schedule_not_found(schedule_title)
+
     return await self.ctx.send_modal(
       modal=Modal(
         ShortText(
