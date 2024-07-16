@@ -219,7 +219,7 @@ class Schedule(AsDict):
 
 
   def assign(self, message: "Message"):
-    return Template(self.format).safe_substitute(message.asdbdict())
+    return Template(self.format).safe_substitute(message.asfmtdict())
 
 
   @staticmethod
@@ -479,5 +479,9 @@ class Message(AsDict):
     return {k: v for k, v in self.asdict().items() if k in MESSAGE_COLUMNS}
 
 
+  def asfmtdict(self):
+    return {k: str(v) if v is not None else "-" for k, v in self.asdbdict().items()}
+
+
   def assign_to(self, format: str):
-    return Template(format).safe_substitute(**self.asdict())
+    return Template(format).safe_substitute(**self.asfmtdict())
