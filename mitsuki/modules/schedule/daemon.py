@@ -12,15 +12,22 @@
 
 from interactions import (
   Task,
-  CronTrigger,
+  CronTrigger as _CronTrigger,
   Client,
 )
 from interactions.client.errors import Forbidden, NotFound
 from croniter import croniter
 from typing import Dict, List, Optional, Union
+from datetime import datetime
 
 from mitsuki.lib.userdata import new_session
 from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes, timestamp_now
+
+
+# Fix for double calls
+class CronTrigger(_CronTrigger):
+  def next_fire(self):
+    return croniter(self.cron, self.last_call_time.astimezone(self.tz)).next(datetime)
 
 
 class DaemonTask:
@@ -48,10 +55,6 @@ class DaemonTask:
   @staticmethod
   def post_task(bot: Client, schedule: Schedule, force: bool = False):
     async def post():
-      # Validation: don't fire prematurely
-      if not force and timestamp_now() % 1.0 > 0.5:
-        return
-
       # Validation: schedule is active and valid
       if not schedule.active or not await schedule.is_valid():
         return
