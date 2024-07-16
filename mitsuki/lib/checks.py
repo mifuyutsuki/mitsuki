@@ -49,6 +49,23 @@ __all__ = (
 #     self.requires = requires
 
 
+async def assert_user_roles(
+  ctx: BaseContext,
+  roles: Union[List[Snowflake], Snowflake],
+  message: str
+):
+  if not await has_user_roles(ctx, roles):
+    raise UserDenied(message)
+
+
+async def has_user_roles(ctx: BaseContext, roles: Union[List[Snowflake], Snowflake]):
+  if not ctx.guild or not isinstance(ctx.author, Member):
+    return False
+  if not isinstance(roles, list):
+    roles = [roles]
+  return ctx.author.has_any_role(roles)
+
+
 async def assert_user_permissions(
   ctx: BaseContext,
   permissions: Union[List[Permissions] | Permissions],
