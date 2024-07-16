@@ -14,16 +14,12 @@ from interactions import (
   Task,
   CronTrigger,
   Client,
-  Permissions,
-  TYPE_ALL_CHANNEL,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
-from attrs import define, field
+from interactions.client.errors import Forbidden, NotFound
 from croniter import croniter
 from typing import Dict, List, Optional, Union
 
 from mitsuki.lib.userdata import new_session
-from mitsuki.lib.checks import has_bot_channel_permissions
 from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes, timestamp_now
 
 
@@ -50,8 +46,12 @@ class DaemonTask:
 
 
   @staticmethod
-  def post_task(bot: Client, schedule: Schedule):
+  def post_task(bot: Client, schedule: Schedule, force: bool = False):
     async def post():
+      # Validation: don't fire prematurely
+      if not force and timestamp_now() % 1.0 > 0.5:
+        return
+
       # Validation: schedule is active and valid
       if not schedule.active or not await schedule.is_valid():
         return
@@ -61,17 +61,14 @@ class DaemonTask:
       if not channel:
         return
 
-      # Processing: Obtain formatted message
+      # Processing: obtain formatted message
       message = None
       formatted_message = None
       if schedule.type == ScheduleTypes.ONE_MESSAGE:
         formatted_message = schedule.format
       elif message := await schedule.next():
         formatted_message = schedule.assign(message)
-      has_next_post = (
-        formatted_message is not None                         # Next message exists
-        and (message.message_id is None if message else True) # Not already posted
-      )
+      is_ready = formatted_message is not None
 
       # Execution: Unpin current message
       if schedule.current_pin:
@@ -79,24 +76,28 @@ class DaemonTask:
           try:
             if current_pin.pinned:
               await current_pin.unpin()
-          except Exception:
+          except (Forbidden, NotFound):
             pass
           else:
             schedule.current_pin = None
 
       # Execution: Post current message
       posted_message = None
-      if has_next_post and formatted_message:
+      if is_ready and formatted_message:
         posted_message = await channel.send(formatted_message)
-        if schedule.pin:
-          await posted_message.pin()
-          schedule.current_pin = posted_message.id
+        if schedule.pin and posted_message:
+          try:
+            await posted_message.pin()
+          except (Forbidden, NotFound):
+            pass
+          else:
+            schedule.current_pin = posted_message.id
 
       # Save: Update database
-      schedule.last_fire = timestamp_now() + 30.0
+      schedule.last_fire = timestamp_now()
       async with new_session() as session:
         try:
-          if has_next_post and posted_message:
+          if is_ready and message and posted_message:
             await message.add_posted_message(posted_message).update(session)
           await schedule.update(session)
         except Exception:
@@ -125,7 +126,7 @@ class Daemon:
 
       # post unsent backlog
       if schedule.has_unsent():
-        await DaemonTask.post_task(self.bot, schedule)()
+        await DaemonTask.post_task(self.bot, schedule, force=True)()
 
       # post task
       task = DaemonTask(self.bot, schedule)
