@@ -109,6 +109,7 @@ class Command:
   data: Optional["AsDict"] = None
   message: Optional[Message] = None
   state: Optional[StrEnum] = None
+  edit_origin: bool = False
 
   @classmethod
   def create(cls, ctx: InteractionContext):
@@ -127,6 +128,10 @@ class Command:
 
   def set_state(self, state: StrEnum):
     self.state = state
+
+  @property
+  def has_origin(self):
+    return hasattr(self.ctx, "edit_origin")
 
   @property
   def caller_id(self):
@@ -166,7 +171,7 @@ class Command:
         raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
-    if edit_origin and hasattr(self.ctx, "edit_origin"):
+    if (edit_origin or self.edit_origin) and self.has_origin:
       send = self.ctx.edit_origin
     else:
       send = self.ctx.send
@@ -180,8 +185,12 @@ class Command:
     return self.message
 
   async def defer(self, ephemeral: bool = False, edit_origin: bool = False, suppress_error: bool = False):
-    if hasattr(self.ctx, "edit_origin"):
-      return await self.ctx.defer(ephemeral=ephemeral, edit_origin=edit_origin, suppress_error=suppress_error)
+    if self.has_origin:
+      return await self.ctx.defer(
+        ephemeral=ephemeral and not (edit_origin or self.edit_origin),
+        edit_origin=edit_origin or self.edit_origin,
+        suppress_error=suppress_error
+      )
     else:
       return await self.ctx.defer(ephemeral=ephemeral, suppress_error=suppress_error)
 
