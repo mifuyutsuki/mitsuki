@@ -205,6 +205,12 @@ class WriterCommand(Command):
     edit_origin: bool = False,
     **kwargs
   ):
+    if not template:
+      if self.state:
+        template = self.state
+      else:
+        raise RuntimeError("Unspecified message template or state")
+
     async with new_session() as session:
       try:
         await self.transaction(session)
@@ -274,10 +280,11 @@ class MultifieldMixin:
     timeout: int = 0,
     **kwargs
   ):
-    if self.state:
-      template = self.state
-    else:
-      raise RuntimeError("Unspecified message template or state")
+    if not template:
+      if self.state:
+        template = self.state
+      else:
+        raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
     message = self.message_multifield(template, other_data, **template_kwargs)
@@ -296,10 +303,11 @@ class MultifieldMixin:
     template_kwargs: Optional[dict] = None,
     **kwargs
   ):
-    if self.state:
-      template = self.state
-    else:
-      raise RuntimeError("Unspecified message template or state")
+    if not template:
+      if self.state:
+        template = self.state
+      else:
+        raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
     message = self.message_multifield(template, other_data, **template_kwargs)
@@ -318,10 +326,11 @@ class MultifieldMixin:
     timeout: int = 0,
     **kwargs
   ):
-    if self.state:
-      template = self.state
-    else:
-      raise RuntimeError("Unspecified message template or state")
+    if not template:
+      if self.state:
+        template = self.state
+      else:
+        raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
     message = self.message_multipage(template, other_data, **template_kwargs)
@@ -340,10 +349,11 @@ class MultifieldMixin:
     template_kwargs: Optional[dict] = None,
     **kwargs
   ):
-    if self.state:
-      template = self.state
-    else:
-      raise RuntimeError("Unspecified message template or state")
+    if not template:
+      if self.state:
+        template = self.state
+      else:
+        raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
     message = self.message_multipage(template, other_data, **template_kwargs)
