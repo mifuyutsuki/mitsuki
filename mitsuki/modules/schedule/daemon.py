@@ -20,6 +20,7 @@ from croniter import croniter
 from typing import Dict, List, Optional, Union
 from datetime import datetime
 
+from mitsuki import logger
 from mitsuki.lib.userdata import new_session
 from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes, timestamp_now
 
@@ -45,15 +46,17 @@ class DaemonTask:
   def start(self):
     if not self.running:
       self.task.start()
+      logger.info(f"Schedule Daemon | Started schedule '{self.schedule.title}' in {self.schedule.guild}")
 
 
   def stop(self):
     if self.running:
       self.task.stop()
+      logger.info(f"Schedule Daemon | Stopped schedule '{self.schedule.title}' in {self.schedule.guild}")
 
 
   @staticmethod
-  def post_task(bot: Client, schedule: Schedule, force: bool = False):
+  def post_task(bot: Client, schedule: Schedule):
     async def post():
       # Validation: schedule is active and valid
       if not schedule.active or not await schedule.is_valid():
@@ -108,6 +111,13 @@ class DaemonTask:
           raise
         else:
           await session.commit()
+
+      # Log post
+      if message and formatted_message:
+        number = f"#{message.number}" if message.number else "#???"
+        logger.info(f"Schedule Daemon | Posted '{schedule.title}' {number} in {schedule.guild}")
+      elif formatted_message:
+        logger.info(f"Schedule Daemon | Posted '{schedule.title}' in {schedule.guild}")
     return post
 
 
@@ -129,7 +139,7 @@ class Daemon:
 
       # post unsent backlog
       if schedule.has_unsent():
-        await DaemonTask.post_task(self.bot, schedule, force=True)()
+        await DaemonTask.post_task(self.bot, schedule)()
 
       # post task
       task = DaemonTask(self.bot, schedule)
@@ -140,7 +150,7 @@ class Daemon:
   async def activate(self, schedule: Union[Schedule, str]):
     if isinstance(schedule, str):
       schedule = await Schedule.fetch(schedule)
-    if not await schedule.is_valid():
+    if not schedule or not await schedule.is_valid():
       raise ValueError("Schedule not ready or doesn't exist")
 
     if active_schedule := self.active_schedules.get(schedule.title):
@@ -151,6 +161,7 @@ class Daemon:
     task = DaemonTask(self.bot, schedule)
     task.start()
     self.active_schedules[schedule.title] = task
+    logger.info(f"Schedule Daemon | Activated schedule '{schedule.title}' in {schedule.guild}")
 
 
   async def deactivate(self, schedule: Union[Schedule, str]):
