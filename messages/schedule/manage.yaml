@@ -1,0 +1,63 @@
+_namespace: schedule_manage
+
+# [Multifield]
+list:
+  base_template: admin
+  title: >-
+    Schedules for "${guild_name}"
+  description: >-
+    `${total_schedules}` available
+  thumbnail: >-
+    ${guild_icon}
+  field:
+    name   : ${title}
+    value  : >-
+      Active: ${active} - Channel: ${post_channel_mention}
+    inline : false
+
+list_empty:
+  base_template: admin
+  title: >-
+    Schedules for "${guild_name}"
+  description: >-
+    No schedules setup for this server yet.
+    
+    Press the "Create" button to create a new Schedule
+
+view:
+  base_template: admin
+  title: >-
+    ${title}
+  description: >-
+    Schedule for **${guild_name}**
+  thumbnail: >-
+    ${guild_icon}
+  fields:
+  - name   : Channel
+    value  : >-
+      ${post_channel_mention}
+    inline : false
+  - name   : Active
+    value  : >-
+      **${active}**
+    inline : true
+  - name   : Pin Message
+    value  : >-
+      **${pin}**
+    inline : true
+  - name   : Discoverable
+    value  : >-
+      **${discoverable}**
+    inline : true
+  - name   : Created
+    value  : >-
+      ${date_created_f} by ${created_by_mention}
+    inline : false
+  - name   : Modified
+    value  : >-
+      ${date_modified_f} by ${modified_by_mention}
+    inline : false
+  - name   : Schedule Managers
+    value  : >-
+      ${manager_role_mentions}
+    inline : false

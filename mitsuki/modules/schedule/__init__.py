@@ -63,7 +63,8 @@ class ScheduleModule(Extension):
 
   @slash_command(
     name="schedule",
-    description="Message scheduler"
+    description="Message scheduler",
+    dm_permission=False
   )
   async def schedule_cmd(self, ctx: SlashContext):
     pass
@@ -85,6 +86,14 @@ class ScheduleModule(Extension):
   async def schedule_create(self, ctx: SlashContext, title: str):
     return await commands.CreateSchedule.create(ctx).run(title)
 
+  @component_callback(commands.CreateSchedule.SCHEDULE_CREATE_BUTTON)
+  async def schedule_create_btn(self, ctx: ComponentContext):
+    return await commands.CreateSchedule.create(ctx).prompt()
+
+  @modal_callback(commands.CreateSchedule.SCHEDULE_CREATE_MODAL)
+  async def schedule_create_mod(self, ctx: ModalContext, title: str):
+    return await commands.CreateSchedule.create(ctx).run(title)
+
   # ===========================================================================
   # ===========================================================================
 
@@ -102,9 +111,24 @@ class ScheduleModule(Extension):
   async def message_add(self, ctx: SlashContext, schedule: str):
     return await commands.AddMessage.create(ctx).prompt(schedule)
 
+  @modal_callback(commands.AddMessage.MESSAGE_ADD_MODAL)
+  async def message_add_response(self, ctx: ModalContext, schedule: str, message: str):
+    return await commands.AddMessage.create(ctx).run(schedule, message)
+
   # ===========================================================================
   # ===========================================================================
 
-  @modal_callback("schedule_add")
-  async def message_add_response(self, ctx: ModalContext, schedule: str, message: str):
-    return await commands.AddMessage.create(ctx).run(schedule, message)
+  @schedule_cmd.subcommand(
+    sub_cmd_name="manage",
+    sub_cmd_description="Manage Schedules"
+  )
+  async def schedule_manage(self, ctx: SlashContext):
+    return await commands.ManageSchedules.create(ctx).list()
+
+  @component_callback(commands.ManageSchedules.SCHEDULE_MANAGE_BUTTON)
+  async def schedule_manage_btn(self, ctx: ComponentContext):
+    return await commands.ManageSchedules.create(ctx).list()
+
+  @component_callback(commands.ManageSchedules.SCHEDULE_MANAGE_SELECT)
+  async def schedule_manage_view(self, ctx: ComponentContext):
+    return await commands.ManageSchedules.create(ctx).view(ctx.values[0])
