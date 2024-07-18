@@ -120,6 +120,32 @@ class Schedule(AsDict):
 
 
   @classmethod
+  def create(
+    cls,
+    ctx: InteractionContext,
+    title: str,
+    type: Union[ScheduleTypes, int] = ScheduleTypes.QUEUE,
+    pin: bool = False,
+    discoverable: bool = False,
+  ):
+    if not ctx.guild:
+      raise ValueError("Schedules can only be created in a server")
+
+    date_created = timestamp_now()
+    return cls(
+      title=title,
+      guild=ctx.guild.id,
+      created_by=ctx.author.id,
+      modified_by=ctx.author.id,
+      date_created=date_created,
+      date_modified=date_created,
+      type=type,
+      pin=pin,
+      discoverable=discoverable,
+    )
+
+
+  @classmethod
   async def fetch(cls, title: str):
     query = select(schema.Schedule).where(schema.Schedule.title == title)
     async with new_session() as session:
@@ -131,10 +157,30 @@ class Schedule(AsDict):
 
 
   @classmethod
-  async def fetch_many(cls, active: Optional[bool] = None):
+  async def fetch_many(
+    cls,
+    guild: Optional[Snowflake] = None,
+    active: Optional[bool] = None,
+    sort: Optional[str] = None
+  ):
     query = select(schema.Schedule)
+    if guild:
+      query = query.where(schema.Schedule.guild == guild)
     if active is not None:
       query = query.where(schema.Schedule.active == active)
+
+    sort = sort or "name"
+    match sort.lower():
+      case "name":
+        query = query.order_by(schema.Schedule.title)
+      case "id":
+        query = query.order_by(schema.Schedule.id)
+      case "created":
+        query = query.order_by(schema.Schedule.date_created.desc())
+      case "modified":
+        query = query.order_by(schema.Schedule.date_modified.desc())
+      case _:
+        raise ValueError(f"Unknown sort option '{sort}'")
 
     async with new_session() as session:
       results = (await session.scalars(query)).all()
@@ -256,32 +302,6 @@ class Schedule(AsDict):
     return True
 
 
-  @classmethod
-  def create(
-    cls,
-    ctx: InteractionContext,
-    title: str,
-    type: Union[ScheduleTypes, int] = ScheduleTypes.QUEUE,
-    pin: bool = False,
-    discoverable: bool = False,
-  ):
-    if not ctx.guild:
-      raise ValueError("Schedules can only be created in a server")
-
-    date_created = timestamp_now()
-    return cls(
-      title=title,
-      guild=ctx.guild.id,
-      created_by=ctx.author.id,
-      modified_by=ctx.author.id,
-      date_created=date_created,
-      date_modified=date_created,
-      type=type,
-      pin=pin,
-      discoverable=discoverable,
-    )
-
-
   def create_message(self, author: Snowflake, message: str):
     return Message.create(author, self.title, message)
 
@@ -387,7 +407,7 @@ class Message(AsDict):
       case "modified":
         query = query.order_by(schema.Message.date_modified.desc())
       case _:
-        raise ValueError(f"Invalid sort option '{sort}'")
+        raise ValueError(f"Unknown sort option '{sort}'")
 
     if limit:
       query = query.limit(limit)
