@@ -91,6 +91,25 @@ class Schedule(AsDict):
   current_pin: Optional[int] = field(default=None, converter=option(Snowflake))
   last_fire: Optional[float] = field(default=None)
 
+  post_channel_mention: str = field(init=False)
+  created_by_mention: str = field(init=False)
+  modified_by_mention: str = field(init=False)
+  date_created_f: str = field(init=False)
+  date_modified_f: str = field(init=False)
+  manager_role_mentions: str = field(init=False)
+
+  def __attrs_post_init__(self):
+    self.post_channel_mention = f"<#{self.post_channel}>" if self.post_channel else "-"
+    self.created_by_mention   = f"<@{self.created_by}>"
+    self.modified_by_mention  = f"<@{self.modified_by}>"
+    self.date_created_f       = f"<t:{int(self.date_created)}:f>"
+    self.date_modified_f      = f"<t:{int(self.date_modified)}:f>"
+    if manager_roles := self.manager_role_objects:
+      self.manager_role_mentions = " ".join([f"<@&{manager_role}>" for manager_role in manager_roles])
+    else:
+      self.manager_role_mentions = "-"
+
+
   @post_routine.validator
   def is_valid_routine(self, attribute, value):
     if not croniter.is_valid(value):
