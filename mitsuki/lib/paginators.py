@@ -37,7 +37,16 @@ class Paginator(_Paginator):
       self.callback = self.callback_cmd
       self.show_callback_button = True
 
+  def create_components(self, disable: bool = False):
+    if disable and self._timeout_task:
+      self._timeout_task.run = False
+    return super().create_components(disable)
+
   async def callback_cmd(self, ctx: ComponentContext):
+    # Reset the timeout timer
+    if self._timeout_task:
+      self._timeout_task.ping.set()
+
     m = await ctx.send_modal(
       modal=Modal(
         ShortText(
@@ -52,9 +61,15 @@ class Paginator(_Paginator):
       modal_ctx = await ctx.bot.wait_for_modal(m)
     except TimeoutError:
       return
+    
+    if self._timeout_task:
+      # Exit if paginator times out
+      if not self._timeout_task.run:
+        await modal_ctx.send(f"Interaction timed out", ephemeral=True)
+        return
 
-    # Reset the timeout timer
-    self._timeout_task.ping.set()
+      # Reset the timeout timer
+      self._timeout_task.ping.set()
 
     page_no_s = modal_ctx.responses["page_no"]
     if not page_no_s.isnumeric():
