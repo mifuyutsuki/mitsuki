@@ -13,6 +13,19 @@
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
+# Init Mitsuki logging first - may be used by other Mitsuki modules
+import logging
+from sys import stderr, stdout
+
+_log_format = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
+_mitsuki_log_handler = logging.StreamHandler(stdout)
+_mitsuki_log_handler.setFormatter(_log_format)
+_mitsuki_logger = logging.getLogger("mitsuki")
+_mitsuki_logger.setLevel(logging.INFO)
+_mitsuki_logger.addHandler(_mitsuki_log_handler)
+logger = _mitsuki_logger
+
 from interactions import (
   Status,
   Activity,
@@ -65,22 +78,18 @@ __all__ = (
   "__version__",
   "bot",
   "run",
+  "logger",
   "init_event",
-  "help_cmd",
 )
 
-logging.basicConfig(
-  format="%(asctime)s [%(levelname)s] %(name)s:%(lineno)d: %(message)s",
-  level=logging.INFO if settings.mitsuki.log_info else logging.WARNING
-)
-logger = logging.getLogger(__name__)
+# These depend on Mitsuki settings, so it's down here
+_interactions_log_handler = logging.StreamHandler(stderr)
+_interactions_log_handler.setFormatter(_log_format)
+_interactions_logger = logging.getLogger("interactions")
+_interactions_logger.setLevel(logging.INFO if settings.mitsuki.log_info else logging.WARNING)
+_interactions_logger.addHandler(_interactions_log_handler)
 
 init_event = asyncio.Event()
-
-help_cmd = SlashCommand(
-  name="help",
-  description="Help on available commands and other info"
-)
 
 
 class Bot(Client):
@@ -99,6 +108,7 @@ class Bot(Client):
     self.send_command_tracebacks = False
     self.status_index = 0
     self.arona = Random()
+    self.logger = _interactions_logger
 
 
   @listen(Startup)
@@ -170,12 +180,12 @@ class Bot(Client):
       isinstance(event.error.code, int) and (500 <= event.error.code < 600)
     ):
       error_repr = str(event.error)
-      logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
+      self.logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
       message = ctx_load_message("error_server", data={"error_repr": error_repr})
       ephemeral = False
     else:
       error_repr = _format_tb(event.error)
-      logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
+      self.logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
       message = ctx_load_message("error", data={"error_repr": error_repr})
       ephemeral = False
 
@@ -187,10 +197,10 @@ class Bot(Client):
   async def on_command_completion(self, event: CommandCompletion):
     if isinstance(event.ctx, InteractionContext):
       command_name = event.ctx.invoke_target
-      logger.info(f"Command emitted: {command_name}")
+      self.logger.info(f"Command emitted: {command_name}")
       if len(event.ctx.kwargs) > 0:
         kwargs = {k: str(v) for k, v in event.ctx.kwargs.items()}
-        logger.info(f"kwargs: {kwargs}")
+        self.logger.info(f"kwargs: {kwargs}")
 
 
   @listen(ComponentCompletion)
@@ -201,16 +211,16 @@ class Bot(Client):
     except Exception:
       component_name = event.ctx.custom_id
 
-    logger.info(f"Component emitted: {command_name}: {component_name}")
+    self.logger.info(f"Component emitted: {command_name}: {component_name}")
     if len(event.ctx.values) > 0:
       values = [str(v) for v in event.ctx.args]
-      logger.info(f"values: {values}")
+      self.logger.info(f"values: {values}")
 
 
   @listen(AutocompleteCompletion)
   async def on_autocomplete_completion(self, event: AutocompleteCompletion):
     command_name = event.ctx.invoke_target
-    logger.info(f"Autocomplete emitted: {command_name}: {event.ctx.input_text}")
+    self.logger.info(f"Autocomplete emitted: {command_name}: {event.ctx.input_text}")
 
 
 bot = Bot()

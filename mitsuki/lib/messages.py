@@ -22,7 +22,7 @@ from interactions import (
 from yaml import safe_load
 from attrs import define, asdict as _asdict
 
-from mitsuki import settings
+from mitsuki import settings, logger
 from mitsuki.utils import escape_text
 from typing import (
   TypeAlias,
@@ -38,10 +38,6 @@ from copy import deepcopy
 from os import PathLike
 from pathlib import Path
 from contextlib import suppress
-
-
-import logging
-logger = logging.getLogger(__name__)
 
 FileName: TypeAlias = Union[str, bytes, PathLike]
 
