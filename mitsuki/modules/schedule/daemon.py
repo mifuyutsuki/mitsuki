@@ -35,7 +35,7 @@ class DaemonTask:
   def __init__(self, bot: Client, schedule: Schedule):
     self.bot      = bot
     self.schedule = schedule
-    self.task     = Task(self.post_task(bot, schedule), CronTrigger(schedule.post_routine))
+    self.task     = self.create_task()
 
 
   @property
@@ -65,7 +65,7 @@ class DaemonTask:
     if self.running():
       self.task.stop()
     self.schedule = schedule
-    self.task     = self.create_task(schedule)
+    self.task     = self.create_task()
     self.task.start()
     logger.info(
       f"Schedule Daemon | Refreshed schedule {self.schedule.id}: '{self.schedule.title}' "
@@ -73,85 +73,95 @@ class DaemonTask:
     )
 
 
-  def create_task(self, schedule: Schedule):
-    return Task(self.post_task(self.bot, schedule), CronTrigger(schedule.post_routine))
+  def create_task(self):
+    return Task(self.post_task(), CronTrigger(self.schedule.post_routine))
+
+
+  def post_task(self):
+    async def post():
+      # Validation: schedule exists
+      schedule = await Schedule.fetch_by_id(self.schedule.id)
+      if not schedule:
+        return
+      self.schedule = schedule
+
+      return await self.post(self.bot, self.schedule)
+    return post
 
 
   @staticmethod
-  def post_task(bot: Client, schedule: Schedule, force: bool = False):
-    async def post():
-      # Validation: schedule is active unless force-posted
-      if not force and not schedule.active:
-        return
+  async def post(bot: Client, schedule: Schedule, force: bool = False):
+    # Validation: schedule is active unless force-posted
+    if not force and not schedule.active:
+      return
 
-      # Validation: schedule is valid (channel exists, perms check, etc.)
-      if not await schedule.is_valid():
-        return
+    # Validation: schedule is valid (channel exists, perms check, etc.)
+    if not await schedule.is_valid():
+      return
 
-      # Validation: channel exists (also caught by is_valid())
-      channel = await bot.fetch_channel(schedule.post_channel)
-      if not channel:
-        return
+    # Validation: channel exists (also caught by is_valid())
+    channel = await bot.fetch_channel(schedule.post_channel)
+    if not channel:
+      return
 
-      # Processing: obtain formatted message
-      message = None
-      formatted_message = None
-      if schedule.type == ScheduleTypes.ONE_MESSAGE:
-        formatted_message = schedule.format
-      elif message := await schedule.next():
-        formatted_message = schedule.assign(message)
-      is_ready = formatted_message is not None
+    # Processing: obtain formatted message
+    message = None
+    formatted_message = None
+    if schedule.type == ScheduleTypes.ONE_MESSAGE:
+      formatted_message = schedule.format
+    elif message := await schedule.next():
+      formatted_message = schedule.assign(message)
+    is_ready = formatted_message is not None
 
-      # Execution: Unpin current message
-      if schedule.current_pin:
-        if current_pin := await channel.fetch_message(schedule.current_pin):
-          try:
-            if current_pin.pinned:
-              await current_pin.unpin()
-          except (Forbidden, NotFound):
-            pass
-          else:
-            schedule.current_pin = None
-
-      # Execution: Post current message
-      posted_message = None
-      if is_ready and formatted_message:
-        posted_message = await channel.send(formatted_message)
-        if schedule.pin and posted_message:
-          try:
-            await posted_message.pin()
-          except (Forbidden, NotFound):
-            pass
-          else:
-            schedule.current_pin = posted_message.id
-
-      # Save: Update database
-      schedule.last_fire = timestamp_now()
-      async with new_session() as session:
+    # Execution: Unpin current message
+    if schedule.current_pin:
+      if current_pin := await channel.fetch_message(schedule.current_pin):
         try:
-          if is_ready and message and posted_message:
-            schedule.posted_number += 1
-            await message.add_posted_message(posted_message).update(session)
-          await schedule.update(session)
-        except Exception:
-          await session.rollback()
-          raise
+          if current_pin.pinned:
+            await current_pin.unpin()
+        except (Forbidden, NotFound):
+          pass
         else:
-          await session.commit()
+          schedule.current_pin = None
 
-      # Log post
-      if message and formatted_message:
-        number = f"#{message.number}" if message.number else "#???"
-        logger.info(
-          f"Schedule Daemon | Posted '{schedule.title}' {number} "
-          f"- Channel {schedule.post_channel} - Guild {schedule.guild}"
-        )
-      elif formatted_message:
-        logger.info(
-          f"Schedule Daemon | Posted '{schedule.title}' "
-          f"- Channel {schedule.post_channel} - Guild {schedule.guild}"
-        )
-    return post
+    # Execution: Post current message
+    posted_message = None
+    if is_ready and formatted_message:
+      posted_message = await channel.send(formatted_message)
+      if schedule.pin and posted_message:
+        try:
+          await posted_message.pin()
+        except (Forbidden, NotFound):
+          pass
+        else:
+          schedule.current_pin = posted_message.id
+
+    # Save: Update database
+    schedule.last_fire = timestamp_now()
+    async with new_session() as session:
+      try:
+        if is_ready and message and posted_message:
+          schedule.posted_number += 1
+          await message.add_posted_message(posted_message).update(session)
+        await schedule.update(session)
+      except Exception:
+        await session.rollback()
+        raise
+      else:
+        await session.commit()
+
+    # Log post
+    if message and formatted_message:
+      number = f"#{message.number}" if message.number else "#???"
+      logger.info(
+        f"Schedule Daemon | Posted '{schedule.title}' {number} "
+        f"- Channel {schedule.post_channel} - Guild {schedule.guild}"
+      )
+    elif formatted_message:
+      logger.info(
+        f"Schedule Daemon | Posted '{schedule.title}' "
+        f"- Channel {schedule.post_channel} - Guild {schedule.guild}"
+      )
 
 
 class Daemon:
@@ -172,7 +182,7 @@ class Daemon:
 
       # post unsent backlog
       if schedule.has_unsent():
-        await DaemonTask.post_task(self.bot, schedule)()
+        await DaemonTask.post(self.bot, schedule)
 
       # post task
       task = DaemonTask(self.bot, schedule)
@@ -187,7 +197,7 @@ class Daemon:
       raise ValueError("Schedule not ready or doesn't exist")
 
     if schedule.has_unsent():
-      await DaemonTask.post_task(self.bot, schedule, force=True)()
+      await DaemonTask.post(self.bot, schedule, force=True)
 
 
   async def activate(self, schedule: Union[Schedule, int]):

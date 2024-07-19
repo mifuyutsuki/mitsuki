@@ -536,6 +536,11 @@ class Message(AsDict):
     post_time: Optional[float] = None,
   ):
     date_created = timestamp_now()
+    if schedule.type == ScheduleTypes.QUEUE:
+      number = schedule.current_number + 1
+    else:
+      number = None
+
     return cls(
       schedule_id=schedule.id,
       created_by=author,
@@ -545,6 +550,7 @@ class Message(AsDict):
       message=message,
       tags=tags,
       post_time=post_time,
+      number=number,
       schedule_guild=schedule.guild,
       schedule_title=schedule.title,
       schedule_channel=schedule.post_channel,
@@ -557,11 +563,8 @@ class Message(AsDict):
       update(schema.Schedule)
       .where(schema.Schedule.id == self.schedule_id)
       .values(current_number=schema.Schedule.__table__.c.current_number + 1)
-      .returning(schema.Schedule.current_number, schema.Schedule.type)
     )
-    number, type = (await session.execute(statement)).first().tuple()
-    if type == ScheduleTypes.QUEUE:
-      self.number = number
+    await session.execute(statement)
 
     values = self.asdbdict()
     for key in ["id"]:
