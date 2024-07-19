@@ -46,13 +46,35 @@ class DaemonTask:
   def start(self):
     if not self.running:
       self.task.start()
-      logger.info(f"Schedule Daemon | Started schedule '{self.schedule.title}' in {self.schedule.guild}")
+      logger.info(
+        f"Schedule Daemon | Started schedule {self.schedule.id}: '{self.schedule.title}' "
+        f"- channel {self.schedule.post_channel} - guild {self.schedule.guild}"
+      )
 
 
   def stop(self):
     if self.running:
       self.task.stop()
-      logger.info(f"Schedule Daemon | Stopped schedule '{self.schedule.title}' in {self.schedule.guild}")
+      logger.info(
+        f"Schedule Daemon | Stopped schedule {self.schedule.id}: '{self.schedule.title}' "
+        f"- channel {self.schedule.post_channel} - guild {self.schedule.guild}"
+      )
+
+
+  def refresh(self, schedule: Schedule):
+    if self.running():
+      self.task.stop()
+    self.schedule = schedule
+    self.task     = self.create_task(schedule)
+    self.task.start()
+    logger.info(
+      f"Schedule Daemon | Refreshed schedule {self.schedule.id}: '{self.schedule.title}' "
+      f"- channel {self.schedule.post_channel} - guild {self.schedule.guild}"
+    )
+
+
+  def create_task(self, schedule: Schedule):
+    return Task(self.post_task(self.bot, schedule), CronTrigger(schedule.post_routine))
 
 
   @staticmethod
@@ -108,6 +130,7 @@ class DaemonTask:
       async with new_session() as session:
         try:
           if is_ready and message and posted_message:
+            schedule.posted_number += 1
             await message.add_posted_message(posted_message).update(session)
           await schedule.update(session)
         except Exception:
@@ -119,14 +142,20 @@ class DaemonTask:
       # Log post
       if message and formatted_message:
         number = f"#{message.number}" if message.number else "#???"
-        logger.info(f"Schedule Daemon | Posted '{schedule.title}' {number} in {schedule.guild}")
+        logger.info(
+          f"Schedule Daemon | Posted '{schedule.title}' {number} "
+          f"- Channel {schedule.post_channel} - Guild {schedule.guild}"
+        )
       elif formatted_message:
-        logger.info(f"Schedule Daemon | Posted '{schedule.title}' in {schedule.guild}")
+        logger.info(
+          f"Schedule Daemon | Posted '{schedule.title}' "
+          f"- Channel {schedule.post_channel} - Guild {schedule.guild}"
+        )
     return post
 
 
 class Daemon:
-  active_schedules: Dict[str, DaemonTask] = {}
+  active_schedules: Dict[int, DaemonTask] = {}
 
   def __init__(self, bot: Client):
     self.bot = bot
@@ -148,12 +177,12 @@ class Daemon:
       # post task
       task = DaemonTask(self.bot, schedule)
       task.start()
-      self.active_schedules[schedule.title] = task
+      self.active_schedules[schedule.id] = task
 
 
-  async def force_post(self, schedule: Union[Schedule, str]):
-    if isinstance(schedule, str):
-      schedule = await Schedule.fetch(schedule)
+  async def force_post(self, schedule: Union[Schedule, int]):
+    if isinstance(schedule, int):
+      schedule = await Schedule.fetch_by_id(schedule)
     if not schedule or not await schedule.is_valid():
       raise ValueError("Schedule not ready or doesn't exist")
 
@@ -161,26 +190,39 @@ class Daemon:
       await DaemonTask.post_task(self.bot, schedule, force=True)()
 
 
-  async def activate(self, schedule: Union[Schedule, str]):
-    if isinstance(schedule, str):
-      schedule = await Schedule.fetch(schedule)
+  async def activate(self, schedule: Union[Schedule, int]):
+    if isinstance(schedule, int):
+      schedule = await Schedule.fetch_by_id(schedule)
     if not schedule or not await schedule.is_valid():
       raise ValueError("Schedule not ready or doesn't exist")
 
-    if active_schedule := self.active_schedules.get(schedule.title):
+    if active_schedule := self.active_schedules.get(schedule.id):
       if active_schedule.running:
         active_schedule.stop()
-      self.active_schedules.pop(schedule.title)
+      self.active_schedules.pop(schedule.id)
 
     task = DaemonTask(self.bot, schedule)
     task.start()
-    self.active_schedules[schedule.title] = task
-    logger.info(f"Schedule Daemon | Activated schedule '{schedule.title}' in {schedule.guild}")
+    self.active_schedules[schedule.id] = task
+    logger.info(
+      f"Schedule Daemon | Activated schedule {schedule.id}: '{schedule.title}' "
+      f"- Channel {schedule.post_channel} - Guild {schedule.guild}"
+    )
 
 
-  async def deactivate(self, schedule: Union[Schedule, str]):
-    schedule_title = schedule if isinstance(schedule, str) else schedule.title
-    if post_task := self.active_schedules.get(schedule_title):
+  async def deactivate(self, schedule: Union[Schedule, int]):
+    schedule_id = schedule if isinstance(schedule, int) else schedule.id
+    if post_task := self.active_schedules.get(schedule_id):
       if post_task.running:
         post_task.stop()
-      self.active_schedules.pop(schedule_title)
+      self.active_schedules.pop(schedule_id)
+
+
+  async def reactivate(self, schedule: Union[Schedule, int]):
+    if isinstance(schedule, int):
+      schedule = await Schedule.fetch_by_id(schedule)
+    if not schedule or not await schedule.is_valid():
+      raise ValueError("Schedule not ready or doesn't exist")
+
+    if schedule_task := self.active_schedules.get(schedule.id):
+      schedule_task.refresh(schedule)

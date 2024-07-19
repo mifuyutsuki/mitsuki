@@ -69,8 +69,8 @@ SCHEDULE_COLUMNS = schema.Schedule().columns.copy()
 
 @define
 class Schedule(AsDict):
-  title: str
   guild: Snowflake = field(converter=Snowflake)
+  title: str
   created_by: Snowflake = field(converter=Snowflake)
   modified_by: Snowflake = field(converter=Snowflake)
   date_created: float
@@ -82,15 +82,16 @@ class Schedule(AsDict):
   pin: bool = field(default=False, converter=bool)
   type: int = field(default=0)
   format: str = field(default="${message}", converter=lambda s: s.strip())
-
   post_routine: str = field(default="0 0 * * *")
   post_channel: Optional[Snowflake] = field(default=None, converter=option(Snowflake))
   manager_roles: Optional[str] = field(default=None)
 
   current_number: int = field(default=0)
   current_pin: Optional[int] = field(default=None, converter=option(Snowflake))
+  posted_number: int = field(default=0)
   last_fire: Optional[float] = field(default=None)
 
+  backlog_number: int = field(init=False)
   post_channel_mention: str = field(init=False)
   created_by_mention: str = field(init=False)
   modified_by_mention: str = field(init=False)
@@ -99,6 +100,7 @@ class Schedule(AsDict):
   manager_role_mentions: str = field(init=False)
 
   def __attrs_post_init__(self):
+    self.backlog_number       = self.current_number - self.posted_number
     self.post_channel_mention = f"<#{self.post_channel}>" if self.post_channel else "-"
     self.created_by_mention   = f"<@{self.created_by}>"
     self.modified_by_mention  = f"<@{self.modified_by}>"
@@ -134,8 +136,8 @@ class Schedule(AsDict):
     if not isinstance(other, Schedule):
       return False
     if self.id and other.id:
-      return self.id == other.id and self.title == other.title
-    return self.title == other.title
+      return self.id == other.id and self.guild == other.guild and self.title == other.title
+    return self.guild == other.guild and self.title == other.title
 
 
   @classmethod
@@ -152,8 +154,8 @@ class Schedule(AsDict):
 
     date_created = timestamp_now()
     return cls(
-      title=title,
       guild=ctx.guild.id,
+      title=title,
       created_by=ctx.author.id,
       modified_by=ctx.author.id,
       date_created=date_created,
@@ -165,8 +167,26 @@ class Schedule(AsDict):
 
 
   @classmethod
-  async def fetch(cls, title: str):
-    query = select(schema.Schedule).where(schema.Schedule.title == title)
+  async def fetch(cls, guild: Snowflake, title: str):
+    query = (
+      select(schema.Schedule)
+      .where(schema.Schedule.guild == guild)
+      .where(schema.Schedule.title == title)
+    )
+    async with new_session() as session:
+      result = await session.scalar(query)
+    if result is None:
+      return None
+
+    return cls(**result.asdict())
+
+
+  @classmethod
+  async def fetch_by_id(cls, id: int):
+    query = (
+      select(schema.Schedule)
+      .where(schema.Schedule.id == id)
+    )
     async with new_session() as session:
       result = await session.scalar(query)
     if result is None:
@@ -207,23 +227,12 @@ class Schedule(AsDict):
 
 
   @staticmethod
-  async def fetch_active_crons():
-    query = (
-      select(schema.Schedule.title, schema.Schedule.post_routine)
-      .where(schema.Schedule.active == True)
-    )
-
-    async with new_session() as session:
-      results = (await session.execute(query)).all()
-    return {result.title: result.post_routine for result in results}
-
-
-  @staticmethod
-  async def fetch_number(schedule_title: str):
+  async def fetch_number(guild: Snowflake, title: str):
     query = (
       select(func.count(schema.Message.id))
       .join(schema.Schedule, schema.Schedule.title == schema.Message.schedule)
-      .where(schema.Schedule.title == schedule_title)
+      .where(schema.Schedule.guild == guild)
+      .where(schema.Schedule.title == title)
       .where(schema.Message.message_id != None)
     )
 
@@ -232,15 +241,23 @@ class Schedule(AsDict):
 
 
   @staticmethod
-  async def fetch_type(schedule_title: str):
-    query = select(schema.Schedule.type).where(schema.Schedule.title == schedule_title)
+  async def fetch_type(guild: Snowflake, title: str):
+    query = (
+      select(schema.Schedule.type)
+      .where(schema.Schedule.guild == guild)
+      .where(schema.Schedule.title == title)
+    )
     async with new_session() as session:
       return ScheduleTypes(await session.scalar(query))
 
 
   @staticmethod
-  async def fetch_last_fire(schedule_title: str):
-    query = select(schema.Schedule.last_fire).where(schema.Schedule.title == schedule_title)
+  async def fetch_last_fire(guild: Snowflake, title: str):
+    query = (
+      select(schema.Schedule.last_fire)
+      .where(schema.Schedule.guild == guild)
+      .where(schema.Schedule.title == title)
+    )
     async with new_session() as session:
       return await session.scalar(query)
 
@@ -248,7 +265,8 @@ class Schedule(AsDict):
   async def next(self):
     query = (
       select(schema.Message)
-      .join(schema.Schedule, schema.Schedule.title == schema.Message.schedule)
+      .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule_id)
+      .where(schema.Schedule.guild == self.guild)
       .where(schema.Schedule.title == self.title)
     )
     match self.type:
@@ -268,7 +286,13 @@ class Schedule(AsDict):
       result = (await session.scalars(query)).first()
     if not result:
       return None
-    return Message(**result.asdict(), schedule_object=self)
+    return Message(
+      **result.asdict(),
+      schedule_guild=self.guild,
+      schedule_title=self.title,
+      schedule_channel=self.post_channel,
+      schedule_type=self.type,
+    )
 
 
   def activate(self):
@@ -284,12 +308,23 @@ class Schedule(AsDict):
 
 
   def assign(self, message: "Message"):
-    return Template(self.format).safe_substitute(message.asfmtdict())
+    user_message = Template(self.format).safe_substitute(message.asfmtdict())
+    if message.number:
+      mitsuki_message = f"-# Scheduled message '{self.title}' #{message.number}"
+    else:
+      mitsuki_message = f"-# Scheduled message '{self.title}'"
+    if message.tags:
+      mitsuki_message += f"- Tags: {message.tags}"
+    return user_message + "\n" + mitsuki_message
 
 
   @staticmethod
-  async def exists(schedule_title: str):
-    query = select(schema.Schedule.id).where(schema.Schedule.title == schedule_title)
+  async def exists(guild: Snowflake, title: str):
+    query = (
+      select(schema.Schedule.id)
+      .where(schema.Schedule.guild == guild)
+      .where(schema.Schedule.title == title)
+    )
     async with new_session() as session:
       return await session.scalar(query) is not None
 
@@ -298,7 +333,7 @@ class Schedule(AsDict):
     if not self.type == ScheduleTypes.ONE_MESSAGE:
       if (
         "${message}" not in self.format
-        or await Message.fetch_count(self.title) <= 0
+        or await Message.fetch_count(self.guild, self.title) <= 0
       ):
         return False
     if (
@@ -322,11 +357,13 @@ class Schedule(AsDict):
 
 
   def create_message(self, author: Snowflake, message: str):
-    return Message.create(author, self.title, message)
+    return Message.create(author, self, message)
 
 
-  async def add_message(self, session: AsyncSession, author: Snowflake, message: str):
-    return await Message.create(author, self.title, message).add(session)
+  async def add_message(self, session: AsyncSession, author: Snowflake, message: Union["Message", str]):
+    if isinstance(message, str):
+      message = Message.create(author, self, message)
+    return await message.add(session)
 
 
   async def add(self, session: AsyncSession):
@@ -355,6 +392,7 @@ class Schedule(AsDict):
       .values(values)
     )
     await session.execute(statement)
+    self.__attrs_post_init__()
 
 
 # =================================================================================================
@@ -364,28 +402,48 @@ MESSAGE_COLUMNS = schema.Message().columns.copy()
 
 @define
 class Message(AsDict):
-  schedule: str
-  created_by: Snowflake
-  modified_by: Snowflake
+  schedule_id: int
+  created_by: Snowflake = field(converter=Snowflake)
+  modified_by: Snowflake = field(converter=Snowflake)
   date_created: float
   date_modified: float
 
-  message: str
+  message: str = field(converter=lambda s: s.strip())
   tags: Optional[str] = field(default=None)
+  post_time: Optional[float] = field(default=None)
   id: Optional[int] = field(default=None)
 
   number: Optional[int] = field(default=None)
-  message_id: Optional[Snowflake] = field(default=None)
+  message_id: Optional[Snowflake] = field(default=None, converter=option(Snowflake))
   date_posted: Optional[float] = field(default=None)
 
-  schedule_object: Optional[Schedule] = field(default=None)
+  schedule_guild: Optional[Snowflake] = field(default=None)
+  schedule_title: Optional[str] = field(default=None)
+  schedule_channel: Optional[Snowflake] = field(default=None)
+  schedule_type: Optional[int] = field(default=None)
 
+  message_link: str = field(init=False)
+  schedule_channel_mention: str = field(init=False)
+  created_by_mention: str = field(init=False)
+  modified_by_mention: str = field(init=False)
+  post_time_f: str = field(init=False)
   date_created_f: str = field(init=False)
   date_modified_f: str = field(init=False)
   date_posted_f: str = field(init=False)
 
 
   def __attrs_post_init__(self):
+    if self.schedule_guild and self.schedule_channel and self.message_id:
+      self.message_link = (
+        f"https://discord.com/channels/{self.schedule_guild}/{self.schedule_channel}/{self.message_id}"
+      )
+    else:
+      self.message_link = "-"
+
+    self.schedule_channel_mention = f"<>" if self.schedule_channel else "-"
+    self.created_by_mention = f"<@{self.created_by}>"
+    self.modified_by_mention = f"<@{self.modified_by}>"
+    self.post_time_f = f"<t:{int(self.post_time)}:f>" if self.post_time else "-"
     self.date_created_f = f"<t:{int(self.date_created)}:f>"
     self.date_modified_f = f"<t:{int(self.date_modified)}:f>"
     self.date_posted_f = f"<t:{int(self.date_posted)}:f>" if self.date_posted else "-"
@@ -394,6 +452,7 @@ class Message(AsDict):
   @classmethod
   async def fetch(
     cls,
+    guild: Snowflake,
     schedule_title: str,
     discoverable: Optional[bool] = None,
     backlog: Optional[bool] = None,
@@ -402,8 +461,15 @@ class Message(AsDict):
     offset: Optional[int] = None,
   ):
     query = (
-      select(schema.Message, schema.Schedule)
-      .join(schema.Schedule, schema.Schedule.title == schema.Message.schedule)
+      select(
+        schema.Message,
+        schema.Schedule.guild,
+        schema.Schedule.title,
+        schema.Schedule.post_channel,
+        schema.Schedule.type,
+      )
+      .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule_id)
+      .where(schema.Schedule.guild == guild)
       .where(schema.Schedule.title == schedule_title)
     )
 
@@ -437,14 +503,25 @@ class Message(AsDict):
       results = (await session.execute(query)).all()
 
     return [
-      cls(**result.Message.asdict(), schedule_object=Schedule(**result.Schedule.asdict()))
+      cls(
+        **result.Message.asdict(),
+        schedule_guild=result.guild,
+        schedule_title=result.title,
+        schedule_channel=result.post_channel,
+        schedule_type=result.type,
+      )
       for result in results
     ]
 
 
   @staticmethod
-  async def fetch_count(schedule_title: str):
-    query = select(func.count(schema.Message.id)).where(schema.Message.schedule == schedule_title)
+  async def fetch_count(guild: Snowflake, schedule_title: str):
+    query = (
+      select(func.count(schema.Message.id))
+      .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule_id)
+      .where(schema.Schedule.guild == guild)
+      .where(schema.Schedule.title == schedule_title)
+    )
     async with new_session() as session:
       return await session.scalar(query) or 0
 
@@ -453,26 +530,32 @@ class Message(AsDict):
   def create(
     cls,
     author: Snowflake,
-    schedule_title: str,
+    schedule: Schedule,
     message: str,
     tags: Optional[str] = None,
+    post_time: Optional[float] = None,
   ):
     date_created = timestamp_now()
     return cls(
-      schedule=schedule_title,
+      schedule_id=schedule.id,
       created_by=author,
       modified_by=author,
       date_created=date_created,
       date_modified=date_created,
       message=message,
       tags=tags,
+      post_time=post_time,
+      schedule_guild=schedule.guild,
+      schedule_title=schedule.title,
+      schedule_channel=schedule.post_channel,
+      schedule_type=schedule.type,
     )
 
 
   async def add(self, session: AsyncSession):
     statement = (
       update(schema.Schedule)
-      .where(schema.Schedule.title == self.schedule)
+      .where(schema.Schedule.id == self.schedule_id)
       .values(current_number=schema.Schedule.__table__.c.current_number + 1)
       .returning(schema.Schedule.current_number, schema.Schedule.type)
     )
@@ -497,7 +580,7 @@ class Message(AsDict):
 
   async def update(self, session: AsyncSession):
     values = self.asdbdict()
-    for key in ["id", "schedule"]:
+    for key in ["id", "schedule_id"]:
       values.pop(key)
 
     statement = (
@@ -519,7 +602,7 @@ class Message(AsDict):
 
 
   def asfmtdict(self):
-    return {k: str(v) if v is not None else "-" for k, v in self.asdbdict().items()}
+    return {k: str(v) if v is not None else "-" for k, v in self.asdict().items()}
 
 
   def assign_to(self, format: str):

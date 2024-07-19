@@ -10,15 +10,13 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from sqlalchemy import ForeignKey, Row, text
+from sqlalchemy import UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import BigInteger
 from rapidfuzz import fuzz
 from typing import Optional, List, Callable
-from attrs import define, field
-from attrs import asdict as _asdict
 
-from mitsuki.lib.userdata import Base, AsDict
+from mitsuki.lib.userdata import Base
 
 
 # =================================================================================================
@@ -26,10 +24,13 @@ from mitsuki.lib.userdata import Base, AsDict
 
 class Schedule(Base):
   __tablename__ = "schedules"
+  __table_args__ = (
+    UniqueConstraint("title", "guild"),
+  )
 
   id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-  title: Mapped[str] = mapped_column(unique=True)
   guild: Mapped[int] = mapped_column(BigInteger)
+  title: Mapped[str] = mapped_column()
   created_by: Mapped[int] = mapped_column(BigInteger)
   modified_by: Mapped[int] = mapped_column(BigInteger)
   date_created: Mapped[float]
@@ -47,6 +48,7 @@ class Schedule(Base):
 
   current_number: Mapped[int] = mapped_column(server_default=text("0"))
   current_pin: Mapped[Optional[int]] = mapped_column(BigInteger)
+  posted_number: Mapped[int] = mapped_column(server_default=text("0"))
   last_fire: Mapped[Optional[float]]
 
 
@@ -54,7 +56,7 @@ class Message(Base):
   __tablename__ = "schedule_messages"
 
   id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-  schedule: Mapped[str]
+  schedule_id: Mapped[int]
   created_by: Mapped[int] = mapped_column(BigInteger)
   modified_by: Mapped[int] = mapped_column(BigInteger)
   date_created: Mapped[float]
@@ -62,6 +64,7 @@ class Message(Base):
 
   message: Mapped[str]
   tags: Mapped[Optional[str]]
+  post_time: Mapped[Optional[float]]
 
   number: Mapped[Optional[int]]
   message_id: Mapped[Optional[int]] = mapped_column(BigInteger)

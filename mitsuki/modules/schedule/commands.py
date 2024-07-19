@@ -211,7 +211,7 @@ class ManageSchedules(MultifieldMixin, ReaderCommand):
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
     )
-    schedule = await Schedule.fetch(schedule_title)
+    schedule = await Schedule.fetch(self.ctx.guild.id, schedule_title)
     if not schedule:
       return await _Errors.create(self.ctx).schedule_not_found(schedule_title)
 
@@ -261,7 +261,7 @@ class AddMessage(WriterCommand):
 
     has_role  = False
     has_admin = await has_user_permissions(self.ctx, Permissions.ADMINISTRATOR)
-    schedule  = await Schedule.fetch(schedule_title)
+    schedule  = await Schedule.fetch(self.ctx.guild.id, schedule_title)
     if schedule and schedule.manager_role_objects:
       has_role = await has_user_roles(self.ctx, schedule.manager_role_objects)
     if not has_role and not has_admin:
@@ -300,7 +300,7 @@ class AddMessage(WriterCommand):
     )
     await self.defer(ephemeral=True)
 
-    schedule = await Schedule.fetch(schedule_title)
+    schedule = await Schedule.fetch(self.ctx.guild.id, schedule_title)
     if not schedule:
       return await _Errors.create(self.ctx).schedule_not_found(schedule_title)
 
@@ -311,7 +311,7 @@ class AddMessage(WriterCommand):
 
     self.schedule = schedule
     self.schedule_message = schedule.create_message(self.caller_id, message)
-    if len(self.schedule_message.assign_to(schedule.format)) >= 2000:
+    if len(schedule.assign(self.schedule_message)) >= 2000:
       return await _Errors.create(self.ctx).message_too_long()
 
     message_data = {"message_" + k: v for k, v in self.schedule_message.asdbdict().items()}
@@ -344,11 +344,13 @@ class ListMessages(MultifieldMixin, ReaderCommand):
 
 
   async def run(self, schedule_title: str):
-    self.schedule = await Schedule.fetch(schedule_title)
+    self.schedule = await Schedule.fetch(self.ctx.guild.id, schedule_title)
     if not self.schedule:
       return await _Errors.create(self.ctx).schedule_not_found(schedule_title)
 
-    self.schedule_messages = await ScheduleMessage.fetch(schedule_title, discoverable=True, backlog=False)
+    self.schedule_messages = await ScheduleMessage.fetch(
+      self.ctx.guild.id, schedule_title, discoverable=True, backlog=False
+    )
     if len(self.schedule_messages) <= 0:
       await self.send(self.States.NO_LIST, other_data={"schedule_title": schedule_title})
       return
