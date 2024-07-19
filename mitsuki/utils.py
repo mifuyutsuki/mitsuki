@@ -93,7 +93,7 @@ def is_caller(ctx: BaseContext):
 
   async def check(component: Component):
     c = component.ctx.author.id == ctx.author.id
-    if not is_caller:
+    if not c:
       await component.ctx.send(
         "This interaction is not for you", 
         ephemeral=True

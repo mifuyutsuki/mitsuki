@@ -147,7 +147,7 @@ def is_caller(ctx: BaseContext, message: Optional[str] = None):
 
   async def check(component: Component):
     c = component.ctx.author.id == ctx.author.id
-    if not is_caller:
+    if not c:
       await component.ctx.send(message, ephemeral=True)
     return c
   return check
