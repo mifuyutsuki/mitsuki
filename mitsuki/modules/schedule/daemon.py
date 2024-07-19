@@ -56,10 +56,14 @@ class DaemonTask:
 
 
   @staticmethod
-  def post_task(bot: Client, schedule: Schedule):
+  def post_task(bot: Client, schedule: Schedule, force: bool = False):
     async def post():
-      # Validation: schedule is active and valid
-      if not schedule.active or not await schedule.is_valid():
+      # Validation: schedule is active unless force-posted
+      if not force and not schedule.active:
+        return
+
+      # Validation: schedule is valid (channel exists, perms check, etc.)
+      if not await schedule.is_valid():
         return
 
       # Validation: channel exists (also caught by is_valid())
@@ -145,6 +149,16 @@ class Daemon:
       task = DaemonTask(self.bot, schedule)
       task.start()
       self.active_schedules[schedule.title] = task
+
+
+  async def force_post(self, schedule: Union[Schedule, str]):
+    if isinstance(schedule, str):
+      schedule = await Schedule.fetch(schedule)
+    if not schedule or not await schedule.is_valid():
+      raise ValueError("Schedule not ready or doesn't exist")
+
+    if schedule.has_unsent():
+      await DaemonTask.post_task(self.bot, schedule, force=True)()
 
 
   async def activate(self, schedule: Union[Schedule, str]):
