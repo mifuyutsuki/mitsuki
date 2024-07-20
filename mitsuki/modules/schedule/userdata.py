@@ -182,16 +182,18 @@ class Schedule(AsDict):
 
 
   @classmethod
-  async def fetch_by_id(cls, id: int):
+  async def fetch_by_id(cls, id: int, guild: Optional[Snowflake] = None):
     query = (
       select(schema.Schedule)
       .where(schema.Schedule.id == id)
     )
+    if guild:
+      query = query.where(schema.Schedule.guild == guild)
+
     async with new_session() as session:
       result = await session.scalar(query)
     if result is None:
       return None
-
     return cls(**result.asdict())
 
 
