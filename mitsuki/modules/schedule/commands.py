@@ -103,7 +103,7 @@ class CreateSchedule(WriterCommand):
         ShortText(
           label="Schedule Name",
           custom_id="title",
-          placeholder="Daily Questions",
+          placeholder="e.g. 'Daily Questions'",
           min_length=1,
         ),
         title="Create Schedule",
@@ -162,7 +162,7 @@ class ManageSchedules(MultifieldMixin, ReaderCommand):
 
     create_btn = Button(
       style=ButtonStyle.GREEN,
-      label="Create",
+      label="Create...",
       custom_id=CreateSchedule.SCHEDULE_CREATE_BUTTON,
     )
     refresh_btn = Button(
@@ -170,7 +170,7 @@ class ManageSchedules(MultifieldMixin, ReaderCommand):
       label="Refresh",
       custom_id=self.SCHEDULE_MANAGE_BUTTON,
     )
-    template_kwargs = {"escape_data_values": "guild_name"}
+    template_kwargs = {"fields_per_page": 25, "escape_data_values": "guild_name"}
 
     schedules = await Schedule.fetch_many(guild=self.ctx.guild.id, sort="name")
     self.data = self.Data(
@@ -220,8 +220,8 @@ class ManageSchedules(MultifieldMixin, ReaderCommand):
 
     add_message_btn = Button(
       style=ButtonStyle.GREEN,
-      label="Add",
-      custom_id=AddMessage.custom_id(schedule.id)
+      label="Add...",
+      custom_id=AddMessage.button_custom_id(schedule.id)
     )
     return_btn = Button(
       style=ButtonStyle.GRAY,
@@ -243,7 +243,8 @@ class ManageSchedules(MultifieldMixin, ReaderCommand):
 
 
 class AddMessage(WriterCommand):
-  MESSAGE_ADD_BUTTON_RE: re.Pattern = re.compile(r"schedule_add\|@[0-9]+")
+  MESSAGE_ADD_BUTTON_RE: re.Pattern = re.compile(r"schedule_add_button\|@[0-9]+")
+  MESSAGE_ADD_MODAL_RE: re.Pattern = re.compile(r"schedule_add_modal\|.+")
   MESSAGE_ADD_BUTTON: str = "schedule_add_button"
   MESSAGE_ADD_MODAL: str  = "schedule_add_modal"
   state: "AddMessage.States"
@@ -262,85 +263,89 @@ class AddMessage(WriterCommand):
     number: str
 
   @staticmethod
-  def custom_id(schedule_id: int):
-    return f"schedule_add|@{schedule_id}"
+  def button_custom_id(schedule_id: int):
+    return f"schedule_add_button|@{schedule_id}"
+
+  @staticmethod
+  def modal_custom_id(schedule: Union[str, int]):
+    if isinstance(schedule, int):
+      return f"schedule_add_modal|@{schedule}"
+    return f"schedule_add_modal|{schedule}"
 
   @staticmethod
   def id_from_custom_id(custom_id: str):
     return custom_id.split("|")[-1]
 
 
-  async def prompt_from_button(self, custom_id: str):
-    return await self.prompt(self.id_from_custom_id(custom_id))
-
-
-  async def prompt(self, schedule: str):
-    if not self.ctx.guild:
-      return await _Errors.create(self.ctx).not_in_guild()
-
+  async def _check_schedule(self, schedule_key: str):
     has_role  = False
     has_admin = await has_user_permissions(self.ctx, Permissions.ADMINISTRATOR)
-    schedule_title = None
-    schedule_object = None
+    schedule  = None
 
     # ID search
-    if schedule.startswith("@"):
-      if schedule[1:].isnumeric():
-        id = int(schedule[1:])
-        schedule_object = await Schedule.fetch_by_id(id, guild=self.ctx.guild.id)
+    if schedule_key.startswith("@"):
+      if schedule_key[1:].isnumeric():
+        id = int(schedule_key[1:])
+        schedule = await Schedule.fetch_by_id(id, guild=self.ctx.guild.id)
 
     # If ID search fails, fallback here
-    if not schedule_object:
-      schedule_object = await Schedule.fetch(self.ctx.guild.id, schedule)
-    else:
-      schedule_title = schedule_object.title
+    if not schedule:
+      schedule = await Schedule.fetch(self.ctx.guild.id, schedule_key)
 
     # Role check
-    if schedule_object and schedule_object.manager_role_objects:
-      has_role = await has_user_roles(self.ctx, schedule_object.manager_role_objects)
+    if schedule and schedule.manager_role_objects:
+      has_role = await has_user_roles(self.ctx, schedule.manager_role_objects)
 
     # Deny if no role and no admin
     if not has_role and not has_admin:
       raise UserDenied("Server admin or Schedule manager role(s)")
 
-    # Schedule not found
-    if not schedule_object:
-      return await _Errors.create(self.ctx).schedule_not_found(schedule_title)
+    # Schedule found (or no Schedule)
+    return schedule
 
+
+  async def prompt_from_button(self, custom_id: str):
+    return await self.prompt(self.id_from_custom_id(custom_id))
+
+
+  async def prompt(self, schedule_key: str):
+    if not self.ctx.guild:
+      return await _Errors.create(self.ctx).not_in_guild()
+
+    schedule = await self._check_schedule(schedule_key)
+    if not schedule:
+      return await _Errors.create(self.ctx).schedule_not_found(schedule_key)
+  
+    schedule_title = schedule.title if len(schedule.title) <= 32 else schedule.title[:30].strip() + "..."
     return await self.ctx.send_modal(
       modal=Modal(
-        ShortText(
-          label="Schedule Name",
-          custom_id="schedule",
-          value=schedule_title,
-          min_length=1,
-        ),
         ParagraphText(
-          label="Message",
+          label=f"Message in \"{schedule_title}\"",
           custom_id="message",
-          placeholder="Which anime school uniform is your favorite?",
+          placeholder="e.g. \"Which anime school uniform is your favorite?\"",
           min_length=1,
           max_length=1800
         ),
-        title="Message",
-        custom_id=self.MESSAGE_ADD_MODAL
+        title=f"Add Message",
+        custom_id=self.modal_custom_id(schedule.id)
       )
     )
 
 
-  async def run(self, schedule_title: str, message: str):
+  async def run_from_prompt(self, custom_id: str, message: str):
+    return await self.run(self.id_from_custom_id(custom_id), message)
+
+
+  async def run(self, schedule_key: str, message: str):
     if not self.ctx.guild:
       return await _Errors.create(self.ctx).not_in_guild()
-    await assert_user_permissions(
-      self.ctx, Permissions.ADMINISTRATOR,
-      "Server admin or Schedule manager role(s)"
-    )
     await self.defer(ephemeral=True)
 
-    schedule = await Schedule.fetch(self.ctx.guild.id, schedule_title)
+    schedule = await self._check_schedule(schedule_key)
     if not schedule:
-      return await _Errors.create(self.ctx).schedule_not_found(schedule_title)
+      return await _Errors.create(self.ctx).schedule_not_found(schedule_key)
 
+    # Actual addition goes here
     if schedule.type == ScheduleTypes.QUEUE:
       number = str(schedule.current_number + 1)
     else:
@@ -353,7 +358,7 @@ class AddMessage(WriterCommand):
 
     message_data = {"message_" + k: v for k, v in self.schedule_message.asdbdict().items()}
     self.data = self.Data(
-      schedule_title=escape_text(schedule_title),
+      schedule_title=escape_text(schedule.title),
       guild_name=self.ctx.guild.name,
       message=message,
       number=number,
