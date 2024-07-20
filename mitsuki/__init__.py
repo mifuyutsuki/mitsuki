@@ -46,6 +46,7 @@ from interactions.api.events import (
   ComponentError,
   ComponentCompletion,
   AutocompleteCompletion,
+  ModalCompletion,
 )
 from interactions.client.errors import (
   CommandCheckFailure,
@@ -158,7 +159,7 @@ class Bot(Client):
   @listen(ComponentError, disable_default_listeners=True)
   async def on_component_error(self, event: ComponentError):
     return await self.error_handler(event)
-  
+
 
   async def error_handler(self, event: Union[CommandError, ComponentError]):
     # default ephemeral to true unless it's an unknown exception
@@ -197,30 +198,33 @@ class Bot(Client):
   async def on_command_completion(self, event: CommandCompletion):
     if isinstance(event.ctx, InteractionContext):
       command_name = event.ctx.invoke_target
-      self.logger.info(f"Command emitted: {command_name}")
-      if len(event.ctx.kwargs) > 0:
+
+      if len(event.ctx.kwargs) <= 0:
+        self.logger.info(f"Command called: {command_name}")
+      else:
         kwargs = {k: str(v) for k, v in event.ctx.kwargs.items()}
-        self.logger.info(f"kwargs: {kwargs}")
+        self.logger.info(f"Command called: {command_name} | {kwargs}")
 
 
   @listen(ComponentCompletion)
   async def on_component_completion(self, event: ComponentCompletion):
-    command_name = event.ctx.invoke_target
-    try:
-      component_name = event.ctx.custom_id.split("|")[1]
-    except Exception:
-      component_name = event.ctx.custom_id
-
-    self.logger.info(f"Component emitted: {command_name}: {component_name}")
-    if len(event.ctx.values) > 0:
-      values = [str(v) for v in event.ctx.args]
-      self.logger.info(f"values: {values}")
+    component_name = event.ctx.custom_id
+    if len(event.ctx.values) <= 0:
+      self.logger.info(f"Component called: {component_name}")
+    else:
+      self.logger.info(f"Component called: {component_name} | {event.ctx.values}")
 
 
   @listen(AutocompleteCompletion)
   async def on_autocomplete_completion(self, event: AutocompleteCompletion):
     command_name = event.ctx.invoke_target
-    self.logger.info(f"Autocomplete emitted: {command_name}: {event.ctx.input_text}")
+    self.logger.info(f"Autocomplete called: {command_name}: {event.ctx.input_text}")
+
+
+  @listen(ModalCompletion)
+  async def on_modal_completion(self, event: ModalCompletion):
+    command_name = event.ctx.custom_id
+    self.logger.info(f"Modal called: {command_name} | {event.ctx.responses}")
 
 
 bot = Bot()
