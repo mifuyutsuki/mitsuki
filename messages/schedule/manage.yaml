@@ -23,6 +23,8 @@ list_empty:
     No schedules setup for this server yet.
     
     Press the "Create" button to create a new Schedule
+  thumbnail: >-
+    ${guild_icon}
 
 view:
   base_template: admin
