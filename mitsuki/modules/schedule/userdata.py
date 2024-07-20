@@ -18,7 +18,7 @@ from interactions import (
   Permissions,
 )
 
-from sqlalchemy import select, insert, update
+from sqlalchemy import select, insert, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import func
 
@@ -572,6 +572,37 @@ class Message(AsDict):
     await session.execute(statement)
 
 
+  async def update_renumber(self, session: AsyncSession, new_number: int):
+    # Numbers are queue type only
+    if not self.schedule_type == ScheduleTypes.QUEUE or not self.number:
+      return
+
+    # Renumber messages at and above this message's new number
+    await session.execute(
+      update(schema.Message)
+      .where(schema.Message.schedule_id == self.schedule_id)
+      .where(schema.Message.number >= new_number)
+      .values(number=schema.Message.__table__.c.number + 1)
+    )
+
+    # Set this message to the new number
+    await session.execute(
+      update(schema.Message)
+      .where(schema.Message.id == self.id)
+      .values(number=new_number)
+    )
+
+    # Update object attribute
+    self.number = new_number
+
+
+  async def delete(self, session: AsyncSession):
+    await session.execute(
+      delete(schema.Message)
+      .where(schema.Message.id == self.id)
+    )
+
+
   async def update_modify(self, session: AsyncSession, modified_by: Snowflake):
     self.modified_by = modified_by
     self.date_modified = timestamp_now()
@@ -584,12 +615,11 @@ class Message(AsDict):
     for key in ["id", "schedule_id"]:
       values.pop(key)
 
-    statement = (
+    await session.execute(
       update(schema.Message)
       .where(schema.Message.id == self.id)
       .values(**values)
     )
-    await session.execute(statement)
 
 
   def add_posted_message(self, message: DiscordMessage):
