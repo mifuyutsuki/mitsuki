@@ -229,17 +229,8 @@ class Schedule(AsDict):
 
 
   @staticmethod
-  async def fetch_number(guild: Snowflake, title: str):
-    query = (
-      select(func.count(schema.Message.id))
-      .join(schema.Schedule, schema.Schedule.title == schema.Message.schedule)
-      .where(schema.Schedule.guild == guild)
-      .where(schema.Schedule.title == title)
-      .where(schema.Message.message_id != None)
-    )
-
-    async with new_session() as session:
-      return await session.scalar(query) or 0
+  async def fetch_number(guild: Snowflake, title: str, backlog: Optional[bool] = None):
+    return await Message.fetch_count(guild, title, backlog=backlog)
 
 
   @staticmethod
@@ -517,13 +508,18 @@ class Message(AsDict):
 
 
   @staticmethod
-  async def fetch_count(guild: Snowflake, schedule_title: str):
+  async def fetch_count(guild: Snowflake, schedule_title: str, backlog: Optional[bool] = None):
     query = (
       select(func.count(schema.Message.id))
       .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule_id)
       .where(schema.Schedule.guild == guild)
       .where(schema.Schedule.title == schedule_title)
     )
+    if backlog == True:
+      query = query.where(schema.Message.message_id == None)
+    elif backlog == False:
+      query = query.where(schema.Message.message_id != None)
+
     async with new_session() as session:
       return await session.scalar(query) or 0
 
