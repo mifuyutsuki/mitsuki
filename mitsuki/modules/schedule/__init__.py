@@ -111,6 +111,10 @@ class ScheduleModule(Extension):
   async def message_add(self, ctx: SlashContext, schedule: str):
     return await commands.AddMessage.create(ctx).prompt(schedule)
 
+  @component_callback(commands.AddMessage.MESSAGE_ADD_BUTTON_RE)
+  async def message_add_btn(self, ctx: ComponentContext):
+    return await commands.AddMessage.create(ctx).prompt_from_button(ctx.custom_id)
+
   @modal_callback(commands.AddMessage.MESSAGE_ADD_MODAL)
   async def message_add_response(self, ctx: ModalContext, schedule: str, message: str):
     return await commands.AddMessage.create(ctx).run(schedule, message)

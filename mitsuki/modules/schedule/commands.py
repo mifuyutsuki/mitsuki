@@ -218,6 +218,11 @@ class ManageSchedules(MultifieldMixin, ReaderCommand):
     self.edit_origin = True
     await self.defer(ephemeral=True, suppress_error=True)
 
+    add_message_btn = Button(
+      style=ButtonStyle.GREEN,
+      label="Add",
+      custom_id=AddMessage.custom_id(schedule.id)
+    )
     return_btn = Button(
       style=ButtonStyle.GRAY,
       label="Back to Schedules",
@@ -233,12 +238,14 @@ class ManageSchedules(MultifieldMixin, ReaderCommand):
       self.States.VIEW,
       other_data=schedule.asdict(),
       template_kwargs=template_kwargs,
-      components=[return_btn]
+      components=[add_message_btn, return_btn]
     )
 
 
 class AddMessage(WriterCommand):
-  MESSAGE_ADD_MODAL: str = "schedule_add_modal"
+  MESSAGE_ADD_BUTTON_RE: re.Pattern = re.compile(r"schedule_add\|@[0-9]+")
+  MESSAGE_ADD_BUTTON: str = "schedule_add_button"
+  MESSAGE_ADD_MODAL: str  = "schedule_add_modal"
   state: "AddMessage.States"
   data: "AddMessage.Data"
   schedule: Schedule
@@ -254,20 +261,50 @@ class AddMessage(WriterCommand):
     message: str
     number: str
 
+  @staticmethod
+  def custom_id(schedule_id: int):
+    return f"schedule_add|@{schedule_id}"
 
-  async def prompt(self, schedule_title: str):
+  @staticmethod
+  def id_from_custom_id(custom_id: str):
+    return custom_id.split("|")[-1]
+
+
+  async def prompt_from_button(self, custom_id: str):
+    return await self.prompt(self.id_from_custom_id(custom_id))
+
+
+  async def prompt(self, schedule: str):
     if not self.ctx.guild:
       return await _Errors.create(self.ctx).not_in_guild()
 
     has_role  = False
     has_admin = await has_user_permissions(self.ctx, Permissions.ADMINISTRATOR)
-    schedule  = await Schedule.fetch(self.ctx.guild.id, schedule_title)
-    if schedule and schedule.manager_role_objects:
-      has_role = await has_user_roles(self.ctx, schedule.manager_role_objects)
+    schedule_title = None
+    schedule_object = None
+
+    # ID search
+    if schedule.startswith("@"):
+      if schedule[1:].isnumeric():
+        id = int(schedule[1:])
+        schedule_object = await Schedule.fetch_by_id(id, guild=self.ctx.guild.id)
+
+    # If ID search fails, fallback here
+    if not schedule_object:
+      schedule_object = await Schedule.fetch(self.ctx.guild.id, schedule)
+    else:
+      schedule_title = schedule_object.title
+
+    # Role check
+    if schedule_object and schedule_object.manager_role_objects:
+      has_role = await has_user_roles(self.ctx, schedule_object.manager_role_objects)
+
+    # Deny if no role and no admin
     if not has_role and not has_admin:
       raise UserDenied("Server admin or Schedule manager role(s)")
 
-    if not schedule:
+    # Schedule not found
+    if not schedule_object:
       return await _Errors.create(self.ctx).schedule_not_found(schedule_title)
 
     return await self.ctx.send_modal(
@@ -283,7 +320,7 @@ class AddMessage(WriterCommand):
           custom_id="message",
           placeholder="Which anime school uniform is your favorite?",
           min_length=1,
-          max_length=2000
+          max_length=1800
         ),
         title="Message",
         custom_id=self.MESSAGE_ADD_MODAL
