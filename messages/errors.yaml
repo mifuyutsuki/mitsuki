@@ -12,6 +12,15 @@ error:
   color: error
 
 
+# Message if a bad input/argument is supplied.
+error_argument:
+  title: >-
+    Argument Error
+  description: >-
+    ${message}
+  color: error
+
+
 # Message if a server error has occured, including Discord and 5xx errors.
 error_server:
   title: >-

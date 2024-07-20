@@ -52,8 +52,8 @@ from interactions.client.errors import (
   CommandCheckFailure,
   CommandOnCooldown,
   MaxConcurrencyReached,
-  DiscordError,
   HTTPException,
+  BadArgument,
 )
 from interactions.client.const import CLIENT_FEATURE_FLAGS
 from interactions.client.mixins.send import SendMixin
@@ -173,6 +173,8 @@ class Bot(Client):
       message = ctx_load_message("error_concurrency")
     elif isinstance(event.error, CommandCheckFailure):
       message = ctx_load_message("error_command_perms")
+    elif isinstance(event.error, BadArgument):
+      message = ctx_load_message("error_argument", data={"message": str(event.error)})
     elif isinstance(event.error, BotDenied):
       message = ctx_load_message("error_denied_bot", data={"requires": event.error.requires})
     elif isinstance(event.error, UserDenied):
