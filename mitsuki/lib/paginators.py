@@ -16,8 +16,16 @@ from interactions import (
   ComponentContext,
   Modal,
   ShortText,
+  ActionRow,
+  StringSelectMenu,
+  StringSelectOption,
+  Client,
+  Embed,
+  ComponentCommand,
 )
+
 from attrs import define, field
+from typing import Union, List, Optional, Callable, Coroutine
 
 
 @define(eq=False, order=False, hash=False, kw_only=False)
@@ -88,3 +96,88 @@ class Paginator(_Paginator):
       self.page_index = page_no - 1
       await modal_ctx.defer(edit_origin=True)
       await modal_ctx.edit(ctx.message, **self.to_dict())
+
+
+@define(eq=False, order=False, hash=False, kw_only=False)
+class SelectionPaginator(Paginator):
+  selection_values: List[Union[StringSelectOption, str]] = field(repr=False, factory=list)
+  selection_per_page: int = field(repr=False, default=6)
+  selection_placeholder: str = field(repr=False, default="Select value...")
+  selection_callback: Callable[..., Coroutine] = field(repr=False, default=None)
+
+
+  def __attrs_post_init__(self) -> None:
+    self.client.add_component_callback(
+      ComponentCommand(
+        name=f"Paginator:{self._uuid}",
+        callback=self._on_button,
+        listeners=[
+          f"{self._uuid}|select",
+          f"{self._uuid}|first",
+          f"{self._uuid}|back",
+          f"{self._uuid}|callback",
+          f"{self._uuid}|next",
+          f"{self._uuid}|last",
+          f"{self._uuid}|selector",
+        ],
+      )
+    )
+
+
+  def create_components(self, disable: bool = False):
+    if disable and self.hide_buttons_on_stop:
+      return []
+
+    selection = []
+    if len(self.selection_values) > 0 and self.selection_callback:
+      selection = [ActionRow(StringSelectMenu(
+        *(
+          selection_value if isinstance(selection_value, StringSelectOption)
+          else StringSelectOption(
+            label=str(selection_value),
+            value=str(selection_value),
+          )
+          for selection_value in self.selection_values[
+            self.page_index * self.selection_per_page : (self.page_index + 1) * self.selection_per_page
+          ]
+        ),
+        placeholder=self.selection_placeholder,
+        disabled=disable,
+        custom_id=f"{self._uuid}|selector"
+      ))]
+    return selection + super().create_components(disable=disable)
+
+
+  async def _on_button(self, ctx: ComponentContext, *args, **kwargs):
+    if ctx.author.id != self.author_id:
+      return (
+        await ctx.send(self.wrong_user_message, ephemeral=True)
+        if self.wrong_user_message
+        else await ctx.defer(edit_origin=True)
+      )
+
+    if self._timeout_task:
+      self._timeout_task.ping.set()
+
+    match ctx.custom_id.split("|")[1]:
+      case "first":
+        self.page_index = 0
+      case "last":
+        self.page_index = len(self.pages) - 1
+      case "next":
+        if (self.page_index + 1) < len(self.pages):
+          self.page_index += 1
+      case "back":
+        if self.page_index >= 1:
+          self.page_index -= 1
+      case "select":
+        self.page_index = int(ctx.values[0])
+      case "selector":
+        if self.selection_callback:
+          return await self.selection_callback(ctx)
+      case "callback":
+        if self.callback:
+          return await self.callback(ctx)
+
+    await ctx.edit_origin(**self.to_dict())
+    return None

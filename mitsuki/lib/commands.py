@@ -17,7 +17,7 @@ Mitsuki messages library (mitsuki.lib.messages).
 
 from mitsuki import bot
 from mitsuki.lib import messages
-from mitsuki.lib.paginators import Paginator
+from mitsuki.lib.paginators import Paginator, SelectionPaginator
 from mitsuki.lib.userdata import new_session
 
 from attrs import define, asdict as _asdict
@@ -28,8 +28,10 @@ from interactions import (
   User,
   Member,
   InteractionContext,
+  ComponentContext,
   AutocompleteContext,
   Message,
+  StringSelectOption,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -369,6 +371,41 @@ class MultifieldMixin:
     self.message = await self.ctx.send(
       content=message.content, embed=message.embed[page_index] if message.embed else None, **kwargs
     )
+    return self.message
+
+
+class SelectionMixin(MultifieldMixin):
+  selection_values: List[Union[StringSelectOption, str]]
+  selection_per_page: int = 6
+
+
+  async def selection_callback(self, ctx: ComponentContext):
+    raise NotImplementedError
+
+
+  async def send_selection(
+    self,
+    template: Optional[str] = None,
+    *,
+    other_data: Optional[dict] = None,
+    template_kwargs: Optional[dict] = None,
+    timeout: int = 0,
+    **kwargs
+  ):
+    if not template:
+      if self.state:
+        template = self.state
+      else:
+        raise RuntimeError("Unspecified message template or state")
+    template_kwargs = template_kwargs or {}
+
+    message = self.message_multifield(template, other_data, **template_kwargs)
+    paginator = SelectionPaginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
+    paginator.show_select_menu = True
+    paginator.selection_values = self.selection_values
+    paginator.selection_callback = self.selection_callback
+    paginator.selection_per_page = self.selection_per_page
+    self.message = await paginator.send(self.ctx, content=message.content, **kwargs)
     return self.message
 
 
