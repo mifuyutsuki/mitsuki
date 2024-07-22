@@ -445,6 +445,40 @@ class Message(AsDict):
   @classmethod
   async def fetch(
     cls,
+    message_id: int,
+    guild: Optional[Snowflake] = None,
+  ):
+    query = (
+      select(
+        schema.Message,
+        schema.Schedule.guild,
+        schema.Schedule.title,
+        schema.Schedule.post_channel,
+        schema.Schedule.type,
+      )
+      .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule_id)
+      .where(schema.Message.id == message_id)
+    )
+    if guild:
+      query = query.where(schema.Schedule.guild == guild)
+
+    async with new_session() as session:
+      result = (await session.execute(query)).first()
+
+    if not result:
+      return None
+    return cls(
+      **result.Message.asdict(),
+      schedule_guild=result.guild,
+      schedule_title=result.title,
+      schedule_channel=result.post_channel,
+      schedule_type=result.type,
+    )
+
+
+  @classmethod
+  async def fetch_by_schedule(
+    cls,
     guild: Snowflake,
     schedule_title: str,
     discoverable: Optional[bool] = None,
