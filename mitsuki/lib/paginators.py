@@ -39,6 +39,8 @@ class Paginator(_Paginator):
   default_button_color = field(repr=False, default=ButtonStyle.GRAY)
   wrong_user_message = field(repr=False, default="This interaction is not for you")
 
+  extra_components: List[ActionRow] = field(repr=False, factory=list)
+
   def __attrs_post_init__(self):
     super().__attrs_post_init__()
     if len(self.pages) > 3:
@@ -49,6 +51,12 @@ class Paginator(_Paginator):
     if disable and self._timeout_task:
       self._timeout_task.run = False
     return super().create_components(disable)
+
+  def to_dict(self) -> dict:
+    source = super().to_dict()
+    if len(self.extra_components) > 0:
+      source["components"].extend([c.to_dict() for c in self.extra_components])
+    return source
 
   async def callback_cmd(self, ctx: ComponentContext):
     # Reset the timeout timer
