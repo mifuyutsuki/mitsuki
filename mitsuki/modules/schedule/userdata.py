@@ -437,6 +437,11 @@ class Message(AsDict):
     else:
       self.message_link = "-"
 
+    self.number_s = str(self.number) if self.number else "???"
+    self.partial_message = self.message if len(self.message) < 100 else self.message[:97].strip() + "..."
+    self.long_partial_message = self.message if len(self.message) < 1024 else self.message[:1022].strip() + "..."
+    self.posted_mark = "✅" if self.message_link != "-" else "🕗"
+
     self.schedule_channel_mention = f"<>" if self.schedule_channel else "-"
     self.created_by_mention = f"<@{self.created_by}>"
     self.modified_by_mention = f"<@{self.modified_by}>"
