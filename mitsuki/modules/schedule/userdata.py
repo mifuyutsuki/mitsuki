@@ -415,6 +415,10 @@ class Message(AsDict):
   schedule_channel: Optional[Snowflake] = field(default=None)
   schedule_type: Optional[int] = field(default=None)
 
+  number_s: str = field(init=False)
+  partial_message: str = field(init=False)
+  long_partial_message: str = field(init=False)
+  posted_mark: str = field(init=False)
   message_link: str = field(init=False)
   schedule_channel_mention: str = field(init=False)
   created_by_mention: str = field(init=False)
