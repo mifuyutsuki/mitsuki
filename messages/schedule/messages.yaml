@@ -1,0 +1,68 @@
+_namespace: schedule_messages
+
+# [multifield-selection]
+list:
+  base_template: admin
+  title: >-
+    Messages for "${schedule_title}" (${page}/${pages})
+  description: >-
+    `${total_messages}` available
+  thumbnail: >-
+    ${guild_icon}
+  field:
+    name   : ${posted_mark} ${schedule_title} \#${number_s} (ID:${id})
+    value  : >-
+      ${long_partial_message}
+    inline : false
+
+
+list_no_messages:
+  base_template: admin
+  title: >-
+    Messages for "${schedule_title}"
+  description: >-
+    No messages setup for this schedule yet.
+
+    Press the "Add" button to add a new message
+  thumbnail: >-
+    ${guild_icon}
+
+
+view:
+  base_template: admin
+  title: >-
+    ${schedule_title} \#${number_s} (ID:${id})
+  description: >-
+    ${message}
+  fields:
+  - name   : Tags
+    value  : >-
+      ${tags}
+    inline : false
+  - name   : Posted
+    value  : >-
+      ${posted_mark} ${schedule_messages_message_link}
+    inline : false
+  - name   : Created
+    value  : >-
+      ${date_created_f} by ${created_by_mention}
+    inline : false
+  - name   : Modified
+    value  : >-
+      ${date_modified_f} by ${modified_by_mention}
+
+
+edit:
+  base_template: admin
+  title: >-
+    Message Edited
+  description: >-
+    Press `Refresh` in the message view to show changes.
+  fields:
+  - name   : Message
+    value  : >-
+      ${message}
+
+
+message_link:
+  ${message_link} on ${date_posted_f}
