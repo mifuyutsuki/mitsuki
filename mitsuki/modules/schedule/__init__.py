@@ -20,6 +20,7 @@ from interactions import (
   SlashContext,
   SlashCommandChoice,
   StringSelectMenu,
+  ContextType,
   component_callback,
   ComponentContext,
   modal_callback,
@@ -64,12 +65,37 @@ class ScheduleModule(Extension):
   @slash_command(
     name="schedule",
     description="Message scheduler",
-    dm_permission=False
+    contexts=ContextType.GUILD,
   )
   async def schedule_cmd(self, ctx: SlashContext):
     pass
 
+
   # ===========================================================================
+  # Manage Schedule
+  # ===========================================================================
+
+  @schedule_cmd.subcommand(
+    sub_cmd_name="manage",
+    sub_cmd_description="Manage Schedules"
+  )
+  async def schedule_manage_cmd(self, ctx: SlashContext):
+    return await commands.ManageSchedules.create(ctx).list()
+
+  @component_callback(commands.CustomIDs.SCHEDULE_MANAGE)
+  async def schedule_manage_btn(self, ctx: ComponentContext):
+    return await commands.ManageSchedules.create(ctx).list()
+
+  @component_callback(commands.CustomIDs.SCHEDULE_VIEW.select())
+  async def schedule_view_select(self, ctx: ComponentContext):
+    return await commands.ManageSchedules.create(ctx).view(ctx.values[0])
+
+  @component_callback(commands.CustomIDs.SCHEDULE_VIEW.string_id_pattern())
+  async def schedule_view_btn(self, ctx: ComponentContext):
+    return await commands.ManageSchedules.create(ctx).view_from_button()
+
+  # ===========================================================================
+  # Create Schedule
   # ===========================================================================
 
   @schedule_cmd.subcommand(
@@ -86,11 +112,11 @@ class ScheduleModule(Extension):
   async def create_cmd(self, ctx: SlashContext, title: str):
     return await commands.CreateSchedule.create(ctx).run(title)
 
-  @component_callback(commands.CreateSchedule.SCHEDULE_CREATE_BUTTON)
+  @component_callback(commands.CustomIDs.SCHEDULE_CREATE.prompt())
   async def create_btn(self, ctx: ComponentContext):
     return await commands.CreateSchedule.create(ctx).prompt()
 
-  @modal_callback(commands.CreateSchedule.SCHEDULE_CREATE_MODAL)
+  @modal_callback(commands.CustomIDs.SCHEDULE_CREATE.response())
   async def create_response(self, ctx: ModalContext, title: str):
     return await commands.CreateSchedule.create(ctx).run(title)
 
@@ -111,58 +137,32 @@ class ScheduleModule(Extension):
   async def message_add_cmd(self, ctx: SlashContext, schedule: str):
     return await commands.AddMessage.create(ctx).prompt(schedule)
 
-  @component_callback(commands.AddMessage.MESSAGE_ADD_BUTTON_RE)
+  @component_callback(commands.CustomIDs.MESSAGE_ADD.prompt().string_id_pattern())
   async def message_add_btn(self, ctx: ComponentContext):
-    return await commands.AddMessage.create(ctx).prompt_from_button(ctx.custom_id)
+    return await commands.AddMessage.create(ctx).prompt_from_button()
 
-  @modal_callback(commands.AddMessage.MESSAGE_ADD_MODAL_RE)
-  async def message_add_response(self, ctx: ModalContext, message: str):
-    return await commands.AddMessage.create(ctx).run_from_prompt(ctx.custom_id, message)
-
-  # ===========================================================================
-  # ===========================================================================
-
-  @schedule_cmd.subcommand(
-    sub_cmd_name="manage",
-    sub_cmd_description="Manage Schedules"
-  )
-  async def schedule_manage_cmd(self, ctx: SlashContext):
-    return await commands.ManageSchedules.create(ctx).list()
-
-  @component_callback(commands.ManageSchedules.SCHEDULE_MANAGE_BUTTON)
-  async def schedule_manage_btn(self, ctx: ComponentContext):
-    return await commands.ManageSchedules.create(ctx).list()
-
-  @component_callback(commands.ManageSchedules.SCHEDULE_VIEW_SELECT)
-  async def schedule_view_select(self, ctx: ComponentContext):
-    return await commands.ManageSchedules.create(ctx).view(ctx.values[0])
-
-  @component_callback(commands.ManageSchedules.SCHEDULE_VIEW_BUTTON_RE)
-  async def schedule_view_btn(self, ctx: ComponentContext):
-    return await commands.ManageSchedules.create(ctx).view_from_button(ctx.custom_id)
+  @modal_callback(commands.CustomIDs.MESSAGE_ADD.response().string_id_pattern())
+  async def message_add_response(self, ctx: ModalContext, message: str, tags: Optional[str] = None):
+    return await commands.AddMessage.create(ctx).run_from_prompt(message, tags)
 
   # ===========================================================================
   # ===========================================================================
 
-  @component_callback(commands.ManageMessages.LIST_BUTTON_RE)
+  @component_callback(commands.CustomIDs.MESSAGE_LIST.string_id_pattern())
   async def schedule_messages_btn(self, ctx: ComponentContext):
-    return await commands.ManageMessages.create(ctx).list_from_button(ctx.custom_id)
+    return await commands.ManageMessages.create(ctx).list_from_button()
 
-  @component_callback(commands.ManageMessages.LIST_REFRESH_RE)
-  async def schedule_messages_refresh_btn(self, ctx: ComponentContext):
-    return await commands.ManageMessages.create(ctx).list_from_button(ctx.custom_id)
-
-  @component_callback(commands.ManageMessages.VIEW_RE)
+  @component_callback(commands.CustomIDs.MESSAGE_VIEW.string_id_pattern())
   async def schedule_messages_view_btn(self, ctx: ComponentContext):
-    return await commands.ManageMessages.create(ctx).view_from_button(ctx.custom_id)
+    return await commands.ManageMessages.create(ctx).view_from_button()
 
-  @component_callback(commands.ManageMessages.EDIT_PROMPT_RE)
+  @component_callback(commands.CustomIDs.MESSAGE_EDIT.prompt().string_id_pattern())
   async def schedule_messages_edit_prompt(self, ctx: ComponentContext):
-    return await commands.ManageMessages.create(ctx).edit_message_prompt(ctx.custom_id)
+    return await commands.ManageMessages.create(ctx).edit_prompt()
 
-  @modal_callback(commands.ManageMessages.EDIT_MESSAGE_RE)
-  async def schedule_messages_edit_response(self, ctx: ModalContext, message: str):
-    return await commands.ManageMessages.create(ctx).edit_message_response(ctx.custom_id, message)
+  @modal_callback(commands.CustomIDs.MESSAGE_EDIT.response().string_id_pattern())
+  async def schedule_messages_edit_response(self, ctx: ModalContext, message: str, tags: Optional[str] = None):
+    return await commands.ManageMessages.create(ctx).edit_response(message, tags)
 
   # @component_callback(commands.ManageMessages.MESSAGES_DELETE_CONFIRM_BUTTON_RE)
 
