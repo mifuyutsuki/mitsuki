@@ -23,6 +23,7 @@ from mitsuki.lib.userdata import new_session
 from attrs import define, asdict as _asdict
 from typing import Optional, Union, List, Dict, Any
 from enum import StrEnum
+from asyncio import iscoroutinefunction
 from interactions import (
   Snowflake,
   User,
@@ -136,7 +137,7 @@ class Command:
 
   @property
   def has_origin(self):
-    return hasattr(self.ctx, "edit_origin")
+    return hasattr(self.ctx, "edit_origin") and iscoroutinefunction(self.ctx.edit_origin)
 
   @property
   def caller_id(self):
