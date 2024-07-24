@@ -57,13 +57,10 @@ class ScheduleModule(Extension):
     await init_event.wait()
     await daemon.init()
 
-  # ===========================================================================
-  # ===========================================================================
-
   @slash_command(
     name="schedule",
     description="Message scheduler",
-    contexts=ContextType.GUILD,
+    contexts=[ContextType.GUILD],
   )
   async def schedule_cmd(self, ctx: SlashContext):
     pass
@@ -118,6 +115,23 @@ class ScheduleModule(Extension):
     return await commands.CreateSchedule.create(ctx).run(title)
 
   # ===========================================================================
+  # Configure Schedule (FUTURE)
+  # ===========================================================================
+
+  # ===========================================================================
+  # Manage Messages
+  # ===========================================================================
+
+  @component_callback(commands.CustomIDs.MESSAGE_LIST.string_id_pattern())
+  async def message_manage_btn(self, ctx: ComponentContext):
+    return await commands.ManageMessages.create(ctx).list_from_button()
+
+  @component_callback(commands.CustomIDs.MESSAGE_VIEW.string_id_pattern())
+  async def message_manage_view_btn(self, ctx: ComponentContext):
+    return await commands.ManageMessages.create(ctx).view_from_button()
+
+  # ===========================================================================
+  # Add Message
   # ===========================================================================
 
   @schedule_cmd.subcommand(
@@ -143,24 +157,21 @@ class ScheduleModule(Extension):
     return await commands.AddMessage.create(ctx).run_from_prompt(message, tags)
 
   # ===========================================================================
+  # Edit Message
   # ===========================================================================
 
-  @component_callback(commands.CustomIDs.MESSAGE_LIST.string_id_pattern())
-  async def schedule_messages_btn(self, ctx: ComponentContext):
-    return await commands.ManageMessages.create(ctx).list_from_button()
-
-  @component_callback(commands.CustomIDs.MESSAGE_VIEW.string_id_pattern())
-  async def schedule_messages_view_btn(self, ctx: ComponentContext):
-    return await commands.ManageMessages.create(ctx).view_from_button()
-
   @component_callback(commands.CustomIDs.MESSAGE_EDIT.prompt().string_id_pattern())
-  async def schedule_messages_edit_prompt(self, ctx: ComponentContext):
-    return await commands.ManageMessages.create(ctx).edit_prompt()
+  async def message_edit_btn(self, ctx: ComponentContext):
+    return await commands.EditMessage.create(ctx).prompt()
 
   @modal_callback(commands.CustomIDs.MESSAGE_EDIT.response().string_id_pattern())
-  async def schedule_messages_edit_response(self, ctx: ModalContext, message: str, tags: Optional[str] = None):
-    return await commands.ManageMessages.create(ctx).edit_response(message, tags)
+  async def message_edit_response(self, ctx: ModalContext, message: str, tags: Optional[str] = None):
+    return await commands.EditMessage.create(ctx).response(message, tags)
 
-  # @component_callback(commands.ManageMessages.MESSAGES_DELETE_CONFIRM_BUTTON_RE)
+  # ===========================================================================
+  # Delete Message (FUTURE)
+  # ===========================================================================
 
-  # @component_callback(commands.ManageMessages.MESSAGES_DELETE_BUTTON_RE)
+  # @component_callback(commands.CustomIDs.MESSAGE_DELETE.confirm().string_id_pattern())
+
+  # @component_callback(commands.CustomIDs.MESSAGE_DELETE.string_id_pattern())

@@ -269,14 +269,11 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
 class ManageMessages(SelectionMixin, ReaderCommand):
   state: "ManageMessages.States"
   data: "ManageMessages.Data"
-  schedule: Schedule
-  schedule_messages: List[ScheduleMessage]
 
   class States(StrEnum):
     LIST         = "schedule_message_list"
     NO_LIST      = "schedule_message_list_empty"
     VIEW         = "schedule_message_view"
-    EDIT_SUCCESS = "schedule_message_edit_success"
 
   @define(slots=False)
   class Data(AsDict):
@@ -394,69 +391,6 @@ class ManageMessages(SelectionMixin, ReaderCommand):
         )
       ]
     )
-
-
-  async def edit_prompt(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
-
-    message_id = int(CustomID.get_id_from(self.ctx))
-    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
-    if not message:
-      return await Errors.create(self.ctx).message_not_found()
-
-    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
-    if not schedule:
-      return await Errors.create(self.ctx).message_not_found()
-
-    return await self.ctx.send_modal(
-      modal=Modal(
-        ParagraphText(
-          label="Message",
-          custom_id="message",
-          placeholder="e.g. \"Which anime school uniform is your favorite?\"",
-          value=message.message,
-          min_length=1,
-          max_length=1800
-        ),
-        ShortText(
-          label="Tags",
-          custom_id="tags",
-          placeholder="Space-separated e.g. \"anime apparel favorite\"",
-          value=message.tags,
-          required=False,
-        ),
-        title=f"Edit Message",
-        custom_id=CustomIDs.MESSAGE_EDIT.response().id(message_id)
-      )
-    )
-
-
-  async def edit_response(self, message: str, tags: Optional[str] = None):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
-    await self.defer(ephemeral=True)
-
-    message_id = int(CustomID.get_id_from(self.ctx))
-    message_object = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
-    if not message_object:
-      return await Errors.create(self.ctx).message_not_found()
-
-    schedule = await check_fetch_schedule(self.ctx, f"{message_object.schedule_id}")
-    if not schedule:
-      return await Errors.create(self.ctx).message_not_found()
-
-    message_object.message = message
-    message_object.tags = sorted(tags.strip().lower().split()) if tags else None
-
-    if len(schedule.assign(message_object)) > 2000:
-      return await Errors.create(self.ctx).message_too_long()
-
-    async with new_session() as session:
-      await message_object.update_modify(session, self.ctx.author.id)
-      await session.commit()
-
-    return await self.send(self.States.EDIT_SUCCESS, other_data=message_object.asdict())
 
 
 class CreateSchedule(WriterCommand):
@@ -607,3 +541,93 @@ class AddMessage(WriterCommand):
 
   async def transaction(self, session: AsyncSession):
     await self.schedule_message.add(session)
+
+
+class EditMessage(WriterCommand):
+  state: "EditMessage.States"
+  data: "EditMessage.Data"
+
+  schedule_message: ScheduleMessage
+
+  class States(StrEnum):
+    SUCCESS = "schedule_message_edit_success"
+
+  @define(slots=False)
+  class Data(AsDict):
+    schedule_title: str
+    guild_name: str
+    message: str
+    number: str
+    tags: Optional[str] = None
+
+
+  async def prompt(self):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+
+    message_id = int(CustomID.get_id_from(self.ctx))
+    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
+    if not message:
+      return await Errors.create(self.ctx).message_not_found()
+
+    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
+    if not schedule:
+      return await Errors.create(self.ctx).message_not_found()
+
+    return await self.ctx.send_modal(
+      modal=Modal(
+        ParagraphText(
+          label="Message",
+          custom_id="message",
+          placeholder="e.g. \"Which anime school uniform is your favorite?\"",
+          value=message.message,
+          min_length=1,
+          max_length=1800
+        ),
+        ShortText(
+          label="Tags",
+          custom_id="tags",
+          placeholder="Space-separated e.g. \"anime apparel favorite\"",
+          value=message.tags,
+          required=False,
+        ),
+        title=f"Edit Message",
+        custom_id=CustomIDs.MESSAGE_EDIT.response().id(message_id)
+      )
+    )
+
+
+  async def response(self, message: str, tags: Optional[str] = None):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await self.defer(ephemeral=True)
+
+    message_id = int(CustomID.get_id_from(self.ctx))
+    message_object = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
+    if not message_object:
+      return await Errors.create(self.ctx).message_not_found()
+
+    schedule = await check_fetch_schedule(self.ctx, f"{message_object.schedule_id}")
+    if not schedule:
+      return await Errors.create(self.ctx).message_not_found()
+
+    message_object.message = message
+    message_object.tags = sorted(tags.strip().lower().split()) if tags else None
+
+    if len(schedule.assign(message_object)) > 2000:
+      return await Errors.create(self.ctx).message_too_long()
+
+    self.schedule_message = message_object
+    self.data = self.Data(
+      schedule_title=escape_text(schedule.title),
+      guild_name=self.ctx.guild.name,
+      message=self.schedule_message.message,
+      number=self.schedule_message.number_s,
+      tags=self.schedule_message.tags
+    )
+
+    return await self.send_commit(self.States.SUCCESS, other_data=message_object.asdict())
+
+
+  async def transaction(self, session: AsyncSession):
+    await self.schedule_message.update_modify(session, self.ctx.author.id)
