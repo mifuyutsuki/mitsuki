@@ -91,6 +91,10 @@ class CustomID(str):
   def get_id(self):
     return self.split(":")[-1]
 
+  @classmethod
+  def get_id_from(cls, ctx: ComponentContext):
+    return cls(ctx.custom_id).get_id()
+
 
 class AsDict:
   def asdict(self):

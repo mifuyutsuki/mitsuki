@@ -274,7 +274,7 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
 
 
   async def view_from_button(self):
-    return await self.view(CustomID(self.ctx.custom_id).get_id())
+    return await self.view(CustomID.get_id_from(self.ctx))
 
 
   async def view(self, schedule_key: str):
@@ -343,7 +343,7 @@ class AddMessage(WriterCommand):
 
 
   async def prompt_from_button(self):
-    return await self.prompt(CustomID(self.ctx.custom_id).get_id())
+    return await self.prompt(CustomID.get_id_from(self.ctx))
 
 
   async def prompt(self, schedule_key: str):
@@ -377,7 +377,7 @@ class AddMessage(WriterCommand):
 
 
   async def run_from_prompt(self, message: str, tags: Optional[str] = None):
-    return await self.run(CustomID(self.ctx.custom_id).get_id(), message, tags)
+    return await self.run(CustomID.get_id_from(self.ctx), message, tags)
 
 
   async def run(self, schedule_key: str, message: str, tags: Optional[str] = None):
@@ -435,7 +435,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
 
 
   async def list_from_button(self):
-    return await self.list(CustomID(self.ctx.custom_id).get_id())
+    return await self.list(CustomID.get_id_from(self.ctx))
 
 
   async def list(self, schedule_key: str):
@@ -506,7 +506,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
 
 
   async def view_from_button(self):
-    return await self.view(int(CustomID(self.ctx.custom_id).get_id()), edit_origin=True)
+    return await self.view(int(CustomID.get_id_from(self.ctx)), edit_origin=True)
 
 
   async def view(self, message_id: int, edit_origin: bool = False):
@@ -550,7 +550,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
     if not self.ctx.guild:
       return await _Errors.create(self.ctx).not_in_guild()
 
-    message_id = int(CustomID(self.ctx.custom_id).get_id())
+    message_id = int(CustomID.get_id_from(self.ctx))
     message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
     if not message:
       return await _Errors.create(self.ctx).message_not_found()
@@ -585,7 +585,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
       return await _Errors.create(self.ctx).not_in_guild()
     await self.defer(ephemeral=True)
 
-    message_id = int(CustomID(self.ctx.custom_id).get_id())
+    message_id = int(CustomID.get_id_from(self.ctx))
     message_object = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
     if not message_object:
       return await _Errors.create(self.ctx).message_not_found()
