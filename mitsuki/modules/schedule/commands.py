@@ -531,6 +531,7 @@ class AddMessage(WriterCommand):
     guild_name: str
     message: str
     number: str
+    tags: Optional[str] = None
 
 
   async def prompt_from_button(self):
@@ -597,6 +598,7 @@ class AddMessage(WriterCommand):
       guild_name=self.ctx.guild.name,
       message=message,
       number=number,
+      tags=self.schedule_message.tags
     )
     await self.send_commit(self.States.SUCCESS)
 
