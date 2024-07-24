@@ -586,21 +586,19 @@ class AddMessage(WriterCommand):
     else:
       number = "???"
 
-    self.schedule = schedule
     self.schedule_message = schedule.create_message(self.caller_id, message)
     if len(schedule.assign(self.schedule_message)) >= 2000:
       return await Errors.create(self.ctx).message_too_long()
     if tags:
       self.schedule_message.tags = " ".join(sorted(tags.strip().lower().split()))
 
-    message_data = {"message_" + k: v for k, v in self.schedule_message.asdict().items()}
     self.data = self.Data(
       schedule_title=escape_text(schedule.title),
       guild_name=self.ctx.guild.name,
       message=message,
       number=number,
     )
-    await self.send_commit(self.States.SUCCESS, other_data=message_data)
+    await self.send_commit(self.States.SUCCESS)
 
 
   async def transaction(self, session: AsyncSession):
