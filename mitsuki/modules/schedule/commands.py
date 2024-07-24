@@ -375,7 +375,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
 
     string_templates = []
     if message.message_id:
-      string_templates.append("schedule_messages_message_link")
+      string_templates.append("schedule_message_message_link")
 
     await self.send(
       self.States.VIEW,
