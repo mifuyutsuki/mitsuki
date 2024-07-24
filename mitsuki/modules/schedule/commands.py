@@ -445,7 +445,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
       return await Errors.create(self.ctx).message_not_found()
 
     message_object.message = message
-    message_object.tags = tags.strip().lower().split().sort() if tags else None
+    message_object.tags = sorted(tags.strip().lower().split()) if tags else None
 
     if len(schedule.assign(message_object)) > 2000:
       return await Errors.create(self.ctx).message_too_long()
@@ -576,7 +576,7 @@ class AddMessage(WriterCommand):
       return await Errors.create(self.ctx).not_in_guild()
     await self.defer(ephemeral=True)
 
-    schedule = await check_fetch_schedule(schedule_key)
+    schedule = await check_fetch_schedule(self.ctx, schedule_key)
     if not schedule:
       return await Errors.create(self.ctx).schedule_not_found(schedule_key)
 
@@ -591,7 +591,7 @@ class AddMessage(WriterCommand):
     if len(schedule.assign(self.schedule_message)) >= 2000:
       return await Errors.create(self.ctx).message_too_long()
     if tags:
-      self.schedule_message.tags = " ".join(tags.strip().lower().split().sort())
+      self.schedule_message.tags = " ".join(sorted(tags.strip().lower().split()))
 
     message_data = {"message_" + k: v for k, v in self.schedule_message.asdict().items()}
     self.data = self.Data(
