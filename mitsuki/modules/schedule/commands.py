@@ -97,25 +97,52 @@ async def has_schedule_permissions(ctx: InteractionContext, schedule: Optional[S
 
 class CustomIDs:
   SCHEDULE_MANAGE = CustomID("schedule_manage")
-  "Manage Schedules. (no args)"
+  """Manage Schedules. (no args)"""
 
   SCHEDULE_CREATE = CustomID("schedule_create")
-  "Create a Schedule. (no args; modal)"
+  """Create a Schedule. (no args; modal)"""
 
   SCHEDULE_VIEW = CustomID("schedule_view")
-  "View a Schedule. (id: Schedule ID/key; select)"
+  """View a Schedule. (id: Schedule ID/key; select)"""
+
+  CONFIGURE = CustomID("schedule_configure")
+  """Configure a Schedule. (id: Schedule ID)"""
+
+  CONFIGURE_TITLE = CustomID("schedule_configure_title")
+  """Rename the title of a Schedule. (id: Schedule ID; modal)"""
+
+  CONFIGURE_FORMAT = CustomID("schedule_configure_format")
+  """Set the posting format text of a Schedule. (id: Schedule ID; modal)"""
+
+  CONFIGURE_ACTIVE = CustomID("schedule_configure_active")
+  """Activate or deactivate a Schedule. (id: Schedule ID)"""
+
+  CONFIGURE_PIN = CustomID("schedule_configure_pin")
+  """Enable or disable pinning the latest message (requires extra permissions). (id: Schedule ID)"""
+
+  CONFIGURE_DISCOVERABLE = CustomID("schedule_configure_discoverable")
+  """[FUTURE] Show or hide messages in this Schedule to publicly accessible /schedule view. (id: Schedule ID)"""
+
+  CONFIGURE_CHANNEL = CustomID("schedule_configure_channel")
+  """Set where the Schedule should be posted. (id: Schedule ID; select)"""
+
+  CONFIGURE_ROLES = CustomID("schedule_configure_roles")
+  """Set roles other than admins that can manage messages in a Schedule. (id: Schedule ID; select [multiple])"""
+
+  CONFIGURE_ROUTINE = CustomID("schedule_configure_routine")
+  """[FUTURE] Set the posting time of a Schedule. (id: Schedule ID; select; modal)"""
 
   MESSAGE_ADD = CustomID("schedule_message_add")
-  "Add a message to a Schedule. (id: Schedule ID/key; modal)"
+  """Add a message to a Schedule. (id: Schedule ID/key; modal)"""
 
   MESSAGE_LIST = CustomID("schedule_message_list")
-  "View list of messages in a Schedule. (id: Schedule ID/key)"
+  """View list of messages in a Schedule. (id: Schedule ID/key)"""
 
   MESSAGE_VIEW = CustomID("schedule_message_view")
-  "View a message in a Schedule. (id: Message ID; select)"
+  """View a message in a Schedule. (id: Message ID; select)"""
 
   MESSAGE_EDIT = CustomID("schedule_message_edit")
-  "Edit a message in a Schedule. (id: Message ID; modal)"
+  """Edit a message in a Schedule. (id: Message ID; modal)"""
 
 
 class Errors(ReaderCommand):
