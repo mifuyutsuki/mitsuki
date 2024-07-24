@@ -1,4 +1,4 @@
-_namespace: schedule_messages
+_namespace: schedule_message
 
 # [multifield-selection]
 list:
@@ -16,7 +16,7 @@ list:
     inline : false
 
 
-list_no_messages:
+list_empty:
   base_template: admin
   title: >-
     Messages for "${schedule_title}"
@@ -41,7 +41,7 @@ view:
     inline : false
   - name   : Posted
     value  : >-
-      ${posted_mark} ${schedule_messages_message_link}
+      ${posted_mark} ${schedule_message_message_link}
     inline : false
   - name   : Created
     value  : >-
@@ -52,7 +52,28 @@ view:
       ${date_modified_f} by ${modified_by_mention}
 
 
-edit:
+add_success:
+  title: >-
+    Message added
+  fields:
+  - name   : Server
+    value  : ${guild_name}
+    inline : true
+  - name   : Schedule
+    value  : ${schedule_title}
+    inline : true
+  - name   : Post No.
+    value  : ${number}
+    inline : true
+  - name   : Message
+    value  : ${message}
+    inline : false
+  - name   : Tags
+    value  : ${tags}
+    inline : false
+
+
+edit_success:
   base_template: admin
   title: >-
     Message Edited

@@ -273,10 +273,10 @@ class ManageMessages(SelectionMixin, ReaderCommand):
   schedule_messages: List[ScheduleMessage]
 
   class States(StrEnum):
-    LIST         = "schedule_messages_list"
-    NO_LIST      = "schedule_messages_list_no_messages"
-    VIEW         = "schedule_messages_view"
-    EDIT_SUCCESS = "schedule_messages_edit"
+    LIST         = "schedule_message_list"
+    NO_LIST      = "schedule_message_list_empty"
+    VIEW         = "schedule_message_view"
+    EDIT_SUCCESS = "schedule_message_edit_success"
 
   @define(slots=False)
   class Data(AsDict):
@@ -465,7 +465,7 @@ class CreateSchedule(WriterCommand):
   schedule: Schedule
 
   class States(StrEnum):
-    SUCCESS = "schedule_create"
+    SUCCESS = "schedule_manage_create_success"
 
   @define(slots=False)
   class Data(AsDict):
@@ -525,7 +525,7 @@ class AddMessage(WriterCommand):
   schedule_message: ScheduleMessage
 
   class States(StrEnum):
-    SUCCESS = "schedule_add"
+    SUCCESS = "schedule_message_add_success"
 
   @define(slots=False)
   class Data(AsDict):
