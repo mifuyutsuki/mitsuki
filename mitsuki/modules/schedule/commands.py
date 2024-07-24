@@ -97,25 +97,25 @@ async def has_schedule_permissions(ctx: InteractionContext, schedule: Optional[S
 
 class CustomIDs:
   SCHEDULE_MANAGE = CustomID("schedule_manage")
-  "Manage Schedules. Has no arguments."
+  "Manage Schedules. (no args)"
 
   SCHEDULE_CREATE = CustomID("schedule_create")
-  "Create a Schedule. Has no arguments. Has modal."
+  "Create a Schedule. (no args; modal)"
 
   SCHEDULE_VIEW = CustomID("schedule_view")
-  "View a Schedule. Includes Schedule ID/Key or select."
+  "View a Schedule. (id: Schedule ID/key; select)"
 
   MESSAGE_ADD = CustomID("schedule_message_add")
-  "Add a message to a Schedule. Includes Schedule ID/Key. Has modal."
+  "Add a message to a Schedule. (id: Schedule ID/key; modal)"
 
   MESSAGE_LIST = CustomID("schedule_message_list")
-  "View list of messages in a Schedule. Includes Schedule ID/Key."
+  "View list of messages in a Schedule. (id: Schedule ID/key)"
 
   MESSAGE_VIEW = CustomID("schedule_message_view")
-  "View a message in a Schedule. Includes Message ID or select."
+  "View a message in a Schedule. (id: Message ID; select)"
 
   MESSAGE_EDIT = CustomID("schedule_message_edit")
-  "Edit a message in a Schedule. Includes Message ID. Has modal."
+  "Edit a message in a Schedule. (id: Message ID; modal)"
 
 
 class Errors(ReaderCommand):
