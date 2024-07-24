@@ -38,8 +38,10 @@ from interactions import (
   spread_to_rows
 )
 from sqlalchemy.ext.asyncio import AsyncSession
+import re
 
 __all__ = (
+  "CustomID",
   "AsDict",
   "Caller",
   "Target",
@@ -59,6 +61,35 @@ def _bot_data():
     "bot_username": bot.user.display_name,
     "bot_usericon": bot.user.avatar_url
   }
+
+
+class CustomID(str):
+  def __add__(self, other):
+    return CustomID(str(self) + str(other))
+
+  def prompt(self):
+    return self + "|prompt"
+
+  def response(self):
+    return self + "|response"
+
+  def select(self):
+    return self + "|select"
+
+  def confirm(self):
+    return self + "|confirm"
+
+  def id(self, value: Any):
+    return self + f":{value}"
+
+  def numeric_id_pattern(self):
+    return re.compile(re.escape(self) + r":[0-9]+$")
+
+  def string_id_pattern(self):
+    return re.compile(re.escape(self) + r":.+$")
+
+  def get_id(self):
+    return self.split(":")[-1]
 
 
 class AsDict:

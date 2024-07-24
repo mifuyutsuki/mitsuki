@@ -37,6 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mitsuki import bot
 from mitsuki.utils import escape_text, is_caller, get_member_color_value
 from mitsuki.lib.commands import (
+  CustomID,
   AsDict,
   ReaderCommand,
   WriterCommand,
@@ -92,35 +93,6 @@ async def has_schedule_permissions(ctx: InteractionContext, schedule: Optional[S
     has_role = await has_user_roles(ctx, schedule.manager_role_objects)
 
   return has_role or has_admin
-
-
-class CustomID(str):
-  def __add__(self, other):
-    return CustomID(str(self) + str(other))
-
-  def prompt(self):
-    return self + "|prompt"
-
-  def response(self):
-    return self + "|response"
-
-  def select(self):
-    return self + "|select"
-
-  def confirm(self):
-    return self + "|confirm"
-
-  def id(self, value: Any):
-    return self + f":{value}"
-
-  def numeric_id_pattern(self):
-    return re.compile(re.escape(self) + r":[0-9]+$")
-
-  def string_id_pattern(self):
-    return re.compile(re.escape(self) + r":.+$")
-
-  def get_id(self):
-    return self.split(":")[-1]
 
 
 class CustomIDs:
