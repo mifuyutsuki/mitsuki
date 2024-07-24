@@ -20,7 +20,7 @@ from croniter import croniter
 from typing import Dict, List, Optional, Union
 from datetime import datetime
 
-from mitsuki import logger
+from mitsuki import bot, logger
 from mitsuki.lib.userdata import new_session
 from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes, timestamp_now
 
@@ -236,3 +236,6 @@ class Daemon:
 
     if schedule_task := self.active_schedules.get(schedule.id):
       schedule_task.refresh(schedule)
+
+
+daemon = Daemon(bot)

@@ -47,17 +47,15 @@ from mitsuki import init_event, bot
 from mitsuki.utils import UserDenied
 
 from .userdata import Schedule, Message
-from .daemon import Daemon
+from .daemon import daemon
 from . import commands
 
-class ScheduleModule(Extension):
-  daemon: Daemon
 
+class ScheduleModule(Extension):
   @listen(Startup)
   async def on_startup(self):
     await init_event.wait()
-    self.daemon = Daemon(self.bot)
-    await self.daemon.init()
+    await daemon.init()
 
   # ===========================================================================
   # ===========================================================================
@@ -69,7 +67,6 @@ class ScheduleModule(Extension):
   )
   async def schedule_cmd(self, ctx: SlashContext):
     pass
-
 
   # ===========================================================================
   # Manage Schedule
