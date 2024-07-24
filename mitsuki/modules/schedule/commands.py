@@ -414,6 +414,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
         ParagraphText(
           label="Message",
           custom_id="message",
+          placeholder="e.g. \"Which anime school uniform is your favorite?\"",
           value=message.message,
           min_length=1,
           max_length=1800
@@ -421,6 +422,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
         ShortText(
           label="Tags",
           custom_id="tags",
+          placeholder="Space-separated e.g. \"anime apparel favorite\"",
           value=message.tags,
           required=False,
         ),
