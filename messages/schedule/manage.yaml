@@ -68,6 +68,14 @@ view:
     inline : false
 
 
+create_already_exists:
+  title: >-
+    Error
+  description: >-
+    A schedule in this server with this title already exists.
+  color: error
+
+
 create_success:
   title: >-
     Schedule Created

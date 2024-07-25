@@ -81,6 +81,24 @@ edit_format_success:
     Press `Refresh` in the configure menu to show changes.
 
 
+not_ready:
+  title: >-
+    Error
+  description: >-
+    Cannot activate this Schedule.
+
+
+    Make sure the bot has the permissions to post in the target channel.
+  color: error
+
+
+title_already_exists:
+  title: >-
+    Error
+  description: >-
+    A schedule in this server with this title already exists.
+
+
 requires_send_permissions:
   title: >-
     Error

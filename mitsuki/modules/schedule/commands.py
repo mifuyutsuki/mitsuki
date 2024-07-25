@@ -180,6 +180,10 @@ class Errors(ReaderCommand):
     await self.send("schedule_error_message_not_found", ephemeral=True)
 
 
+  async def invalid_input(self, field: str):
+    await self.send("schedule_error_invalid_input", other_data={"field": field}, ephemeral=True)
+
+
 class ManageSchedules(SelectionMixin, ReaderCommand):
   state: "ManageSchedules.States"
   data: "ManageSchedules.Data"
@@ -444,7 +448,8 @@ class CreateSchedule(WriterCommand):
   schedule: Schedule
 
   class States(StrEnum):
-    SUCCESS = "schedule_manage_create_success"
+    SUCCESS        = "schedule_manage_create_success"
+    ALREADY_EXISTS = "schedule_manage_create_already_exists"
 
   @define(slots=False)
   class Data(AsDict):
@@ -488,6 +493,17 @@ class CreateSchedule(WriterCommand):
     else:
       await self.defer(ephemeral=True)
 
+    schedule_title = schedule_title.strip()
+
+    # Length check
+    if len(schedule_title) <= 0:
+      return await Errors.create(self.ctx).invalid_input("Schedule title")
+
+    # Duplicate check
+    guild_schedules = await Schedule.fetch_many(guild=self.ctx.guild.id)
+    if schedule_title in (s.title for s in guild_schedules):
+      return await self.send(self.States.ALREADY_EXISTS)
+
     self.data = self.Data(schedule_title=schedule_title, guild_name=self.ctx.guild.name)
     self.schedule = Schedule.create(self.ctx, schedule_title)
 
@@ -507,10 +523,12 @@ class ConfigureSchedule(WriterCommand):
     SELECT_CHANNEL = "schedule_configure_select_channel"
     SELECT_ROLES   = "schedule_configure_select_roles"
 
-    EDIT_TITLE_SUCCESS = "schedule_configure_edit_title_success"
+    EDIT_TITLE_SUCCESS  = "schedule_configure_edit_title_success"
     EDIT_FORMAT_SUCCESS = "schedule_configure_edit_format_success"
 
     # Errors
+    NOT_READY                = "schedule_configure_not_ready"
+    TITLE_ALREADY_EXISTS     = "schedule_configure_title_already_exists"
     SEND_PERMISSION_REQUIRED = "schedule_configure_requires_send_permissions"
     PIN_PERMISSION_REQUIRED  = "schedule_configure_requires_pin_permissions"
 
@@ -650,6 +668,21 @@ class ConfigureSchedule(WriterCommand):
     if not schedule:
       return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
 
+    title = title.strip()
+
+    # Length check
+    if len(title) <= 0:
+      return await Errors.create(self.ctx).invalid_input("Schedule title")
+
+    # Same title check
+    if title == schedule.title:
+      return await self.send(self.States.EDIT_TITLE_SUCCESS)
+
+    # Duplicate check
+    guild_schedules = await Schedule.fetch_many(guild=self.ctx.guild.id)
+    if title in (s.title for s in guild_schedules):
+      return await self.send(self.States.TITLE_ALREADY_EXISTS)
+
     schedule.title = title
 
     async with new_session() as session:
@@ -702,6 +735,16 @@ class ConfigureSchedule(WriterCommand):
     if not schedule:
       return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
 
+    format = format.strip()
+
+    # Length check
+    if len(format) <= 0:
+      return await Errors.create(self.ctx).invalid_input("Schedule format")
+
+    # Same format check
+    if format == schedule.format:
+      return await self.send(self.States.EDIT_FORMAT_SUCCESS)
+
     schedule.format = format
 
     async with new_session() as session:
@@ -727,6 +770,8 @@ class ConfigureSchedule(WriterCommand):
     if schedule.active:
       await daemon.deactivate(schedule)
       schedule.deactivate()
+    elif not await schedule.is_valid():
+      return await self.send(self.States.NOT_READY, ephemeral=True)
     else:
       await daemon.activate(schedule)
       schedule.activate()
@@ -1031,6 +1076,12 @@ class AddMessage(WriterCommand):
     if not schedule:
       return await Errors.create(self.ctx).schedule_not_found(schedule_key)
 
+    message = message.strip()
+
+    # Length check
+    if len(message) <= 0:
+      return await Errors.create(self.ctx).invalid_input("Schedule message")
+
     # Actual addition goes here
     if schedule.type == ScheduleTypes.QUEUE:
       number = str(schedule.current_number + 1)
@@ -1125,6 +1176,14 @@ class EditMessage(WriterCommand):
     schedule = await check_fetch_schedule(self.ctx, f"{message_object.schedule_id}")
     if not schedule:
       return await Errors.create(self.ctx).message_not_found()
+
+    message = message.strip()
+
+    # Length check
+    if len(message) <= 0:
+      return await Errors.create(self.ctx).invalid_input("Schedule message")
+    if tags and len(tags.strip()) <= 0:
+      return await Errors.create(self.ctx).invalid_input("Schedule message tags")
 
     message_object.message = message
     if tags:

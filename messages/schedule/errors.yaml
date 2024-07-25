@@ -26,3 +26,11 @@ message_not_found:
     Message Not Found
   description: >-
     Could not find the specified message.
+  color: error
+
+invalid_input:
+  title: >-
+    Invalid Input
+  description: >-
+    Not a valid input for ${field}.
+  color: error
