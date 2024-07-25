@@ -114,7 +114,7 @@ class DaemonTask:
     is_ready = formatted_message is not None
 
     # Execution: Unpin current message
-    if schedule.current_pin:
+    if schedule.current_pin and is_ready:
       if current_pin := await channel.fetch_message(schedule.current_pin):
         try:
           if current_pin.pinned:
