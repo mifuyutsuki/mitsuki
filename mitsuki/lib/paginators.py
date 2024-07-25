@@ -130,6 +130,9 @@ class SelectionPaginator(Paginator):
         ],
       )
     )
+    if len(self.pages) > 3:
+      self.callback = self.callback_cmd
+      self.show_callback_button = True
 
 
   def create_components(self, disable: bool = False):
