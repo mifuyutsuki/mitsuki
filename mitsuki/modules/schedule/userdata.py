@@ -312,8 +312,8 @@ class Schedule(AsDict):
     else:
       mitsuki_message = f"-# Scheduled message '{self.title}'"
     if message.tags:
-      mitsuki_message += f" — Tags: {message.tags}"
-    return user_message + "\n" + mitsuki_message
+      mitsuki_message += f" - Tags: {message.tags.replace(" ", ", ")}"
+    return user_message + "\n-# — — — — — — — — — —\n" + mitsuki_message
 
 
   @staticmethod
