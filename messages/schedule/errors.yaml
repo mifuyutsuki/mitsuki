@@ -11,14 +11,14 @@ schedule_not_found:
   title: >-
     Schedule Not Found
   description: >-
-    Could not find a Schedule with the key "${schedule_title}".
+    Could not find a Schedule with the specified title or key.
   color: error
 
 message_too_long:
   title: >-
     Message Too Long
   description: >-
-    Resulting scheduled message is too long (**${length}** > 2000).
+    Resulting scheduled message is too long. (**${length}** > 2000)
   color: error
 
 message_not_found:

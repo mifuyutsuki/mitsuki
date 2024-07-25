@@ -83,7 +83,7 @@ edit_format_success:
 
 requires_send_permissions:
   title: >-
-    Cannot Select Channel
+    Error
   description: >-
     The bot has no permissions to post in this channel.
 
@@ -94,7 +94,7 @@ requires_send_permissions:
 
 requires_pin_permissions:
   title: >-
-    Cannot Enable Pin
+    Error
   description: >-
     The bot has no permissions to pin in the channel.
 

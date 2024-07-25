@@ -70,11 +70,10 @@ view:
 
 create_success:
   title: >-
-    Schedule created
+    Schedule Created
   description: >-
-    This Schedule is not yet active. Configure and activate in `/schedule manage`
-    
-    You can add messages to this Schedule using `/schedule add`
+    Go to Configure in `/schedule manage` to set up and activate this Schedule,
+    add messages, and more.
   fields:
   - name   : Server
     value  : ${guild_name}
