@@ -328,12 +328,6 @@ class Schedule(AsDict):
 
 
   async def is_valid(self):
-    if not self.type == ScheduleTypes.ONE_MESSAGE:
-      if (
-        "${message}" not in self.format
-        or await Message.fetch_count(self.guild, self.title) <= 0
-      ):
-        return False
     if (
       not self.post_channel
       or len(self.format.strip()) <= 0
