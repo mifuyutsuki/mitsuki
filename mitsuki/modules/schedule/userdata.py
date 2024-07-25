@@ -301,13 +301,18 @@ class Schedule(AsDict):
 
 
   def assign(self, message: "Message"):
-    user_message = Template(self.format).safe_substitute(message.asfmtdict())
+    user_message = Template(self.format).safe_substitute(
+      {
+        "message": message.message,
+        "number": message.number_s,
+      }
+    )
     if message.number:
       mitsuki_message = f"-# Scheduled message '{self.title}' #{message.number}"
     else:
       mitsuki_message = f"-# Scheduled message '{self.title}'"
     if message.tags:
-      mitsuki_message += f"- Tags: {message.tags}"
+      mitsuki_message += f" — Tags: {message.tags}"
     return user_message + "\n" + mitsuki_message
 
 
