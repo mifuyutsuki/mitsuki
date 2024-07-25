@@ -107,7 +107,7 @@ async def has_bot_permissions(ctx: BaseContext, permissions: Union[List[Permissi
 
 async def assert_bot_channel_permissions(
   bot: Client,
-  channel_id: Snowflake,
+  channel_id: Optional[Snowflake],
   permissions: Union[List[Permissions] | Permissions],
   message: str
 ):
@@ -117,9 +117,12 @@ async def assert_bot_channel_permissions(
 
 async def has_bot_channel_permissions(
   bot: Client,
-  channel_id: Snowflake,
+  channel_id: Optional[Snowflake],
   permissions: Union[List[Permissions] | Permissions]
 ):
+  if not channel_id:
+    return False
+
   channel = await bot.fetch_channel(channel_id)
   if not channel:
     return False
