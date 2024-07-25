@@ -265,12 +265,9 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
   async def view(self, schedule_key: str):
     if not self.ctx.guild:
       return await Errors.create(self.ctx).not_in_guild()
-    await assert_user_permissions(
-      self.ctx, Permissions.ADMINISTRATOR,
-      "Server admin"
-    )
 
-    schedule = await fetch_schedule(self.ctx, schedule_key)
+    can_configure = await has_user_permissions(self.ctx, Permissions.ADMINISTRATOR)
+    schedule = await check_fetch_schedule(self.ctx, schedule_key)
     if not schedule:
       return await Errors.create(self.ctx).schedule_not_found(schedule_key)
 
@@ -291,26 +288,36 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
         "escape_data_values": "guild_name"
       },
       components=[
-         Button(
-          style=ButtonStyle.GREEN,
-          label="Add...",
-          custom_id=CustomIDs.MESSAGE_ADD.prompt().id(schedule.id)
+        ActionRow(
+          Button(
+            style=ButtonStyle.GREEN,
+            label="Add...",
+            custom_id=CustomIDs.MESSAGE_ADD.prompt().id(schedule.id)
+          ),
+          Button(
+            style=ButtonStyle.BLURPLE,
+            label="Messages",
+            custom_id=CustomIDs.MESSAGE_LIST.id(schedule.id)
+          ),
+          Button(
+            style=ButtonStyle.BLURPLE,
+            label="Configure",
+            custom_id=CustomIDs.CONFIGURE.id(schedule.id),
+            disabled=not can_configure
+          ),
         ),
-        Button(
-          style=ButtonStyle.BLURPLE,
-          label="Configure",
-          custom_id=CustomIDs.CONFIGURE.id(schedule.id)
-        ),
-        Button(
-          style=ButtonStyle.BLURPLE,
-          label="Messages",
-          custom_id=CustomIDs.MESSAGE_LIST.id(schedule.id)
-        ),
-        Button(
-          style=ButtonStyle.GRAY,
-          label="Back to Schedules",
-          custom_id=CustomIDs.SCHEDULE_MANAGE,
-        ),
+        ActionRow(
+          Button(
+            style=ButtonStyle.GRAY,
+            label="Refresh",
+            custom_id=CustomIDs.SCHEDULE_VIEW.id(schedule.id),
+          ),
+          Button(
+            style=ButtonStyle.GRAY,
+            label="Back to Schedules",
+            custom_id=CustomIDs.SCHEDULE_MANAGE,
+          ),
+        )
       ]
     )
 
