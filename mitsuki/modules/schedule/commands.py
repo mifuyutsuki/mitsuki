@@ -14,6 +14,7 @@ import re
 from attrs import define, field
 from typing import Optional, Union, List, Dict, Any, NamedTuple
 from enum import Enum, StrEnum
+from contextlib import suppress
 from interactions import (
   ComponentContext,
   Snowflake,
@@ -22,16 +23,23 @@ from interactions import (
   InteractionContext,
   Message,
   Timestamp,
+  ActionRow,
   Button,
   ButtonStyle,
   StringSelectMenu,
   StringSelectOption,
+  ChannelSelectMenu,
+  ChannelType,
+  TYPE_ALL_CHANNEL,
+  RoleSelectMenu,
+  Role,
   Permissions,
   Modal,
   ShortText,
   ParagraphText,
   spread_to_rows,
 )
+from interactions.client.errors import Forbidden, NotFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mitsuki import bot
@@ -52,11 +60,13 @@ from mitsuki.lib.checks import (
   assert_user_roles,
   has_user_permissions,
   has_user_roles,
+  has_bot_channel_permissions,
   UserDenied,
 )
 from mitsuki.lib.userdata import new_session
 
 from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes
+from .daemon import daemon
 
 
 async def fetch_schedule(ctx: InteractionContext, schedule_key: str):
@@ -129,6 +139,9 @@ class CustomIDs:
   CONFIGURE_ROLES = CustomID("schedule_configure_roles")
   """Set roles other than admins that can manage messages in a Schedule. (id: Schedule ID; select [multiple])"""
 
+  CONFIGURE_ROLES_CLEAR = CustomID("schedule_configure_roles|clear")
+  """Clear manager roles of a Schedule. (id: Schedule ID)"""
+
   CONFIGURE_ROUTINE = CustomID("schedule_configure_routine")
   """[FUTURE] Set the posting time of a Schedule. (id: Schedule ID; select; modal)"""
 
@@ -149,10 +162,10 @@ class Errors(ReaderCommand):
   async def not_in_guild(self):
     await self.send("schedule_error_not_in_guild", ephemeral=True)
 
-  async def schedule_not_found(self, schedule_key: str):
+  async def schedule_not_found(self, schedule_key: Optional[str] = None):
     await self.send(
       "schedule_error_schedule_not_found",
-      other_data={"schedule_title": escape_text(schedule_key)},
+      other_data={"schedule_title": escape_text(schedule_key or "-")},
       ephemeral=True,
     )
 
@@ -278,6 +291,11 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
           style=ButtonStyle.GREEN,
           label="Add...",
           custom_id=CustomIDs.MESSAGE_ADD.prompt().id(schedule.id)
+        ),
+        Button(
+          style=ButtonStyle.BLURPLE,
+          label="Configure",
+          custom_id=CustomIDs.CONFIGURE.id(schedule.id)
         ),
         Button(
           style=ButtonStyle.BLURPLE,
@@ -445,10 +463,11 @@ class CreateSchedule(WriterCommand):
     return await self.ctx.send_modal(
       modal=Modal(
         ShortText(
-          label="Schedule Name",
+          label="Schedule Title",
           custom_id="title",
-          placeholder="e.g. 'Daily Questions'",
-          min_length=1,
+          placeholder="e.g. \"Daily Questions\"",
+          min_length=3,
+          max_length=64,
         ),
         title="Create Schedule",
         custom_id=CustomIDs.SCHEDULE_CREATE.response()
@@ -477,6 +496,475 @@ class CreateSchedule(WriterCommand):
 
   async def transaction(self, session: AsyncSession):
     await self.schedule.add(session)
+
+
+class ConfigureSchedule(WriterCommand):
+  state: "ConfigureSchedule.States"
+  data: "ConfigureSchedule.Data"
+
+  class States(StrEnum):
+    MAIN           = "schedule_configure"
+    SELECT_CHANNEL = "schedule_configure_select_channel"
+    SELECT_ROLES   = "schedule_configure_select_roles"
+
+    EDIT_TITLE_SUCCESS = "schedule_configure_edit_title_success"
+    EDIT_FORMAT_SUCCESS = "schedule_configure_edit_format_success"
+
+    # Errors
+    SEND_PERMISSION_REQUIRED = "schedule_configure_requires_send_permissions"
+    PIN_PERMISSION_REQUIRED  = "schedule_configure_requires_pin_permissions"
+
+    # Future
+    SELECT_ROUTINE = "schedule_configure_select_routine"
+
+  @define(slots=False)
+  class Data(AsDict):
+    guild_name: str
+    guild_icon: str
+
+
+  async def main(self):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+
+    if self.has_origin:
+      await self.defer(edit_origin=True)
+    else:
+      await self.defer(ephemeral=True)
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
+    if not schedule:
+      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+
+    self.data = self.Data(
+      guild_name=self.ctx.guild.name,
+      guild_icon=self.ctx.guild.icon.url if self.ctx.guild.icon else self.ctx.bot.user.avatar_url,
+    )
+    await self.send(
+      self.States.MAIN,
+      other_data=schedule.asdict(),
+      components=[
+        ActionRow(
+          Button(
+            style=ButtonStyle.BLURPLE,
+            label="Title...",
+            custom_id=CustomIDs.CONFIGURE_TITLE.prompt().id(schedule_id)
+          ),
+          Button(
+            style=ButtonStyle.BLURPLE,
+            label="Format...",
+            custom_id=CustomIDs.CONFIGURE_FORMAT.prompt().id(schedule_id)
+          ),
+          Button(
+            style=ButtonStyle.BLURPLE,
+            label="Roles...",
+            custom_id=CustomIDs.CONFIGURE_ROLES.prompt().id(schedule_id)
+          ),
+          Button(
+            style=ButtonStyle.BLURPLE,
+            label="Channel...",
+            custom_id=CustomIDs.CONFIGURE_CHANNEL.prompt().id(schedule_id),
+            disabled=schedule.active
+          ),
+        ),
+        ActionRow(
+          Button(
+            style=ButtonStyle.RED if schedule.active else ButtonStyle.GREEN,
+            label="Deactivate" if schedule.active else "Activate",
+            custom_id=CustomIDs.CONFIGURE_ACTIVE.id(schedule_id),
+            disabled=not schedule.active and not await schedule.is_valid()
+          ),
+          Button(
+            style=ButtonStyle.RED if schedule.pin else ButtonStyle.GREEN,
+            label="Disable Pin" if schedule.pin else "Enable Pin",
+            custom_id=CustomIDs.CONFIGURE_PIN.id(schedule_id),
+            disabled=schedule.post_channel is None
+          ),
+          Button(
+            style=ButtonStyle.RED if schedule.discoverable else ButtonStyle.GREEN,
+            label="Disable Discovery" if schedule.discoverable else "Enable Discovery",
+            custom_id=CustomIDs.CONFIGURE_DISCOVERABLE.id(schedule_id)
+          ),
+        ),
+        ActionRow(
+          Button(
+            style=ButtonStyle.GRAY,
+            label="Refresh",
+            custom_id=CustomIDs.CONFIGURE.id(schedule_id)
+          ),
+          Button(
+            style=ButtonStyle.GRAY,
+            label="Back to Schedule",
+            custom_id=CustomIDs.SCHEDULE_VIEW.id(schedule_id)
+          ),
+        ),
+      ]
+    )
+
+
+  async def prompt_title(self):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
+    if not schedule:
+      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+
+    return await self.ctx.send_modal(
+      modal=Modal(
+        ShortText(
+          label="Title",
+          custom_id="title",
+          placeholder="e.g. \"Daily Questions\"",
+          value=schedule.title,
+          min_length=3,
+          max_length=64,
+        ),
+        title="Edit Schedule",
+        custom_id=CustomIDs.CONFIGURE_TITLE.response().id(schedule_id)
+      )
+    )
+
+
+  async def set_title(self, title: str):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+    await self.defer(ephemeral=True)
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
+    if not schedule:
+      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+
+    schedule.title = title
+
+    async with new_session() as session:
+      await schedule.update_modify(session, self.ctx.author.id)
+      await session.commit()
+
+    return await self.send(self.States.EDIT_TITLE_SUCCESS)
+
+
+  async def prompt_format(self):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
+    if not schedule:
+      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+
+    return await self.ctx.send_modal(
+      modal=Modal(
+        ParagraphText(
+          label="Format",
+          custom_id="format",
+          placeholder="e.g. \"Today's Question: ${message}\"",
+          value=schedule.format,
+          min_length=3,
+          max_length=1800,
+        ),
+        title="Edit Schedule",
+        custom_id=CustomIDs.CONFIGURE_FORMAT.response().id(schedule_id)
+      )
+    )
+
+
+  async def set_format(self, format: str):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+    await self.defer(ephemeral=True)
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
+    if not schedule:
+      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+
+    schedule.format = format
+
+    async with new_session() as session:
+      await schedule.update_modify(session, self.ctx.author.id)
+      await session.commit()
+
+    return await self.send(self.States.EDIT_FORMAT_SUCCESS)
+
+
+  async def toggle_active(self):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
+    if not schedule:
+      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+
+    if schedule.active:
+      await daemon.deactivate(schedule)
+      schedule.deactivate()
+    else:
+      await daemon.activate(schedule)
+      schedule.activate()
+
+    async with new_session() as session:
+      await schedule.update_modify(session, self.ctx.author.id)
+      await session.commit()
+
+    return await self.main()
+
+
+  async def toggle_pin(self):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
+    if not schedule:
+      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+
+    if schedule.pin and schedule.current_pin and schedule.post_channel:
+      with suppress(Forbidden, NotFound):
+        pinned_channel = await self.ctx.guild.fetch_channel(schedule.post_channel)
+        if pinned_channel and (pinned_message := await pinned_channel.fetch_message(schedule.current_pin)):
+          await pinned_message.unpin()
+      schedule.current_pin = None
+    else:
+      if not await has_bot_channel_permissions(
+        self.ctx.bot,
+        schedule.post_channel,
+        [
+          Permissions.MANAGE_MESSAGES,
+          Permissions.VIEW_CHANNEL,
+          Permissions.READ_MESSAGE_HISTORY,
+          Permissions.SEND_MESSAGES
+        ]
+      ):
+        return await self.send(self.States.PIN_PERMISSION_REQUIRED, ephemeral=True)
+
+    schedule.pin = not schedule.pin
+
+    async with new_session() as session:
+      await schedule.update_modify(session, self.ctx.author.id)
+      await session.commit()
+    return await self.main()
+
+
+  async def toggle_discoverable(self):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
+    if not schedule:
+      await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+
+    schedule.discoverable = not schedule.discoverable
+
+    async with new_session() as session:
+      await schedule.update_modify(session, self.ctx.author.id)
+      await session.commit()
+    return await self.main()
+
+
+  async def select_channel(self):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+
+    if self.has_origin:
+      await self.defer(edit_origin=True)
+    else:
+      await self.defer(ephemeral=True)
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
+    if not schedule:
+      await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+
+    current_channel = None
+    if schedule.post_channel:
+      current_channel = await self.ctx.guild.fetch_channel(schedule.post_channel)
+
+    return await self.send(
+      self.States.SELECT_CHANNEL,
+      other_data=schedule.asdict(),
+      components=[
+        ActionRow(
+          ChannelSelectMenu(
+            channel_types=[ChannelType.GUILD_TEXT],
+            placeholder="Select post channel",
+            default_values=[current_channel] if current_channel else None,
+            custom_id=CustomIDs.CONFIGURE_CHANNEL.select().id(schedule_id)
+          )
+        ),
+        ActionRow(
+          Button(
+            style=ButtonStyle.RED,
+            label="Cancel",
+            custom_id=CustomIDs.CONFIGURE.id(schedule_id)
+          ),
+        ),
+      ]
+    )
+
+
+  async def set_channel(self, channel: TYPE_ALL_CHANNEL):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
+    if not schedule:
+      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+
+    # Permission check - Send Messages
+    if not await has_bot_channel_permissions(self.ctx.bot, channel.id, Permissions.SEND_MESSAGES):
+      return await self.send(self.States.SEND_PERMISSION_REQUIRED, ephemeral=True)
+
+    # Don't modify if the current channel is selected
+    if channel.id == schedule.post_channel:
+      return await self.main()
+
+    # Changing channel resets the pin status
+    if schedule.pin and schedule.post_channel and schedule.current_pin:
+      with suppress(Forbidden, NotFound):
+        pinned_channel = await self.ctx.guild.fetch_channel(schedule.post_channel)
+        if pinned_channel and (pinned_message := await pinned_channel.fetch_message(schedule.current_pin)):
+          await pinned_message.unpin()
+      schedule.current_pin = None
+    schedule.pin = False
+
+    # Set post channel
+    schedule.post_channel = channel.id
+
+    async with new_session() as session:
+      await schedule.update_modify(session, self.ctx.author.id)
+      await session.commit()
+    return await self.main()
+
+
+  async def select_roles(self):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+
+    if self.has_origin:
+      await self.defer(edit_origin=True)
+    else:
+      await self.defer(ephemeral=True)
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
+    if not schedule:
+      await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+
+    current_roles = []
+    if schedule.manager_roles:
+      for role_id in schedule.manager_role_objects:
+        if role := await self.ctx.guild.fetch_role(role_id):
+          current_roles.append(role)
+
+    return await self.send(
+      self.States.SELECT_ROLES,
+      other_data=schedule.asdict(),
+      components=[
+        ActionRow(
+          RoleSelectMenu(
+            placeholder="Select Schedule manager roles",
+            default_values=current_roles if len(current_roles) > 0 else None,
+            custom_id=CustomIDs.CONFIGURE_ROLES.select().id(schedule_id),
+            min_values=1,
+            max_values=25,
+          )
+        ),
+        ActionRow(
+          Button(
+            style=ButtonStyle.RED,
+            label="Clear Roles",
+            custom_id=CustomIDs.CONFIGURE_ROLES_CLEAR.id(schedule_id)
+          ),
+          Button(
+            style=ButtonStyle.RED,
+            label="Cancel",
+            custom_id=CustomIDs.CONFIGURE.id(schedule_id)
+          ),
+        ),
+      ]
+    )
+
+
+  async def set_roles(self, roles: List[Role]):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
+    if not schedule:
+      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+
+    current_roles = schedule.manager_role_objects
+    target_roles = [role.id for role in roles]
+
+    # Don't modify if there are no change in roles
+    if current_roles and (set(current_roles) == set(target_roles)):
+      return await self.main()
+
+    if len(roles) > 0:
+      schedule.manager_roles = " ".join(sorted([str(role.id) for role in roles]))
+    else:
+      schedule.manager_roles = None
+
+    async with new_session() as session:
+      await schedule.update_modify(session, self.ctx.author.id)
+      await session.commit()
+    return await self.main()
 
 
 class AddMessage(WriterCommand):
@@ -554,7 +1042,8 @@ class AddMessage(WriterCommand):
     if len(schedule.assign(self.schedule_message)) >= 2000:
       return await Errors.create(self.ctx).message_too_long()
     if tags:
-      self.schedule_message.tags = " ".join(sorted(tags.strip().lower().split()))
+      tags = re.sub(r"[\s]+", " ", tags).strip().lower()
+      self.schedule_message.tags = " ".join(sorted(set(tags.split())))
 
     self.data = self.Data(
       schedule_title=escape_text(schedule.title),
@@ -639,7 +1128,11 @@ class EditMessage(WriterCommand):
       return await Errors.create(self.ctx).message_not_found()
 
     message_object.message = message
-    message_object.tags = sorted(tags.strip().lower().split()) if tags else None
+    if tags:
+      tags = re.sub(r"[\s]+", " ", tags).strip().lower()
+      message_object.tags = " ".join(sorted(set(tags.split())))
+    else:
+      message_object.tags = None
 
     if len(schedule.assign(message_object)) > 2000:
       return await Errors.create(self.ctx).message_too_long()

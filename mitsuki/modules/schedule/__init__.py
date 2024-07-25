@@ -115,8 +115,60 @@ class ScheduleModule(Extension):
     return await commands.CreateSchedule.create(ctx).run(title)
 
   # ===========================================================================
-  # Configure Schedule (FUTURE)
+  # Configure Schedule
   # ===========================================================================
+
+  @component_callback(commands.CustomIDs.CONFIGURE.numeric_id_pattern())
+  async def configure_btn(self, ctx: ComponentContext):
+    return await commands.ConfigureSchedule.create(ctx).main()
+
+  @component_callback(commands.CustomIDs.CONFIGURE_TITLE.prompt().numeric_id_pattern())
+  async def configure_title_prompt(self, ctx: ComponentContext):
+    return await commands.ConfigureSchedule.create(ctx).prompt_title()
+
+  @modal_callback(commands.CustomIDs.CONFIGURE_TITLE.response().numeric_id_pattern())
+  async def configure_title_response(self, ctx: ModalContext, title: str):
+    return await commands.ConfigureSchedule.create(ctx).set_title(title)
+
+  @component_callback(commands.CustomIDs.CONFIGURE_FORMAT.prompt().numeric_id_pattern())
+  async def configure_format_prompt(self, ctx: ComponentContext):
+    return await commands.ConfigureSchedule.create(ctx).prompt_format()
+
+  @modal_callback(commands.CustomIDs.CONFIGURE_FORMAT.response().numeric_id_pattern())
+  async def configure_format_response(self, ctx: ModalContext, format: str):
+    return await commands.ConfigureSchedule.create(ctx).set_format(format)
+
+  @component_callback(commands.CustomIDs.CONFIGURE_ACTIVE.numeric_id_pattern())
+  async def configure_active_btn(self, ctx: ComponentContext):
+    return await commands.ConfigureSchedule.create(ctx).toggle_active()
+
+  @component_callback(commands.CustomIDs.CONFIGURE_PIN.numeric_id_pattern())
+  async def configure_pin_btn(self, ctx: ComponentContext):
+    return await commands.ConfigureSchedule.create(ctx).toggle_pin()
+
+  @component_callback(commands.CustomIDs.CONFIGURE_DISCOVERABLE.numeric_id_pattern())
+  async def configure_discovery_btn(self, ctx: ComponentContext):
+    return await commands.ConfigureSchedule.create(ctx).toggle_discoverable()
+
+  @component_callback(commands.CustomIDs.CONFIGURE_CHANNEL.prompt().numeric_id_pattern())
+  async def configure_channel_btn(self, ctx: ComponentContext):
+    return await commands.ConfigureSchedule.create(ctx).select_channel()
+
+  @component_callback(commands.CustomIDs.CONFIGURE_CHANNEL.select().numeric_id_pattern())
+  async def configure_channel_select(self, ctx: ComponentContext):
+    return await commands.ConfigureSchedule.create(ctx).set_channel(ctx.values[0])
+
+  @component_callback(commands.CustomIDs.CONFIGURE_ROLES.prompt().numeric_id_pattern())
+  async def configure_roles_btn(self, ctx: ComponentContext):
+    return await commands.ConfigureSchedule.create(ctx).select_roles()
+
+  @component_callback(commands.CustomIDs.CONFIGURE_ROLES.select().numeric_id_pattern())
+  async def configure_roles_select(self, ctx: ComponentContext):
+    return await commands.ConfigureSchedule.create(ctx).set_roles(ctx.values)
+
+  @component_callback(commands.CustomIDs.CONFIGURE_ROLES_CLEAR.numeric_id_pattern())
+  async def configure_roles_clear(self, ctx: ComponentContext):
+    return await commands.ConfigureSchedule.create(ctx).set_roles([])
 
   # ===========================================================================
   # Manage Messages
