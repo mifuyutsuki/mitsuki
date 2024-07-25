@@ -731,10 +731,10 @@ class ConfigureSchedule(WriterCommand):
       await daemon.activate(schedule)
       schedule.activate()
 
+    # Activation toggles don't modify the schedule itself
     async with new_session() as session:
-      await schedule.update_modify(session, self.ctx.author.id)
+      await schedule.update(session)
       await session.commit()
-
     return await self.main()
 
 
@@ -757,18 +757,17 @@ class ConfigureSchedule(WriterCommand):
         if pinned_channel and (pinned_message := await pinned_channel.fetch_message(schedule.current_pin)):
           await pinned_message.unpin()
       schedule.current_pin = None
-    else:
-      if not await has_bot_channel_permissions(
-        self.ctx.bot,
-        schedule.post_channel,
-        [
-          Permissions.MANAGE_MESSAGES,
-          Permissions.VIEW_CHANNEL,
-          Permissions.READ_MESSAGE_HISTORY,
-          Permissions.SEND_MESSAGES
-        ]
-      ):
-        return await self.send(self.States.PIN_PERMISSION_REQUIRED, ephemeral=True)
+    elif not await has_bot_channel_permissions(
+      self.ctx.bot,
+      schedule.post_channel,
+      [
+        Permissions.MANAGE_MESSAGES,
+        Permissions.VIEW_CHANNEL,
+        Permissions.READ_MESSAGE_HISTORY,
+        Permissions.SEND_MESSAGES
+      ]
+    ):
+      return await self.send(self.States.PIN_PERMISSION_REQUIRED, ephemeral=True)
 
     schedule.pin = not schedule.pin
 
