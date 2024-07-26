@@ -15,7 +15,7 @@ list:
   field:
     name   : ${title}
     value  : >-
-      Active: ${active} - Channel: ${post_channel_mention}
+      Active: ${active} • ${post_channel_mention} • ${posted_number} posted
     inline : false
 
 list_empty:
@@ -42,6 +42,18 @@ view:
     value  : >-
       ${post_channel_mention}
     inline : false
+  - name   : Backlog \#
+    value  : >-
+      **${backlog_number}**
+    inline : true
+  - name   : Posted \#
+    value  : >-
+      **${posted_number}**
+    inline : true
+  - name   : Total \#
+    value  : >-
+      **${current_number}**
+    inline : true
   - name   : Active
     value  : >-
       **${active}**
