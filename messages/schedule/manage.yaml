@@ -14,7 +14,7 @@ list:
   field:
     name   : ${title}
     value  : >-
-      Active: ${active} • ${post_channel_mention} • ${posted_number} posted
+      ${active_mark} • ${post_channel_mention} • ${posted_number} posted
     inline : false
 
 list_empty:

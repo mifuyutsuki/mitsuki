@@ -33,6 +33,10 @@ _:
     value  : >-
       **${discoverable}**
     inline : true
+  - name   : Next if activated now in
+    value  : >-
+      ${next_fire_f}
+    inline : false
   - name   : Schedule managers
     value  : >-
       ${manager_role_mentions}
