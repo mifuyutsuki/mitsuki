@@ -375,12 +375,12 @@ class Schedule(AsDict):
 
   async def update(self, session: AsyncSession):
     values = self.asdbdict()
-    for key in ["id", "title"]:
+    for key in ["id"]:
       values.pop(key)
   
     statement = (
       update(schema.Schedule)
-      .where(schema.Schedule.title == self.title)
+      .where(schema.Schedule.id == self.id)
       .values(values)
     )
     await session.execute(statement)
