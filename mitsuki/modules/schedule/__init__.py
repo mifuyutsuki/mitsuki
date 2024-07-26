@@ -92,20 +92,6 @@ class ScheduleModule(Extension):
   # Create Schedule
   # ===========================================================================
 
-  @schedule_cmd.subcommand(
-    sub_cmd_name="create",
-    sub_cmd_description="Create a Schedule"
-  )
-  @slash_option(
-    name="title",
-    description="Schedule name",
-    opt_type=OptionType.STRING,
-    required=True,
-    min_length=3,
-  )
-  async def create_cmd(self, ctx: SlashContext, title: str):
-    return await commands.CreateSchedule.create(ctx).run(title)
-
   @component_callback(commands.CustomIDs.SCHEDULE_CREATE.prompt())
   async def create_btn(self, ctx: ComponentContext):
     return await commands.CreateSchedule.create(ctx).prompt()
@@ -193,20 +179,6 @@ class ScheduleModule(Extension):
   # ===========================================================================
   # Add Message
   # ===========================================================================
-
-  @schedule_cmd.subcommand(
-    sub_cmd_name="add",
-    sub_cmd_description="Add a message to a Schedule"
-  )
-  @slash_option(
-    name="schedule",
-    description="Target Schedule name",
-    opt_type=OptionType.STRING,
-    required=True,
-    min_length=1,
-  )
-  async def message_add_cmd(self, ctx: SlashContext, schedule: str):
-    return await commands.AddMessage.create(ctx).prompt(schedule)
 
   @component_callback(commands.CustomIDs.MESSAGE_ADD.prompt().string_id_pattern())
   async def message_add_btn(self, ctx: ComponentContext):
