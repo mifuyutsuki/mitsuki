@@ -92,24 +92,35 @@ class Schedule(AsDict):
   last_fire: Optional[float] = field(default=None)
 
   backlog_number: int = field(init=False)
+  active_mark: str = field(init=False)
   post_channel_mention: str = field(init=False)
   created_by_mention: str = field(init=False)
   modified_by_mention: str = field(init=False)
   date_created_f: str = field(init=False)
   date_modified_f: str = field(init=False)
   manager_role_mentions: str = field(init=False)
+  next_fire_f: str = field(init=False)
 
   def __attrs_post_init__(self):
     self.backlog_number       = self.current_number - self.posted_number
-    self.post_channel_mention = f"<#{self.post_channel}>" if self.post_channel else "-"
+    self.active_mark          = "✅ Active" if self.active else "⏸️ Inactive"
+    self.post_channel_mention = f"<#{self.post_channel}>" if self.post_channel else "No channel selected"
     self.created_by_mention   = f"<@{self.created_by}>"
     self.modified_by_mention  = f"<@{self.modified_by}>"
     self.date_created_f       = f"<t:{int(self.date_created)}:f>"
     self.date_modified_f      = f"<t:{int(self.date_modified)}:f>"
+
+    if self.active and self.backlog_number > 0:
+      self.next_fire_f        = f"<t:{int(self.cron().next(float))}:f>"
+    elif self.active and self.backlog_number <= 0:
+      self.next_fire_f        = f"<t:{int(self.cron().next(float))}:f> (No backlog)"
+    else:
+      self.next_fire_f        = f"<t:{int(self.cron().next(float))}:f> (Schedule inactive)"
+
     if manager_roles := self.manager_role_objects:
       self.manager_role_mentions = " ".join([f"<@&{manager_role}>" for manager_role in manager_roles])
     else:
-      self.manager_role_mentions = "-"
+      self.manager_role_mentions = "\\- (Admin only)"
 
 
   @post_routine.validator
