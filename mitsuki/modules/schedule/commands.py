@@ -191,9 +191,10 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
   schedules: List[Schedule]
 
   class States(StrEnum):
-    LIST       = "schedule_manage_list"
-    LIST_EMPTY = "schedule_manage_list_empty"
-    VIEW       = "schedule_manage_view"
+    LIST             = "schedule_manage_list"
+    LIST_EMPTY       = "schedule_manage_list_empty"
+    LIST_UNAVAILABLE = "schedule_manage_list_unavailable"
+    VIEW             = "schedule_manage_view"
 
   @define(slots=False)
   class Data(AsDict):
@@ -226,29 +227,45 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
       ),
     ]
 
-    schedules = await Schedule.fetch_many(guild=self.ctx.guild.id, sort="name")
+    total_schedules = await Schedule.fetch_many(guild=self.ctx.guild.id, sort="name")
+    allowed_schedules = []
+    if can_create:
+      # This variable being True implies admin
+      allowed_schedules = total_schedules
+    else:
+      # Non-admins can only manage and view schedules based on manager roles
+      for schedule in total_schedules:
+        if await has_schedule_permissions(self.ctx, schedule):
+          allowed_schedules.append(schedule)
+
     self.data = self.Data(
       guild_name=self.ctx.guild.name,
       guild_icon=self.ctx.guild.icon.url if self.ctx.guild.icon else self.ctx.bot.user.avatar_url,
-      total_schedules=len(schedules)
+      total_schedules=len(allowed_schedules)
     )
 
-    if len(schedules) <= 0:
-      await self.send(
+    if len(allowed_schedules) <= 0 and not can_create:
+      return await self.send(
+        self.States.LIST_UNAVAILABLE,
+        template_kwargs={"escape_data_values": "guild_name"},
+        components=[],
+      )
+    if len(allowed_schedules) <= 0:
+      return await self.send(
         self.States.LIST_EMPTY,
         template_kwargs={"escape_data_values": "guild_name"},
         components=buttons,
       )
-    else:
-      self.selection_values = [schedule.title for schedule in schedules]
-      self.selection_placeholder = "Select a Schedule to manage..."
 
-      self.field_data = schedules
-      await self.send_selection(
-        self.States.LIST,
-        template_kwargs={"escape_data_values": "guild_name"},
-        extra_components=buttons,
-      )
+    self.selection_values = [schedule.title for schedule in allowed_schedules]
+    self.selection_placeholder = "Select a Schedule to manage..."
+
+    self.field_data = allowed_schedules
+    await self.send_selection(
+      self.States.LIST,
+      template_kwargs={"escape_data_values": "guild_name"},
+      extra_components=buttons,
+    )
 
 
   async def selection_callback(self, ctx: ComponentContext):
