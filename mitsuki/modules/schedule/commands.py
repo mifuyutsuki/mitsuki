@@ -142,8 +142,9 @@ class CustomIDs:
   CONFIGURE_ROLES_CLEAR = CustomID("schedule_configure_roles|clear")
   """Clear manager roles of a Schedule. (id: Schedule ID)"""
 
+  # TODO: Non-daily routines
   CONFIGURE_ROUTINE = CustomID("schedule_configure_routine")
-  """[FUTURE] Set the posting time of a Schedule. (id: Schedule ID; select; modal)"""
+  """Set the posting time of a Schedule. (id: Schedule ID; modal)"""
 
   MESSAGE_ADD = CustomID("schedule_message_add")
   """Add a message to a Schedule. (id: Schedule ID/key; modal)"""
@@ -530,8 +531,9 @@ class ConfigureSchedule(WriterCommand):
     SELECT_CHANNEL = "schedule_configure_select_channel"
     SELECT_ROLES   = "schedule_configure_select_roles"
 
-    EDIT_TITLE_SUCCESS  = "schedule_configure_edit_title_success"
-    EDIT_FORMAT_SUCCESS = "schedule_configure_edit_format_success"
+    EDIT_TITLE_SUCCESS   = "schedule_configure_edit_title_success"
+    EDIT_FORMAT_SUCCESS  = "schedule_configure_edit_format_success"
+    EDIT_ROUTINE_SUCCESS = "schedule_configure_edit_routine_success"
 
     # Errors
     NOT_READY                = "schedule_configure_not_ready"
@@ -594,6 +596,12 @@ class ConfigureSchedule(WriterCommand):
             style=ButtonStyle.BLURPLE,
             label="Channel...",
             custom_id=CustomIDs.CONFIGURE_CHANNEL.prompt().id(schedule_id),
+            disabled=schedule.active
+          ),
+          Button(
+            style=ButtonStyle.BLURPLE,
+            label="Routine...",
+            custom_id=CustomIDs.CONFIGURE_ROUTINE.prompt().id(schedule_id),
             disabled=schedule.active
           ),
         ),
@@ -759,6 +767,85 @@ class ConfigureSchedule(WriterCommand):
       await session.commit()
 
     return await self.send(self.States.EDIT_FORMAT_SUCCESS)
+
+
+  # async def select_routine(self):
+  #   if not self.ctx.guild:
+  #     return await Errors.create(self.ctx).not_in_guild()
+  #   await assert_user_permissions(
+  #     self.ctx, Permissions.ADMINISTRATOR,
+  #     "Server admin"
+  #   )
+
+  #   # TODO: Routine options other than daily
+  #   return await self.prompt_daily_routine()
+
+
+  async def prompt_routine(self):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
+    if not schedule:
+      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+
+    return await self.ctx.send_modal(
+      modal=Modal(
+        ShortText(
+          label="Post Time (UTC)",
+          custom_id="format",
+          placeholder="24-hour UTC time as HH:MM, e.g. \"7:00\"",
+          min_length=1,
+          max_length=5,
+        ),
+        title="Edit Schedule",
+        custom_id=CustomIDs.CONFIGURE_ROUTINE.response().id(schedule_id)
+      )
+    )
+
+
+  async def set_routine(self, time: str):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+    await self.defer(ephemeral=True)
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
+    if not schedule:
+      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+
+    # HH:MM validation
+    if not re.match(r"^[0-9]{1,2}:[0-9]{1,2}$", time):
+      return await Errors.create(self.ctx).invalid_input("daily post time")
+
+    # 00:00-24:00 validation (regex already ensures numeric)
+    hour, minute = int(time.split(":")[0]), int(time.split(":")[1])
+    if (hour, minute) == (24, 00):
+      hour, minute = 0, 0
+    if not (0 <= hour < 24) or not (0 <= minute < 60):
+      return await Errors.create(self.ctx).invalid_input("daily post time")
+
+    # Set routine
+    if f"{minute} {hour} * * *" == schedule.post_routine:
+      next_fire = f"<t:{int(schedule.cron().next(float))}:f>"
+      return await self.send(self.States.EDIT_ROUTINE_SUCCESS, other_data={"next_fire_f": next_fire})
+
+    schedule.post_routine = f"{minute} {hour} * * *"
+    async with new_session() as session:
+      await schedule.update_modify(session, self.ctx.author.id)
+      await session.commit()
+
+    next_fire = f"<t:{int(schedule.cron().next(float))}:f>"
+    return await self.send(self.States.EDIT_ROUTINE_SUCCESS, other_data={"next_fire_f": next_fire})
 
 
   async def toggle_active(self):

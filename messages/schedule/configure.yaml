@@ -14,7 +14,7 @@ _:
     value  : >-
       ${post_channel_mention}
     inline : false
-  - name   : Post Format
+  - name   : Post format
     value  : >-
       ```
       
@@ -25,15 +25,15 @@ _:
     value  : >-
       **${active}**
     inline : true
-  - name   : Pin Message
+  - name   : Pin
     value  : >-
       **${pin}**
     inline : true
-  - name   : Discoverable
+  - name   : Discovery
     value  : >-
       **${discoverable}**
     inline : true
-  - name   : Schedule Managers
+  - name   : Schedule managers
     value  : >-
       ${manager_role_mentions}
     inline : false
@@ -81,6 +81,17 @@ edit_format_success:
     Press `Refresh` in the configure menu to show changes.
 
 
+edit_routine_success:
+  base_template: admin
+  title: >-
+    Routine Edited
+  description: >-
+    Next post if activated now is ${next_fire_f}
+
+
+    Press `Refresh` in the configure menu to show changes.
+
+
 not_ready:
   title: >-
     Error
@@ -103,7 +114,7 @@ requires_send_permissions:
   title: >-
     Error
   description: >-
-    The bot has no permissions to post in this channel.
+    The bot has no permissions to post in the channel.
 
 
     Requires: `Send Messages`

@@ -138,6 +138,14 @@ class ScheduleModule(Extension):
   async def configure_format_response(self, ctx: ModalContext, format: str):
     return await commands.ConfigureSchedule.create(ctx).set_format(format)
 
+  @component_callback(commands.CustomIDs.CONFIGURE_ROUTINE.prompt().numeric_id_pattern())
+  async def configure_routine_prompt(self, ctx: ComponentContext):
+    return await commands.ConfigureSchedule.create(ctx).prompt_routine()
+
+  @modal_callback(commands.CustomIDs.CONFIGURE_ROUTINE.response().numeric_id_pattern())
+  async def configure_routine_response(self, ctx: ModalContext, format: str):
+    return await commands.ConfigureSchedule.create(ctx).set_routine(format)
+
   @component_callback(commands.CustomIDs.CONFIGURE_ACTIVE.numeric_id_pattern())
   async def configure_active_btn(self, ctx: ComponentContext):
     return await commands.ConfigureSchedule.create(ctx).toggle_active()
