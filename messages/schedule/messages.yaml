@@ -1,8 +1,7 @@
 _namespace: schedule_message
 
-# [multifield-selection]
+# [Multifield/Selection]
 list:
-  base_template: admin
   title: >-
     Messages for "${schedule_title}" (${page}/${pages})
   description: >-
@@ -17,7 +16,6 @@ list:
 
 
 list_empty:
-  base_template: admin
   title: >-
     Messages for "${schedule_title}"
   description: >-
@@ -29,7 +27,6 @@ list_empty:
 
 
 view:
-  base_template: admin
   title: >-
     ${schedule_title} \#${number_s} (ID:${id})
   description: >-

@@ -5,7 +5,6 @@ _namespace: schedule_manage
 
 # [Multifield]
 list:
-  base_template: admin
   title: >-
     Schedules for "${guild_name}"
   description: >-
@@ -19,7 +18,6 @@ list:
     inline : false
 
 list_empty:
-  base_template: admin
   title: >-
     Schedules for "${guild_name}"
   description: >-
@@ -30,7 +28,6 @@ list_empty:
     ${guild_icon}
 
 view:
-  base_template: admin
   title: >-
     ${title}
   description: >-
