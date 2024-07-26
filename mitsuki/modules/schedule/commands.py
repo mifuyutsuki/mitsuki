@@ -427,6 +427,10 @@ class ManageMessages(SelectionMixin, ReaderCommand):
     if not message:
       return await Errors.create(self.ctx).message_not_found()
 
+    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
+    if not schedule:
+      return await Errors.create(self.ctx).schedule_not_found(f"@{message.schedule_id}")
+
     string_templates = []
     if message.message_id:
       string_templates.append("schedule_message_message_link")
