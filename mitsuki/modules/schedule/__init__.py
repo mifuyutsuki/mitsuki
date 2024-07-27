@@ -201,9 +201,13 @@ class ScheduleModule(Extension):
     return await commands.EditMessage.create(ctx).response(message, tags)
 
   # ===========================================================================
-  # Delete Message (FUTURE)
+  # Delete Message
   # ===========================================================================
 
-  # @component_callback(commands.CustomIDs.MESSAGE_DELETE.confirm().string_id_pattern())
+  @component_callback(commands.CustomIDs.MESSAGE_DELETE.confirm().string_id_pattern())
+  async def message_delete_confirm(self, ctx: ComponentContext):
+    return await commands.DeleteMessage.create(ctx).confirm()
 
-  # @component_callback(commands.CustomIDs.MESSAGE_DELETE.string_id_pattern())
+  @component_callback(commands.CustomIDs.MESSAGE_DELETE.string_id_pattern())
+  async def message_delete_run(self, ctx: ComponentContext):
+    return await commands.DeleteMessage.create(ctx).run()

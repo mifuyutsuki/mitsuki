@@ -158,6 +158,9 @@ class CustomIDs:
   MESSAGE_EDIT = CustomID("schedule_message_edit")
   """Edit a message in a Schedule. (id: Message ID; modal)"""
 
+  MESSAGE_DELETE = CustomID("schedule_message_delete")
+  """Delete a message in a Schedule. (id: Message ID; confirm)"""
+
 
 class Errors(ReaderCommand):
   async def not_in_guild(self):
@@ -461,6 +464,11 @@ class ManageMessages(SelectionMixin, ReaderCommand):
           style=ButtonStyle.BLURPLE,
           label="Edit...",
           custom_id=CustomIDs.MESSAGE_EDIT.prompt().id(message_id)
+        ),
+        Button(
+          style=ButtonStyle.RED,
+          label="Delete",
+          custom_id=CustomIDs.MESSAGE_DELETE.confirm().id(message_id)
         ),
         Button(
           style=ButtonStyle.GRAY,
@@ -1217,7 +1225,7 @@ class AddMessage(WriterCommand):
       number=number,
       tags=self.schedule_message.tags
     )
-    await self.send_commit(self.States.SUCCESS)
+    await self.send_commit(self.States.SUCCESS, components=[])
 
 
   async def transaction(self, session: AsyncSession):
@@ -1319,8 +1327,88 @@ class EditMessage(WriterCommand):
       tags=self.schedule_message.tags
     )
 
-    return await self.send_commit(self.States.SUCCESS, other_data=message_object.asdict())
+    return await self.send_commit(self.States.SUCCESS, other_data=message_object.asdict(), components=[])
 
 
   async def transaction(self, session: AsyncSession):
     await self.schedule_message.update_modify(session, self.ctx.author.id)
+
+
+class DeleteMessage(WriterCommand):
+  state: "DeleteMessage.States"
+  data: "DeleteMessage.Data"
+
+  schedule_message: ScheduleMessage
+
+  class States(StrEnum):
+    CONFIRM = "schedule_message_delete_confirm"
+    SUCCESS = "schedule_message_delete_success"
+
+  @define(slots=False)
+  class Data(AsDict):
+    schedule_title: str
+    guild_name: str
+    number: str
+    id: int
+
+
+  async def confirm(self):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+
+    if self.has_origin:
+      await self.defer(edit_origin=True)
+    else:
+      await self.defer(ephemeral=True)
+
+    message_id = int(CustomID.get_id_from(self.ctx))
+    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
+    if not message:
+      return await Errors.create(self.ctx).message_not_found()
+
+    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
+    if not schedule:
+      return await Errors.create(self.ctx).message_not_found()
+
+    return await self.send(
+      self.States.CONFIRM,
+      other_data=message.asdict(),
+      components=[
+        Button(
+          style=ButtonStyle.GREEN,
+          label="Delete",
+          custom_id=CustomIDs.MESSAGE_DELETE.id(message_id)
+        ),
+        Button(
+          style=ButtonStyle.RED,
+          label="Cancel",
+          custom_id=CustomIDs.MESSAGE_VIEW.id(message_id)
+        )
+      ]
+    )
+
+
+  async def run(self):
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+
+    if self.has_origin:
+      await self.defer(edit_origin=True)
+    else:
+      await self.defer(ephemeral=True)
+
+    message_id = int(CustomID.get_id_from(self.ctx))
+    message_object = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
+    if not message_object:
+      return await Errors.create(self.ctx).message_not_found()
+
+    schedule = await check_fetch_schedule(self.ctx, f"{message_object.schedule_id}")
+    if not schedule:
+      return await Errors.create(self.ctx).message_not_found()
+
+    self.schedule_message = message_object
+    return await self.send_commit(self.States.SUCCESS, other_data=message_object.asdict(), components=[])
+
+
+  async def transaction(self, session: AsyncSession):
+    await self.schedule_message.delete(session)

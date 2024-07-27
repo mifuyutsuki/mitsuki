@@ -79,6 +79,29 @@ edit_success:
   - name   : Message
     value  : >-
       ${message}
+    inline : false
+
+
+delete_confirm:
+  title: >-
+    Delete Message?
+  description: >-
+    Are you sure to delete ${schedule_title} \#${number_s} (ID:${id})?
+
+
+    If this is a backlogged message, messages after this number will be renumbered forward.
+  fields:
+  - name   : Message
+    value  : >-
+      ${message}
+    inline : false
+
+
+delete_success:
+  title: >-
+    Deleted Message
+  description: >-
+    Deleted ${schedule_title} \#${number_s} (ID:${id})
 
 
 message_link:
