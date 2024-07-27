@@ -643,28 +643,57 @@ class Message(AsDict):
     await session.execute(statement)
 
 
-  async def update_renumber(self, session: AsyncSession, new_number: int):
+  async def update_renumber(self, session: AsyncSession, new_number: int, author: Optional[Snowflake] = None):
+    # Cannot renumber to a negative value
+    if new_number < 0:
+      raise ValueError(f"Cannot renumber Message to a negative number '{new_number}'")
+
     # Numbers are queue type only
     if not self.schedule_type == ScheduleTypes.QUEUE or not self.number:
       return
 
-    # Renumber messages at and above this message's new number
-    await session.execute(
-      update(schema.Message)
-      .where(schema.Message.schedule_id == self.schedule_id)
-      .where(schema.Message.number >= new_number)
-      .values(number=schema.Message.__table__.c.number + 1)
-    )
+    # Can only renumber up to the last post number
+    messages_number = await self.fetch_count_by_id(self.schedule_id)
+    new_number = min(new_number, messages_number)
 
-    # Set this message to the new number
-    await session.execute(
-      update(schema.Message)
-      .where(schema.Message.id == self.id)
-      .values(number=new_number)
-    )
+    # New number = Current number (no change)
+    # 1 2 3 4 5 _ 7 8 9
+    #           ^
+    if new_number == self.number:
+      return
+
+    # New number < Current number (move to front)
+    # 1 2 3 4 5 _ 7 8 9 (6->3)
+    #     v - - ^
+    # 1 2 _ 3 4 5 7 8 9 (renumber up 3 4 5)
+    if new_number < self.number:
+      await session.execute(
+        update(schema.Message)
+        .where(schema.Message.schedule_id == self.schedule_id)
+        .where(schema.Message.number >= new_number)
+        .where(schema.Message.number < self.number)
+        .values(number=schema.Message.__table__.c.number + 1)
+      )
+
+    # New number > Current number (move to back)
+    # 1 2 3 4 5 _ 7 8 9 (6->8)
+    #           ^ - v
+    # 1 2 3 4 5 7 8 _ 9 (renumber down 7 8)
+    else:
+      await session.execute(
+        update(schema.Message)
+        .where(schema.Message.schedule_id == self.schedule_id)
+        .where(schema.Message.number > self.number)
+        .where(schema.Message.number <= new_number)
+        .values(number=schema.Message.__table__.c.number - 1)
+      )
 
     # Update object attribute
     self.number = new_number
+
+    if author:
+      return await self.update_modify(session, author)
+    return await self.update(session)
 
 
   async def delete(self, session: AsyncSession):
