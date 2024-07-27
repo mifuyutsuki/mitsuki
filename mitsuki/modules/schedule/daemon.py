@@ -48,7 +48,7 @@ class DaemonTask:
       self.task.start()
       logger.info(
         f"Schedule Daemon | Started schedule {self.schedule.id}: '{self.schedule.title}' "
-        f"- channel {self.schedule.post_channel} - guild {self.schedule.guild}"
+        f"- Channel {self.schedule.post_channel} - Guild {self.schedule.guild}"
       )
 
 
@@ -57,7 +57,7 @@ class DaemonTask:
       self.task.stop()
       logger.info(
         f"Schedule Daemon | Stopped schedule {self.schedule.id}: '{self.schedule.title}' "
-        f"- channel {self.schedule.post_channel} - guild {self.schedule.guild}"
+        f"- Channel {self.schedule.post_channel} - Guild {self.schedule.guild}"
       )
 
 
@@ -214,10 +214,6 @@ class Daemon:
     task = DaemonTask(self.bot, schedule)
     task.start()
     self.active_schedules[schedule.id] = task
-    logger.info(
-      f"Schedule Daemon | Activated schedule {schedule.id}: '{schedule.title}' "
-      f"- Channel {schedule.post_channel} - Guild {schedule.guild}"
-    )
 
 
   async def deactivate(self, schedule: Union[Schedule, int]):
