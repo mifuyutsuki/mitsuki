@@ -123,7 +123,9 @@ class Bot(Client):
   @listen(Ready)
   async def on_ready(self):
     await self.next_status()
-    print(f"Ready: {self.user.tag} ({self.user.id})")
+    curr_time = datetime.now(tz=timezone.utc).isoformat(sep=" ")
+    print(f"Ready: {curr_time} UTC")
+    print(f"{self.user.tag} ({self.user.id}) @ {len(self.guilds)} guilds")
 
 
   @Task.create(IntervalTrigger(seconds=max(60, settings.mitsuki.status_cycle)))
