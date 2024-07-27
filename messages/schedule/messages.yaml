@@ -71,7 +71,6 @@ add_success:
 
 
 edit_success:
-  base_template: admin
   title: >-
     Message Edited
   description: >-
