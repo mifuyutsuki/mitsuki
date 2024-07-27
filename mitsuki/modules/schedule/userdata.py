@@ -701,6 +701,23 @@ class Message(AsDict):
       delete(schema.Message)
       .where(schema.Message.id == self.id)
     )
+    if self.message_id:
+      await session.execute(
+        update(schema.Schedule)
+        .where(schema.Schedule.id == self.schedule_id)
+        .values(
+          current_number=schema.Schedule.__table__.c.current_number - 1,
+          posted_number=schema.Schedule.__table__.c.posted_number - 1,
+        )
+      )
+    else:
+      await session.execute(
+        update(schema.Schedule)
+        .where(schema.Schedule.id == self.schedule_id)
+        .values(
+          current_number=schema.Schedule.__table__.c.current_number - 1,
+        )
+      )
 
     # If the deleted message is in the backlog, renumber forward all after
     if self.schedule_type == ScheduleTypes.QUEUE:
