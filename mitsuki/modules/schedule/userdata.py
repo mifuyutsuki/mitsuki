@@ -577,6 +577,24 @@ class Message(AsDict):
       return await session.scalar(query) or 0
 
 
+  @staticmethod
+  async def fetch_count_by_id(schedule_id: int, guild: Optional[Snowflake] = None, backlog: Optional[bool] = None):
+    query = (
+      select(func.count(schema.Message.id))
+      .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule_id)
+      .where(schema.Schedule.id == schedule_id)
+    )
+    if guild:
+      query = query.where(schema.Schedule.guild == guild)
+    if backlog == True:
+      query = query.where(schema.Message.message_id == None)
+    elif backlog == False:
+      query = query.where(schema.Message.message_id != None)
+
+    async with new_session() as session:
+      return await session.scalar(query) or 0
+
+
   @classmethod
   def create(
     cls,
