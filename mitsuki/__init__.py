@@ -19,7 +19,8 @@ from sys import stderr, stdout
 
 _log_format = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
-_mitsuki_log_handler = logging.StreamHandler(stdout)
+# TODO: Move Mitsuki logs to stdout when more actions are logged e.g. gacha rolls
+_mitsuki_log_handler = logging.StreamHandler(stderr)
 _mitsuki_log_handler.setFormatter(_log_format)
 _mitsuki_logger = logging.getLogger("mitsuki")
 _mitsuki_logger.setLevel(logging.INFO)
