@@ -702,6 +702,16 @@ class Message(AsDict):
       .where(schema.Message.id == self.id)
     )
 
+    # If the deleted message is in the backlog, renumber forward all after
+    if self.schedule_type == ScheduleTypes.QUEUE:
+      if self.number > await self.fetch_count_by_id(self.schedule_id, backlog=False):
+        await session.execute(
+          update(schema.Message)
+          .where(schema.Message.schedule_id == self.schedule_id)
+          .where(schema.Message.number > self.number)
+          .values(number=schema.Message.__table__.c.number - 1)
+        )
+
 
   async def update_modify(self, session: AsyncSession, modified_by: Snowflake):
     self.modified_by = modified_by
