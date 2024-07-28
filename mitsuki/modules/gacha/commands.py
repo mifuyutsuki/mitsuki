@@ -744,8 +744,7 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
       f"{card.name if len(card.name) < 100 else card.name[:97] + ellip}"
     )
     if len(input_text) < 3:
-      await self.send_autocomplete()
-      return
+      return await self.send_autocomplete()
 
     options = []
     if input_text.startswith("@"):
@@ -753,9 +752,11 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
       if len(card_by_id) > 0:
         options.append(self.option("@ " + card_info(card_by_id[0]), input_text))
 
-    search_results = await userdata.cards_roster_search(input_text, cutoff=60, limit=9-len(options))
-    options.extend([self.option(card_info(card), f"@{card.id}") for card in search_results])
-    options.append(self.option(f"※ Search for '{input_text}'", input_text))
+    search_results = await userdata.cards_stats_search(
+      input_text, cutoff=60, strong_cutoff=90, processor=process_text, limit=9-len(options)
+    )
+    options.append(self.option(input_text, input_text))
+    options.extend([self.option(truncate(card.name), f"@{card.id}") for card in search_results])
     await self.send_autocomplete(options)
 
 
