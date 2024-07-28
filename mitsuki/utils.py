@@ -30,6 +30,7 @@ __all__ = (
   "escape_text",
   "process_text",
   "remove_accents",
+  "truncate",
   "is_caller",
   "get_member_color",
   "get_member_color_value",
@@ -63,6 +64,10 @@ def process_text(text: str):
 def remove_accents(text: str):
   global _remove_accents_re
   return _remove_accents_re.sub('', unicodedata.normalize('NFKD', text))
+
+
+def truncate(text: str, length: int = 100):
+  return text if len(text) < length else text[:length - 3].strip() + "..."
 
 
 def is_caller(ctx: BaseContext):
