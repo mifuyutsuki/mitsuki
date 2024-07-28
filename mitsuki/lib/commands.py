@@ -25,6 +25,7 @@ from typing import Optional, Union, List, Dict, Any
 from enum import StrEnum
 from asyncio import iscoroutinefunction
 from interactions import (
+  Client,
   Snowflake,
   User,
   Member,
@@ -162,6 +163,10 @@ class Command:
   state: Optional[StrEnum] = None
   edit_origin: bool = False
 
+  @property
+  def bot(self):
+    return self.ctx.bot
+
   @classmethod
   def create(cls, ctx: InteractionContext):
     o = cls()
@@ -290,6 +295,7 @@ class WriterCommand(Command):
 
 
 class TargetMixin:
+  bot: "Client"
   target_data: "Target"
   target_user: Union[Member, User]
 
@@ -300,6 +306,11 @@ class TargetMixin:
   def set_target(self, target: Union[Member, User]):
     self.target_user = target
     self.target_data = Target.set(target)
+
+  async def fetch_target(self, target: Union[Member, User, Snowflake]):
+    if isinstance(target, Snowflake):
+      target = await self.bot.fetch_user(target)
+    return self.set_target(target)
 
   def asdict(self):
     return super().asdict() | self.target_data.asdict()
