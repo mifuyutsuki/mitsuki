@@ -15,6 +15,7 @@ from attrs import define, field
 from typing import Optional, Union, List, Dict, Any, NamedTuple
 from enum import Enum, StrEnum
 from interactions import (
+  ComponentContext,
   Snowflake,
   BaseUser,
   Member,
@@ -24,12 +25,13 @@ from interactions import (
   Button,
   ButtonStyle,
   StringSelectMenu,
+  StringSelectOption,
   Permissions,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mitsuki import bot
-from mitsuki.utils import escape_text, process_text, get_member_color_value
+from mitsuki.utils import escape_text, process_text, truncate, get_member_color_value
 from mitsuki.lib.commands import (
   AsDict,
   CustomID,
@@ -499,7 +501,7 @@ class Roll(CurrencyMixin, WriterCommand):
     await userdata.pity_update(session, self.caller_id, self.card.rarity, gacha.pity)
 
 
-class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
+class Cards(TargetMixin, SelectionMixin, ReaderCommand):
   state: "Cards.States"
   data: "Cards.Data"
 
@@ -520,17 +522,35 @@ class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
     await self.fetch_target(target or self.caller_user)
     await self.defer(suppress_error=True)
 
-    self.field_data = await userdata.cards_user(self.target_id, sort=sort or "date")
-    self.data = self.Data(total_cards=len(self.field_data))
+    cards = await userdata.cards_user(self.target_id, sort=sort or "date")
+    self.data = self.Data(total_cards=len(cards))
 
-    if self.data.total_cards <= 0:
+    if len(cards) <= 0:
       return await self.send(self.States.NO_CARDS)
 
-    return await self.send_multifield(
+    self.field_data = cards
+    self.selection_values = [
+      StringSelectOption(
+        label=truncate(card.name, 100),
+        value=f"@{card.card}",
+        description=truncate(
+          (("★" * card.rarity) if card.rarity <= 6 else f"{card.rarity}★")
+          + f" • {card.type} • {card.series}",
+          length=100
+        )
+      )
+      for card in cards
+    ]
+    self.selection_placeholder = "Select a card in page to view..."
+    return await self.send_selection(
       self.States.CARDS,
       template_kwargs=dict(escape_data_values=["name", "type", "series"]),
       timeout=45
     )
+
+
+  async def selection_callback(self, ctx: ComponentContext):
+    return await View.create(ctx).run_from_select()
 
 
 class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
@@ -603,6 +623,10 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
   @property
   def total_cards(self):
     return self.data.total_cards
+
+
+  async def run_from_select(self):
+    return await self.run(self.ctx.values[0])
 
 
   async def run_from_button(self):
