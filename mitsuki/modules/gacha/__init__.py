@@ -38,7 +38,6 @@ from interactions.api.events import Startup
 from typing import Optional
 
 from mitsuki import init_event
-from mitsuki.utils import UserDenied
 
 from . import commands
 from .gachaman import gacha
@@ -335,8 +334,6 @@ class GachaModule(Extension):
     target: BaseUser,
     amount: int
   ):
-    if not await is_owner()(ctx) and not ctx.author.has_permission(Permissions.ADMINISTRATOR):
-      raise UserDenied(requires="Bot Owner or Server Admin")
     await commands.GiveAdmin.create(ctx).run(target, amount)
 
 
@@ -349,8 +346,6 @@ class GachaModule(Extension):
   )
   @auto_defer(ephemeral=True)
   async def system_reload_cmd(self, ctx: SlashContext):
-    if not await is_owner()(ctx) and not ctx.author.has_permission(Permissions.ADMINISTRATOR):
-      raise UserDenied(requires="Bot Owner or Server Admin")
     await commands.ReloadAdmin.create(ctx).run()
 
 
@@ -363,6 +358,4 @@ class GachaModule(Extension):
   )
   @auto_defer(ephemeral=True)
   async def system_cards_cmd(self, ctx: SlashContext):
-    if not await is_owner()(ctx) and not ctx.author.has_permission(Permissions.ADMINISTRATOR):
-      raise UserDenied(requires="Bot Owner or Server Admin")
     await commands.ViewAdmin.create(ctx).run(sort="id")

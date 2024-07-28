@@ -23,13 +23,10 @@ from interactions.api.events import Component
 
 from typing import Union, List, Optional
 
-# TODO: Move exceptions here or to own module
-from mitsuki.utils import BotDenied, UserDenied
+from .errors import BotDenied, UserDenied
 
 
 __all__ = (
-  "UserDenied",
-  "BotDenied",
   "assert_user_permissions",
   "assert_bot_permissions",
   "assert_bot_channel_permissions",
@@ -37,16 +34,6 @@ __all__ = (
   "has_bot_permissions",
   "has_bot_channel_permissions",
 )
-
-
-# class UserDenied(Exception):
-#   def __init__(self, requires: str) -> None:
-#     self.requires = requires
-
-
-# class BotDenied(Exception):
-#   def __init__(self, requires: str) -> None:
-#     self.requires = requires
 
 
 async def assert_user_roles(

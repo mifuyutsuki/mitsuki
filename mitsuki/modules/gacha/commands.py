@@ -24,11 +24,12 @@ from interactions import (
   Button,
   ButtonStyle,
   StringSelectMenu,
+  Permissions,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mitsuki import bot
-from mitsuki.utils import escape_text, is_caller, process_text, get_member_color_value
+from mitsuki.utils import escape_text, process_text, get_member_color_value
 from mitsuki.lib.commands import (
   AsDict,
   ReaderCommand,
@@ -37,6 +38,7 @@ from mitsuki.lib.commands import (
   MultifieldMixin,
   AutocompleteMixin
 )
+from mitsuki.lib.checks import is_caller, assert_user_permissions
 
 from . import userdata
 from .schema import UserCard, StatsCard, RosterCard
@@ -103,13 +105,9 @@ async def is_gacha_first(user: BaseUser):
 # Gacha commands
 
 
-class _Errors(CurrencyMixin, ReaderCommand):
+class Errors(CurrencyMixin, ReaderCommand):
   async def insufficient_funds(self, shards: int, cost: int):
-    data = {
-      "shards": shards,
-      "cost": cost,
-    }
-    await self.send("gacha_insufficient_funds", other_data=data)
+    await self.send("gacha_insufficient_funds", other_data={"shards": shards, "cost": cost})
 
 
 class Details(CurrencyMixin, ReaderCommand):
@@ -446,7 +444,7 @@ class Roll(CurrencyMixin, WriterCommand):
     while self.again:
       if not await self.roll():
         # Roll fails due to insufficient shards
-        return await _Errors.from_other(self).insufficient_funds(self.data.shards, gacha.cost)
+        return await Errors.from_other(self).insufficient_funds(self.data.shards, gacha.cost)
 
       again_btn = Button(style=ButtonStyle.BLURPLE, label="Roll again", disabled=not self.again)
       message   = await self.send_commit(
@@ -797,23 +795,19 @@ class GiveAdmin(TargetMixin, CurrencyMixin, WriterCommand):
     def __attrs_post_init__(self):
       self.new_shards = self.shards if self.amount <= 0 else self.shards + self.amount
 
+
   async def run(self, target: BaseUser, amount: int):
+    await assert_user_permissions(self.ctx, Permissions.ADMINISTRATOR, "Server admin")
     await self.defer(ephemeral=True, suppress_error=True)
     self.set_target(target)
 
     target_shards = await userdata.shards(self.target_id)
-    valid = False
-    if amount < 1:
-      self.set_state(self.States.INVALID_VALUE)
-    else:
-      self.set_state(self.States.SENT)
-      valid = True
     self.data = self.Data(shards=target_shards, amount=amount)
 
-    if not valid:
-      await self.send()
+    if amount < 1:
+      await self.send(self.States.INVALID_VALUE)
     else:
-      await self.send_commit()
+      await self.send_commit(self.States.SENT)
 
 
   async def transaction(self, session: AsyncSession):
@@ -834,16 +828,15 @@ class ViewAdmin(MultifieldMixin, ReaderCommand):
 
 
   async def run(self, sort: Optional[str] = None):
+    await assert_user_permissions(self.ctx, Permissions.ADMINISTRATOR, "Server admin")
     await self.defer(ephemeral=True, suppress_error=True)
+
     self.field_data = await userdata.cards_stats(unobtained=True, sort=sort)
     self.data = self.Data(total_cards=len(self.field_data))
 
     if self.data.total_cards <= 0:
-      self.set_state(self.States.NO_CARDS)
-    else:
-      self.set_state(self.States.CARDS)
-
-    await self.send_multifield(template_kwargs=dict(escape_data_values=["name", "type", "series"]))
+      return await self.send(self.States.NO_CARDS)
+    return await self.send_multifield(self.States.CARDS, template_kwargs=dict(escape_data_values=["name", "type", "series"]))
 
 
 class ReloadAdmin(ReaderCommand):
@@ -860,11 +853,11 @@ class ReloadAdmin(ReaderCommand):
 
   async def run(self):
     global gacha
+    await assert_user_permissions(self.ctx, Permissions.ADMINISTRATOR, "Server admin")
     await self.defer(ephemeral=True, suppress_error=True)
 
     gacha.reload()
     await gacha.sync_db()
 
     self.data = self.Data(cards=len(gacha.cards))
-    self.set_state(self.States.RELOAD)
-    await self.send()
+    await self.send(self.States.RELOAD)

@@ -71,7 +71,7 @@ import logging
 # Settings must load first
 from mitsuki import settings
 
-from mitsuki.utils import UserDenied, BotDenied
+from mitsuki.lib.errors import UserDenied, BotDenied
 from mitsuki.lib.messages import load_message
 from mitsuki.lib.userdata import initialize
 from mitsuki.version import __version__
@@ -124,8 +124,7 @@ class Bot(Client):
   async def on_ready(self):
     await self.next_status()
     curr_time = datetime.now(tz=timezone.utc).isoformat(sep=" ")
-    print(f"Ready: {curr_time} UTC")
-    print(f"{self.user.tag} ({self.user.id}) @ {len(self.guilds)} guilds")
+    print(f"Ready: {curr_time} UTC | {self.user.tag} ({self.user.id}) @ {len(self.guilds)} guild(s)")
 
 
   @Task.create(IntervalTrigger(seconds=max(60, settings.mitsuki.status_cycle)))

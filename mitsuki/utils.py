@@ -27,8 +27,6 @@ import unicodedata
 import regex as re
 
 __all__ = (
-  "UserDenied",
-  "BotDenied",
   "escape_text",
   "process_text",
   "remove_accents",
@@ -36,16 +34,6 @@ __all__ = (
   "get_member_color",
   "get_member_color_value",
 )
-
-
-class UserDenied(Exception):
-  def __init__(self, requires: str) -> None:
-    self.requires = requires
-
-
-class BotDenied(Exception):
-  def __init__(self, requires: str) -> None:
-    self.requires = requires
 
 
 _escape_text_re = re.compile(r"[*_`.+(){}!#|:@<>~\-\[\]\\\/]")

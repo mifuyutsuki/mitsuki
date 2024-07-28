@@ -17,7 +17,7 @@ from enum import StrEnum
 from typing import Optional, Union
 
 from mitsuki.lib.commands import AsDict, ReaderCommand
-from mitsuki.utils import UserDenied, BotDenied
+from mitsuki.lib.checks import assert_bot_permissions, assert_user_permissions
 
 
 class Nickname(ReaderCommand):
@@ -38,30 +38,26 @@ class Nickname(ReaderCommand):
     new_nickname: str
 
 
-  async def run(self, nickname: Optional[str] = None):
+  async def run(self, new_nickname: Optional[str] = None):
     await self.defer(ephemeral=True)
     if not self.ctx.guild:
-      self.set_state(self.States.NOT_IN_GUILD)
-      await self.send()
-      return
+      return await self.send(self.States.NOT_IN_GUILD)
 
-    err_text = "-"
-    bot_member = await self.ctx.bot.fetch_member(self.ctx.bot.user.id, self.ctx.guild.id)
-    prev_nick  = bot_member.nick
-    if not bot_member.has_permission(Permissions.CHANGE_NICKNAME):
-      raise BotDenied(requires="Change Nickname")
-    if not self.caller_user.has_permission(Permissions.MANAGE_NICKNAMES) and not await is_owner()(self.ctx):
-      raise UserDenied(requires="Manage Nickname")
-    if bot_member.nick == nickname:
-      self.set_state(self.States.ERROR_SAME)
-    else:
-      try:
-        await bot_member.edit_nickname(nickname)
-      except HTTPException as e:
-        self.set_state(self.States.ERROR)
-        err_text = e.text
-      else:
-        self.set_state(self.States.OK)
+    await assert_bot_permissions(self.ctx, Permissions.CHANGE_NICKNAME, "Change Nickname")
+    await assert_user_permissions(self.ctx, Permissions.MANAGE_NICKNAMES, "Manage Nickname")
 
-    self.data = self.Data(old_nickname=prev_nick or "-", new_nickname=nickname or "-")
-    await self.send(other_data=dict(error=err_text))
+    bot_member = await self.ctx.guild.fetch_member(self.ctx.bot.user.id)
+    old_nickname = bot_member.nick
+
+    if old_nickname == new_nickname:
+      return await self.send(self.States.ERROR_SAME)
+
+    try:
+      await bot_member.edit_nickname(new_nickname)
+    except HTTPException as e:
+      return await self.send(self.States.ERROR, other_data={"error": e.text or str(e)})
+
+    return await self.send(
+      self.States.OK,
+      other_data={"old_nickname": old_nickname or "-", "new_nickname": new_nickname or "-"}
+    )

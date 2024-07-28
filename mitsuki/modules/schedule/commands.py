@@ -61,8 +61,8 @@ from mitsuki.lib.checks import (
   has_user_permissions,
   has_user_roles,
   has_bot_channel_permissions,
-  UserDenied,
 )
+from mitsuki.lib.errors import UserDenied
 from mitsuki.lib.userdata import new_session
 
 from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes

@@ -44,7 +44,6 @@ from typing import Optional, Dict
 from string import Template
 
 from mitsuki import init_event, bot
-from mitsuki.utils import UserDenied
 
 from .userdata import Schedule, Message
 from .daemon import daemon
