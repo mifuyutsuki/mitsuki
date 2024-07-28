@@ -173,14 +173,11 @@ class GachaModule(Extension):
   ):
     await commands.Cards.create(ctx).run(user, sort)
 
-  @component_callback(commands.Cards.CUSTOM_ID_RE)
+  @component_callback(commands.CustomIDs.CARDS.numeric_id_pattern())
   @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 15.0)
   async def cards_btn_cmd(self, ctx: ComponentContext):
-    if target := await commands.Cards.target_from_custom_id(ctx.custom_id):
-      await commands.Cards.create(ctx).run(target)
-    else:
-      await ctx.edit_origin()
+    return await commands.Cards.create(ctx).run_from_button()
 
 
   # ===========================================================================
@@ -220,14 +217,11 @@ class GachaModule(Extension):
   ):
     await commands.Gallery.create(ctx).run(user, sort)
 
-  @component_callback(commands.Gallery.CUSTOM_ID_RE)
+  @component_callback(commands.CustomIDs.GALLERY.numeric_id_pattern())
   @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 15.0)
   async def gallery_btn_cmd(self, ctx: ComponentContext):
-    if target := await commands.Gallery.target_from_custom_id(ctx.custom_id):
-      await commands.Gallery.create(ctx).run(target)
-    else:
-      await ctx.edit_origin()
+    return await commands.Gallery.create(ctx).run_from_button()
 
 
   # ===========================================================================
@@ -262,14 +256,11 @@ class GachaModule(Extension):
   ):
     await commands.View.create(ctx).run(name, user)
 
-  @component_callback(commands.View.CUSTOM_ID_RE)
+  @component_callback(commands.CustomIDs.VIEW.string_id_pattern())
   @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 15.0)
   async def view_btn_cmd(self, ctx: ComponentContext):
-    if search_key := await commands.View.search_key_from_custom_id(ctx.custom_id):
-      await commands.View.create(ctx).run(search_key)
-    else:
-      await ctx.edit_origin()
+    return await commands.View.create(ctx).run_from_button()
 
   @view_cmd.autocomplete("name")
   async def view_cmd_autocomplete(self, ctx: AutocompleteContext):

@@ -32,11 +32,13 @@ from mitsuki import bot
 from mitsuki.utils import escape_text, process_text, get_member_color_value
 from mitsuki.lib.commands import (
   AsDict,
+  CustomID,
   ReaderCommand,
   WriterCommand,
   TargetMixin,
   MultifieldMixin,
-  AutocompleteMixin
+  AutocompleteMixin,
+  SelectionMixin,
 )
 from mitsuki.lib.checks import is_caller, assert_user_permissions
 
@@ -103,6 +105,32 @@ async def is_gacha_first(user: BaseUser):
 
 # =============================================================================
 # Gacha commands
+
+
+class CustomIDs:
+  VIEW = CustomID("gacha_view")
+  """View a card. (id: Card ID; select)"""
+
+  CARDS = CustomID("gacha_cards")
+  """View a user's card collection in list view. (id: Target User)"""
+
+  GALLERY = CustomID("gacha_gallery")
+  """View a user's card collection in deck view. (id: Target User)"""
+
+  PROFILE = CustomID("gacha_profile")
+  """View a user's gacha profile. (id: Target User)"""
+
+  ROLL = CustomID("gacha_roll")
+  """Roll a card. Caller must be the same as the user in ID. (id: User)"""
+
+  CARDS_ADMIN = CustomID("gacha_cards_admin")
+  """View all cards in deck as admin. (no args)"""
+
+  VIEW_ADMIN = CustomID("gacha_view_admin")
+  """View a card as admin. (id: Card ID)"""
+
+  RELOAD = CustomID("gacha_reload")
+  """Reload the current roster. (no args; confirm)"""
 
 
 class Errors(CurrencyMixin, ReaderCommand):
@@ -252,20 +280,21 @@ class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
         Button(
           style=ButtonStyle.BLURPLE,
           label="Cards",
-          custom_id=Cards.custom_id(self.target_id),
+          custom_id=CustomIDs.CARDS.id(self.target_id),
         ),
         Button(
           style=ButtonStyle.BLURPLE,
           label="Gallery",
-          custom_id=Gallery.custom_id(self.target_id),
+          custom_id=CustomIDs.GALLERY.id(self.target_id),
         ),
       ])
+
     if last_card_id:
       nav_btns.extend([
         Button(
           style=ButtonStyle.BLURPLE,
           label="View last rolled",
-          custom_id=View.custom_id("@" + last_card_id)
+          custom_id=CustomIDs.VIEW.id(f"@{last_card_id}"),
         ),
       ])
 
@@ -471,7 +500,6 @@ class Roll(CurrencyMixin, WriterCommand):
 
 
 class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
-  CUSTOM_ID_RE = re.compile(r"gacha_cards\|[0-9]+")
   state: "Cards.States"
   data: "Cards.Data"
 
@@ -483,34 +511,29 @@ class Cards(TargetMixin, MultifieldMixin, ReaderCommand):
   class Data(AsDict):
     total_cards: int
 
-  @staticmethod
-  def custom_id(user_id: Snowflake):
-    return f"gacha_cards|{user_id}"
 
-  @staticmethod
-  async def target_from_custom_id(custom_id: str):
-    try:
-      return await bot.fetch_user(Snowflake(custom_id.split("|")[-1]))
-    except ValueError:
-      return None
+  async def run_from_button(self):
+    return await self.run(Snowflake(CustomID.get_id_from(self.ctx)))
 
 
-  async def run(self, target: Optional[BaseUser] = None, sort: Optional[str] = None):
-    self.set_target(target or self.caller_user)
+  async def run(self, target: Optional[Union[BaseUser, Snowflake]] = None, sort: Optional[str] = None):
+    await self.fetch_target(target or self.caller_user)
     await self.defer(suppress_error=True)
+
     self.field_data = await userdata.cards_user(self.target_id, sort=sort or "date")
     self.data = self.Data(total_cards=len(self.field_data))
 
     if self.data.total_cards <= 0:
-      self.set_state(self.States.NO_CARDS)
-      await self.send()
-    else:
-      self.set_state(self.States.CARDS)
-      await self.send_multifield(template_kwargs=dict(escape_data_values=["name", "type", "series"]), timeout=45)
+      return await self.send(self.States.NO_CARDS)
+
+    return await self.send_multifield(
+      self.States.CARDS,
+      template_kwargs=dict(escape_data_values=["name", "type", "series"]),
+      timeout=45
+    )
 
 
 class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
-  CUSTOM_ID_RE = re.compile(r"gacha_gallery\|[0-9]+")
   state: "Cards.States"
   data: "Cards.Data"
 
@@ -522,34 +545,29 @@ class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
   class Data(AsDict):
     total_cards: int
 
-  @staticmethod
-  def custom_id(user_id: Snowflake):
-    return f"gacha_gallery|{user_id}"
 
-  @staticmethod
-  async def target_from_custom_id(custom_id: str):
-    try:
-      return await bot.fetch_user(Snowflake(custom_id.split("|")[-1]))
-    except ValueError:
-      return None
+  async def run_from_button(self):
+    return await self.run(Snowflake(CustomID.get_id_from(self.ctx)))
 
 
-  async def run(self, target: Optional[BaseUser] = None, sort: Optional[str] = None):
-    self.set_target(target or self.caller_user)
+  async def run(self, target: Optional[Union[BaseUser, Snowflake]] = None, sort: Optional[str] = None):
+    await self.fetch_target(target or self.caller_user)
     await self.defer(suppress_error=True)
+
     self.field_data = await userdata.cards_user(self.target_id, sort=sort or "date")
     self.data = self.Data(total_cards=len(self.field_data))
 
     if self.data.total_cards <= 0:
-      self.set_state(self.States.NO_CARDS)
-      await self.send()
-    else:
-      self.set_state(self.States.CARDS)
-      await self.send_multipage(template_kwargs=dict(escape_data_values=["type", "series"]), timeout=45)
+      return await self.send(self.States.NO_CARDS)
+
+    await self.send_multipage(
+      self.States.CARDS,
+      template_kwargs=dict(escape_data_values=["type", "series"]),
+      timeout=45
+    )
 
 
 class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, ReaderCommand):
-  CUSTOM_ID_RE = re.compile(r"gacha_view\|@.+")
   state: "View.States"
   data: "View.Data"
   card: StatsCard
@@ -577,14 +595,6 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
     total_cards: int
     # total_results: int [FUTURE]
 
-  @staticmethod
-  def custom_id(search_key: str):
-    return f"gacha_view|{search_key}"
-
-  @staticmethod
-  async def search_key_from_custom_id(custom_id: str):
-    return custom_id.split("|")[-1]
-
 
   @property
   def search_key(self):
@@ -595,22 +605,26 @@ class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, Reade
     return self.data.total_cards
 
 
-  async def run(self, search_key: str, target: Optional[BaseUser] = None):
-    self.set_target(target or self.caller_user)
+  async def run_from_button(self):
+    return await self.run(CustomID.get_id_from(self.ctx))
+
+
+  async def run(self, search_key: str, target: Optional[Union[BaseUser, Snowflake]] = None):
+    await self.fetch_target(target or self.caller_user)
     self.user_mode = target is not None
 
     results: List[StatsCard] = await self.search(search_key)
     prompted_card = None
     if len(results) <= 0: # no results
       if self.total_cards <= 0:
-        self.set_state(self.States.NO_INVENTORY_USER if self.user_mode else self.States.NO_INVENTORY)
+        return await self.send(self.States.NO_INVENTORY_USER if self.user_mode else self.States.NO_INVENTORY)
       else:
-        self.set_state(self.States.NO_RESULTS_USER if self.user_mode else self.States.NO_RESULTS)
-      await self.send()
-      return
+        return await self.send(self.States.NO_RESULTS_USER if self.user_mode else self.States.NO_RESULTS)
+
     elif len(results) == 1: # singular match
       await self.defer(suppress_error=True)
       self.card = results[0]
+
     elif len(results) > 1: # multiple matches
       await self.defer(suppress_error=True)
       self.set_state(self.States.SEARCH_RESULTS_USER if self.user_mode else self.States.SEARCH_RESULTS)
@@ -750,28 +764,21 @@ class Give(TargetMixin, CurrencyMixin, WriterCommand):
     self.set_target(target)
     user_shards = await userdata.shards(self.caller_id)
 
-    valid = False
     if amount < 1:
-      self.set_state(self.States.INVALID_VALUE)
-    elif self.target_id == self.caller_id:
-      self.set_state(self.States.INVALID_SELF)
-    elif self.target_user.bot:
-      self.set_state(self.States.INVALID_BOT)
-    elif not isinstance(self.target_user, Member):
-      self.set_state(self.States.INVALID_NONMEMBER)
-    elif user_shards < amount:
-      self.set_state(self.States.INSUFFICIENT)
-    else:
-      self.set_state(self.States.SENT)
-      valid = True
-    self.data = self.Data(shards=user_shards, amount=amount)
+      return await self.send(self.States.INVALID_VALUE)
+    if self.target_id == self.caller_id:
+      return await self.send(self.States.INVALID_SELF)
+    if self.target_user.bot:
+      return await self.send(self.States.INVALID_BOT)
+    if not isinstance(self.target_user, Member):
+      return await self.send(self.States.INVALID_NONMEMBER)
 
-    if not valid:
-      await self.send()
-    else:
-      await self.send_commit()
-      self.set_state(self.States.NOTIFY)
-      await self.send(template_kwargs=dict(escape_data_values=["username", "target_username"]))
+    self.data = self.Data(shards=user_shards, amount=amount)
+    if user_shards < amount:
+      return await Errors.create(self.ctx).insufficient_funds(user_shards, amount)
+
+    await self.send_commit(self.States.SENT)
+    await self.send(self.States.NOTIFY, template_kwargs=dict(escape_data_values=["username", "target_username"]))
 
 
   async def transaction(self, session: AsyncSession):
