@@ -79,6 +79,9 @@ class CustomID(str):
   def confirm(self):
     return self + "|confirm"
 
+  def action(self, action: str):
+    return self + f"|{action}"
+
   def id(self, value: Any):
     return self + f":{value}"
 
@@ -91,9 +94,16 @@ class CustomID(str):
   def get_id(self):
     return self.split(":")[-1]
 
+  def get_ids(self):
+    return self.split(":")[1:]
+
   @classmethod
   def get_id_from(cls, ctx: ComponentContext):
     return cls(ctx.custom_id).get_id()
+
+  @classmethod
+  def get_ids_from(cls, ctx: ComponentContext):
+    return cls(ctx.custom_id).get_ids()
 
 
 class AsDict:
