@@ -10,7 +10,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-import re
 from attrs import define, field
 from typing import Optional, Union, List, Dict, Any, NamedTuple
 from enum import Enum, StrEnum
@@ -31,7 +30,7 @@ from interactions import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mitsuki import bot
-from mitsuki.utils import escape_text, process_text, truncate, get_member_color_value
+from mitsuki.utils import escape_text, process_text, truncate, get_member_color_value, ratio
 from mitsuki.lib.commands import (
   AsDict,
   CustomID,
@@ -137,7 +136,10 @@ class CustomIDs:
 
 class Errors(CurrencyMixin, ReaderCommand):
   async def insufficient_funds(self, shards: int, cost: int):
-    await self.send("gacha_insufficient_funds", other_data={"shards": shards, "cost": cost})
+    return await self.send("gacha_insufficient_funds", other_data={"shards": shards, "cost": cost})
+
+  async def card_not_found(self, card_key: str):
+    return await self.send("gacha_card_not_found", other_data={"card_key": card_key})
 
 
 class Details(CurrencyMixin, ReaderCommand):
@@ -532,7 +534,7 @@ class Cards(TargetMixin, SelectionMixin, ReaderCommand):
     self.selection_values = [
       StringSelectOption(
         label=truncate(card.name, 100),
-        value=f"@{card.card}",
+        value=card.card,
         description=truncate(
           (("★" * card.rarity) if card.rarity <= 6 else f"{card.rarity}★")
           + f" • {card.type} • {card.series}",
@@ -550,7 +552,7 @@ class Cards(TargetMixin, SelectionMixin, ReaderCommand):
 
 
   async def selection_callback(self, ctx: ComponentContext):
-    return await View.create(ctx).run_from_select()
+    return await View.create(ctx).view_from_select()
 
 
 class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
@@ -587,177 +589,162 @@ class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
     )
 
 
-class View(TargetMixin, CurrencyMixin, MultifieldMixin, AutocompleteMixin, ReaderCommand):
-  state: "View.States"
+# Backend remake of /gacha view
+class View(CurrencyMixin, SelectionMixin, AutocompleteMixin, ReaderCommand):
   data: "View.Data"
-  card: StatsCard
-  card_results: List[StatsCard] = []
-  card_user: Optional[UserCard] = None
-  user_mode: bool = False
 
   class States(StrEnum):
-    SEARCH_RESULTS      = "gacha_view_search_results_2"   # gacha_view_gs_search_results
-    NO_RESULTS          = "gacha_view_no_results_2"       # gacha_view_gs_no_results
-    NO_INVENTORY        = "gacha_view_no_acquired"        # gacha_view_gs_no_acquired
-    SEARCH_RESULTS_USER = "gacha_view_search_results"     # gacha_view_us_search_results
-    NO_RESULTS_USER     = "gacha_view_no_results"         # gacha_view_us_no_results
-    NO_INVENTORY_USER   = "gacha_view_no_cards"           # gacha_view_us_no_cards
+    SEARCH_RESULTS      = "gacha_view_search_results"
+    NO_RESULTS          = "gacha_view_no_results"
+    NO_ACQUIRED         = "gacha_view_no_acquired"
 
-    VIEW_OWNERS_UNACQ   = "gacha_view_card_2_unacquired"           # gacha_view_global_unacquired
-    VIEW_1OWNER_UNACQ   = "gacha_view_card_2_unacquired_one_owner" # gacha_view_global_unacquired
-    VIEW_OWNERS_ACQ     = "gacha_view_card_2_acquired"             # gacha_view_global_acquired
-    VIEW_1OWNER_ACQ     = "gacha_view_card_2_acquired_one_owner"   # gacha_view_global_acquired
-    VIEW_USER           = "gacha_view_card"                        # gacha_view_us_card
+    VIEW_UNACQUIRED     = "gacha_view_unacquired"
+    VIEW_ACQUIRED       = "gacha_view_acquired"
+
+  class Strings(StrEnum):
+    MULTIPLE_OWNERS     = "gacha_view_multiple_owners"
 
   @define(slots=False)
   class Data(AsDict):
-    search_key: str
+    search_key: str = field(converter=escape_text)
     total_cards: int
-    # total_results: int [FUTURE]
+    total_results: int
 
-
-  @property
-  def search_key(self):
-    return self.data.search_key
-
-  @property
-  def total_cards(self):
-    return self.data.total_cards
-
-
-  async def run_from_select(self):
-    return await self.run(self.ctx.values[0])
-
-
-  async def run_from_button(self):
-    return await self.run(CustomID.get_id_from(self.ctx))
-
-
-  async def run(self, search_key: str, target: Optional[Union[BaseUser, Snowflake]] = None):
-    await self.fetch_target(target or self.caller_user)
-    self.user_mode = target is not None
-
-    results: List[StatsCard] = await self.search(search_key)
-    prompted_card = None
-    if len(results) <= 0: # no results
-      if self.total_cards <= 0:
-        return await self.send(self.States.NO_INVENTORY_USER if self.user_mode else self.States.NO_INVENTORY)
-      else:
-        return await self.send(self.States.NO_RESULTS_USER if self.user_mode else self.States.NO_RESULTS)
-
-    elif len(results) == 1: # singular match
-      await self.defer(suppress_error=True)
-      self.card = results[0]
-
-    elif len(results) > 1: # multiple matches
-      await self.defer(suppress_error=True)
-      self.set_state(self.States.SEARCH_RESULTS_USER if self.user_mode else self.States.SEARCH_RESULTS)
-      prompted_card = await self.prompt()
-      if not prompted_card:
-        return
-      self.card = prompted_card
-
-    string_templates = []
-    if self.user_mode:
-      self.card_user = await userdata.card_user(self.target_id, self.card.id)
-      self.set_state(self.States.VIEW_USER)
-    else:
-      self.card_user = await userdata.card_user(self.caller_id, self.card.id)
-      if self.card.users > 1:
-        string_templates.append("gacha_view_multiple_owners")
-      if self.card_user:
-        self.set_state(self.States.VIEW_1OWNER_ACQ if self.card.users <= 1 else self.States.VIEW_OWNERS_ACQ)
-      else:
-        self.set_state(self.States.VIEW_1OWNER_UNACQ if self.card.users <= 1 else self.States.VIEW_OWNERS_UNACQ)
-
-    await self.send(
-      other_data=self.card.asdict() | (self.card_user.asdict() if self.card_user else {}),
-      template_kwargs=dict(
-        escape_data_values=["search_key", "name", "type", "series"],
-        use_string_templates=string_templates,
-      ),
-      edit_origin=bool(prompted_card),
-      components=[]
+  @staticmethod
+  async def card_search(search_key: str, limit: Optional[int] = None):
+    return await userdata.cards_stats_search(
+      search_key,
+      cutoff=45,
+      ratio=ratio,
+      processor=process_text,
+      limit=limit
     )
 
+  @staticmethod
+  async def card_count():
+    return await userdata.cards_roster_count(unobtained=False)
 
-  async def search(self, search_key: str):
-    if self.user_mode:
-      total_cards = await userdata.cards_user_count(self.target_id)
-    else:
-      total_cards = await userdata.cards_roster_count(unobtained=False)
-
-    self.data = self.Data(search_key=search_key, total_cards=total_cards)
-    if total_cards <= 0:
-      return []
-
-    target_id = self.target_id if self.user_mode else None
-    by_id = search_key[1:] if search_key.startswith("@") else None
-
-    if by_id and target_id and await userdata.card_has(target_id, by_id):
-      self.card_results = await userdata.cards_stats(card_ids=[by_id])
-    elif by_id and target_id is None:
-      self.card_results = await userdata.cards_stats(card_ids=[by_id])
-    if len(self.card_results) <= 0:
-      self.card_results = await userdata.cards_stats_search(
-        search_key, user_id=target_id, limit=6, cutoff=60, strong_cutoff=90, processor=process_text
-      )
-    return self.card_results
-
-
-  async def prompt(self):
-    # Handle cards with the same names
-    self.field_data = self.card_results
-    selection: List[str] = []
-    for card in self.card_results:
-      selection_name = card.name
-      repeat_no = 1
-      while selection_name in selection:
-        selection_name = f"{card.name} ({repeat_no})"
-        repeat_no += 1
-      selection.append(selection_name)
-
-    # Create prompt
-    select_menu = StringSelectMenu(*selection, placeholder="Card to view from search results")
-    _ = await self.send_multifield_single(
-      page_index=0,
-      template_kwargs=dict(escape_data_values=["search_key", "name", "type", "series"]),
-      components=select_menu
-    )
-
-    # Initiate prompt
-    try:
-      selected = await bot.wait_for_component(components=select_menu, check=is_caller(self.ctx), timeout=45)
-    except TimeoutError:
-      if self.message:
-        await self.message.edit(components=[])
-      return None
-    else:
-      self.set_ctx(selected.ctx)
-      await self.defer(edit_origin=True)
-      return self.card_results[selection.index(self.ctx.values[0])]
+  @staticmethod
+  async def card_fetch(card_id: str):
+    cards = await userdata.cards_stats([card_id], unobtained=False)
+    if len(cards) > 0:
+      return cards[0]
+    return None
 
 
   async def autocomplete(self, input_text: str):
-    ellip = "..."
-    card_info = lambda card: (
-      f"{card.name if len(card.name) < 100 else card.name[:97] + ellip}"
-    )
-    if len(input_text) < 3:
+    # Short circuit on empty length
+    if len(input_text) < 1:
       return await self.send_autocomplete()
 
-    options = []
-    if input_text.startswith("@"):
-      card_by_id = await userdata.cards_stats(card_ids=[input_text[1:]])
-      if len(card_by_id) > 0:
-        options.append(self.option("@ " + card_info(card_by_id[0]), input_text))
+    # Input text for prompt
+    options = [self.option(input_text, input_text)]
 
-    search_results = await userdata.cards_stats_search(
-      input_text, cutoff=60, strong_cutoff=90, processor=process_text, limit=9-len(options)
-    )
-    options.append(self.option(input_text, input_text))
-    options.extend([self.option(truncate(card.name), f"@{card.id}") for card in search_results])
+    # ID search
+    if input_text.startswith("@"):
+      if card_by_id := await self.card_fetch(input_text[1:]):
+        options.append(self.option(truncate(f"@ {card_by_id.name}"), input_text))
+
+    # Everything else, but input text must be length >= 3
+    if len(input_text) < 3:
+      return await self.send_autocomplete(options)
+
+    options.extend([
+      self.option(truncate(card.name), f"@{card.card}")
+      for card in await self.card_search(input_text, 9-len(options))
+    ])
     await self.send_autocomplete(options)
+
+
+  async def run(self, search_key: str):
+    card_by_id = None
+    if search_key.startswith("@"):
+      card_by_id = await self.card_fetch(search_key[1:])
+
+    if not card_by_id:
+      return await self.search(search_key)
+    return await self.view(card_by_id)
+
+
+  async def search(self, search_key: str):
+    await self.defer(suppress_error=True)
+
+    search_results = await self.card_search(search_key)
+    total_cards    = await self.card_count()
+    total_results  = len(search_results)
+
+    self.data = self.Data(search_key, total_cards, total_results)
+    if total_cards <= 0:
+      return await self.send(self.States.NO_ACQUIRED)
+    if total_results <= 0:
+      return await self.send(self.States.NO_RESULTS)
+
+    escapes = ["search_key", "name", "type", "series"]
+    self.field_data = search_results
+    self.selection_values = [
+      StringSelectOption(
+        label=truncate(card.name),
+        value=card.card,
+        description=truncate(
+          (("★" * card.rarity) if card.rarity <= 6 else f"{card.rarity}★")
+          + f" • {card.type} • {card.series}"
+        )
+      )
+      for card in search_results
+    ]
+    self.selection_placeholder = "Select a card to view"
+    return await self.send_selection(
+      self.States.SEARCH_RESULTS, template_kwargs={"escape_data_values": escapes}, timeout=45
+    )
+
+
+  async def selection_callback(self, ctx: ComponentContext):
+    return await self.create(ctx).view_from_select()
+
+
+  async def view_from_select(self):
+    return await self.view(self.ctx.values[0])
+
+
+  async def view_from_button(self):
+    return await self.view(CustomID.get_id_from(self.ctx))
+
+
+  async def view(self, card: Union[StatsCard, str]):
+    if self.has_origin:
+      await self.defer(edit_origin=True, suppress_error=True)
+    else:
+      await self.defer(suppress_error=True)
+
+    if isinstance(card, str):
+      if fetched_card := await self.card_fetch(card):
+        card = fetched_card
+      else:
+        return await Errors.create(self.ctx).card_not_found(card)
+
+    escapes = ["search_key", "name", "type", "series"]
+
+    user_card = await userdata.card_user(self.caller_id, card.card)
+    if user_card:
+      return await self.send(
+        self.States.VIEW_ACQUIRED,
+        other_data=card.asdict() | user_card.asdict(),
+        template_kwargs={
+          "escape_data_values": escapes,
+          "use_string_templates": [self.Strings.MULTIPLE_OWNERS] if card.users > 1 else []
+        },
+        components=[]
+      )
+    else:
+      return await self.send(
+        self.States.VIEW_UNACQUIRED,
+        other_data=card.asdict(),
+        template_kwargs={
+          "escape_data_values": escapes,
+          "use_string_templates": [self.Strings.MULTIPLE_OWNERS] if card.users > 1 else []
+        },
+        components=[]
+      )
 
 
 class Give(TargetMixin, CurrencyMixin, WriterCommand):
@@ -852,7 +839,7 @@ class ViewAdmin(MultifieldMixin, ReaderCommand):
 
   class States(StrEnum):
     NO_CARDS = "gacha_view_admin_no_cards"
-    CARDS    = "gacha_view_admin"
+    CARDS    = "gacha_view_admin_cards"
 
   @define(slots=False)
   class Data(AsDict):

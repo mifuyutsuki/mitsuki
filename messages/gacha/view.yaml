@@ -42,14 +42,14 @@ _namespace: gacha_view
 # Global search
 
 # Search results
-gs_results: &search_results_2
+# [Multifield/Selection]
+search_results:
   title: >-
-    Search results for "${search_key}"
+    Search results for "${search_key}" (${page}/${pages})
   description: >-
-    Searching from `${total_cards}` acquired cards
+    `${total_results}` results found from `${total_cards}` acquired cards
 
 
-    To find more results, further specify the card name.
     If you can't find the card, the card might have not been
     obtained by a user or doesn't exist.
   field       :
@@ -59,28 +59,27 @@ gs_results: &search_results_2
     inline    : false
 
 # No search results
-gs_no_results: &no_results_2
+no_results:
   title: >-
     No matching results for "${search_key}"
   description: >-
     Searching from `${total_cards}` acquired cards
 
 
-    To find more results, further specify the card name.
     If you can't find the card, the card might have not been
     obtained by a user or doesn't exist.
   color: error
 
 # No obtained cards to view
-gs_no_acquired: &no_acquired
+no_acquired:
   title: >-
     No acquired cards
   description: >-
     There are no acquired cards to view.
   color: error
 
-# View card, unobtained by user (new)
-global_unacquired: &global_unacquired
+# View card, unobtained by user
+unacquired:
 - base_template: no_footer
   title: >-
     ${name}
@@ -115,8 +114,8 @@ global_unacquired: &global_unacquired
   color: >-
     ${color}
 
-# View card, has been obtained by user (new)
-global_acquired: &global_acquired
+# View card, has been obtained by user
+acquired:
 - base_template: no_footer
   title: >-
     ${name}
@@ -141,7 +140,7 @@ global_acquired: &global_acquired
   - name      : First acquired
     value     : >-
       ${first_user_acquired_f}
-      
+
       by ${first_user_mention}
     inline    : true
   - name      : Last acquired
@@ -154,95 +153,18 @@ global_acquired: &global_acquired
   color: >-
     ${color}
 
-# View card, unobtained by user, multiple owners
-gs_card_owners_unacquired: *global_unacquired
-
-# View card, unobtained by user, one owner
-gs_card_1owner_unacquired: *global_unacquired
-
-# View card, has been obtained by user, multiple owners
-gs_card_owners_acquired: *global_acquired
-
-# View card, has been obtained by user, one owner
-gs_card_1owner_acquired: *global_acquired
-
 multiple_owners: >-
   ${last_user_acquired_f}
 
   by ${last_user_mention}
 
+
 # -----------------------------------------------------------------------------
-# User search
-
-# Search results
-us_results: &search_results
-  title: >-
-    Search results for "${search_key}"
-  description: >-
-    Searching from `${total_cards}` unique cards in ${target_user}'s
-    card collection
-
-
-    To find more results, further specify the card name.
-    If you can't find the card, the card might have not been
-    obtained by the user or doesn't exist.
-  thumbnail   : ${target_usericon}
-  field       :
-    name      : ${stars} ${name}
-    value     : >-
-      ${type} • ${series}
-    inline    : false
-
-# No search results
-us_no_results: &no_results
-  title: >-
-    No matching results for "${search_key}"
-  description: >-
-    Searching from `${total_cards}` unique cards in ${target_user}'s
-    card collection
-
-
-    To find more results, further specify the card name.
-    If you can't find the card, the card might have not been
-    obtained by the user or doesn't exist.
-  thumbnail   : ${target_usericon}
-  color: error
-
-# Target user has no cards 
-us_no_cards: &no_cards
-  title: >-
-    Target user has no cards
-  description: >-
-    User ${target_user} has no cards to view.
-  thumbnail   : ${target_usericon}
-  color: error
-
-# View card in user collection
-# amount           : Amount of card acquired by target user
-# first_acquired   : User first acquired time in timestamp
-# first_acquired_f : User first acquired time in dynamic timestamp (full)
-us_card: &card
-  author:
-    name: >-
-      ${target_username}'s Cards Collection
-    icon_url: ${target_usericon}
-  title: >-
-    ${name}
-  description: >-
-    ${stars} • ${type} • ${series}
-
-
-    `${amount}` in ${target_user}'s card collection
-
-    Since ${first_acquired_f}
-  image: >-
-    ${image}
-  color: >-
-    ${color}
+# Admin
 
 # List/view all cards in roster
 # /system gacha cards (/gacha admin cards)
-admin:
+admin_cards:
   title: >-
     Card Roster (${page}/${pages})
   description: >-
@@ -268,17 +190,71 @@ admin_no_cards:
 
 
 # -----------------------------------------------------------------------------
-# Legacy targets
+# User search (DEPRECATED)
+# Kept here for reference.
 
-search_results: *search_results
-no_results: *no_results
-no_cards: *no_cards
-card: *card
+# Search results
+us_results:
+  title: >-
+    Search results for "${search_key}"
+  description: >-
+    Searching from `${total_cards}` unique cards in ${target_user}'s
+    card collection
 
-search_results_2: *search_results_2
-no_results_2: *no_results_2
-no_acquired: *no_acquired
-card_2_acquired: *global_acquired
-card_2_acquired_one_owner: *global_acquired
-card_2_unacquired: *global_unacquired
-card_2_unacquired_one_owner: *global_unacquired
+
+    To find more results, further specify the card name.
+    If you can't find the card, the card might have not been
+    obtained by the user or doesn't exist.
+  thumbnail   : ${target_usericon}
+  field       :
+    name      : ${stars} ${name}
+    value     : >-
+      ${type} • ${series}
+    inline    : false
+
+# No search results
+us_no_results:
+  title: >-
+    No matching results for "${search_key}"
+  description: >-
+    Searching from `${total_cards}` unique cards in ${target_user}'s
+    card collection
+
+
+    To find more results, further specify the card name.
+    If you can't find the card, the card might have not been
+    obtained by the user or doesn't exist.
+  thumbnail   : ${target_usericon}
+  color: error
+
+# Target user has no cards 
+us_no_cards:
+  title: >-
+    Target user has no cards
+  description: >-
+    User ${target_user} has no cards to view.
+  thumbnail   : ${target_usericon}
+  color: error
+
+# View card in user collection
+# amount           : Amount of card acquired by target user
+# first_acquired   : User first acquired time in timestamp
+# first_acquired_f : User first acquired time in dynamic timestamp (full)
+us_card:
+  author:
+    name: >-
+      ${target_username}'s Cards Collection
+    icon_url: ${target_usericon}
+  title: >-
+    ${name}
+  description: >-
+    ${stars} • ${type} • ${series}
+
+
+    `${amount}` in ${target_user}'s card collection
+
+    Since ${first_acquired_f}
+  image: >-
+    ${image}
+  color: >-
+    ${color}

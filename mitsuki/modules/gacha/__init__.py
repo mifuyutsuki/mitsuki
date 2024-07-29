@@ -240,27 +240,16 @@ class GachaModule(Extension):
     autocomplete=True,
     opt_type=OptionType.STRING,
     min_length=3,
-    max_length=128
+    max_length=100
   )
-  @slash_option(
-    name="user",
-    description="View cards in a user's collection",
-    required=False,
-    opt_type=OptionType.USER
-  )
-  async def view_cmd(
-    self,
-    ctx: SlashContext,
-    name: str,
-    user: Optional[BaseUser] = None
-  ):
-    await commands.View.create(ctx).run(name, user)
+  async def view_cmd(self, ctx: SlashContext, name: str):
+    await commands.View.create(ctx).run(name)
 
   @component_callback(commands.CustomIDs.VIEW.string_id_pattern())
   @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 15.0)
   async def view_btn_cmd(self, ctx: ComponentContext):
-    return await commands.View.create(ctx).run_from_button()
+    return await commands.View.create(ctx).view_from_button()
 
   @view_cmd.autocomplete("name")
   async def view_cmd_autocomplete(self, ctx: AutocompleteContext):

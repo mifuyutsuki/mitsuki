@@ -15,18 +15,16 @@ from interactions import (
   InteractionContext,
   Member,
 )
-from interactions.client.errors import (
-  AlreadyDeferred,
-  HTTPException,
-)
 from interactions.api.events import Component
 
 from rapidfuzz.utils import default_process
+from rapidfuzz import fuzz
 
 import unicodedata
 import regex as re
 
 __all__ = (
+  "ratio",
   "escape_text",
   "process_text",
   "remove_accents",
@@ -39,6 +37,14 @@ __all__ = (
 
 _escape_text_re = re.compile(r"[*_`.+(){}!#|:@<>~\-\[\]\\\/]")
 _remove_accents_re = re.compile(r"\p{Mn}")
+
+
+def ratio(s1: str, s2: str, processor=None):
+  return (
+    (0.55 * fuzz.token_ratio(s1, s2, processor=processor))
+    + (0.35 * fuzz.ratio(s1, s2, processor=processor))
+    + (0.10 * fuzz.partial_ratio(s1, s2, processor=processor))
+  )
 
 
 def escape_text(text: str):
