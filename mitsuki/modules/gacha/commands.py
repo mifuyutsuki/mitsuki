@@ -780,8 +780,8 @@ class Give(TargetMixin, CurrencyMixin, WriterCommand):
       return await self.send(self.States.INVALID_VALUE)
     if self.target_id == self.caller_id:
       return await self.send(self.States.INVALID_SELF)
-    # if self.target_user.bot:
-    #   return await self.send(self.States.INVALID_BOT)
+    if self.target_user.bot:
+      return await self.send(self.States.INVALID_BOT)
     if not isinstance(self.target_user, Member):
       return await self.send(self.States.INVALID_NONMEMBER)
 
