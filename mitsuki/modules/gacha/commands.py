@@ -552,7 +552,7 @@ class Cards(TargetMixin, SelectionMixin, ReaderCommand):
 
 
   async def selection_callback(self, ctx: ComponentContext):
-    return await View.create(ctx).view_from_select()
+    return await View.create(ctx).view_from_select(edit_origin=False)
 
 
 class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
@@ -702,16 +702,16 @@ class View(CurrencyMixin, SelectionMixin, AutocompleteMixin, ReaderCommand):
     return await self.create(ctx).view_from_select()
 
 
-  async def view_from_select(self):
-    return await self.view(self.ctx.values[0])
+  async def view_from_select(self, edit_origin: bool = True):
+    return await self.view(self.ctx.values[0], edit_origin=edit_origin)
 
 
   async def view_from_button(self):
-    return await self.view(CustomID.get_id_from(self.ctx))
+    return await self.view(CustomID.get_id_from(self.ctx), edit_origin=False)
 
 
-  async def view(self, card: Union[StatsCard, str]):
-    if self.has_origin:
+  async def view(self, card: Union[StatsCard, str], edit_origin: bool = True):
+    if edit_origin and self.has_origin:
       await self.defer(edit_origin=True, suppress_error=True)
     else:
       await self.defer(suppress_error=True)
