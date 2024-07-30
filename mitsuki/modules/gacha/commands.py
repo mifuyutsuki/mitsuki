@@ -142,8 +142,8 @@ class Errors(CurrencyMixin, ReaderCommand):
     return await self.send("gacha_card_not_found", other_data={"card_key": card_key})
 
 
-class Details(CurrencyMixin, ReaderCommand):
-  data: "Details.Data"
+class Info(CurrencyMixin, ReaderCommand):
+  data: "Info.Data"
 
   @define(slots=False)
   class Data(AsDict):
@@ -177,7 +177,7 @@ class Details(CurrencyMixin, ReaderCommand):
     daily_info = f"{currency_icon} **{daily}** {currency_name}\n※ Resets on {reset_str} {reset_dyn}"
     if gacha.first_time_shards and gacha.first_time_shards > 0:
       first_time_shards = gacha.first_time_shards
-      string_templates.append("gacha_details_first_time_info")
+      string_templates.append("gacha_info_first_time_info")
       daily_info = daily_info + f"\n※ First time daily bonus: {currency_icon} {first_time_shards}"
 
     # Rarities info
@@ -207,7 +207,7 @@ class Details(CurrencyMixin, ReaderCommand):
       reset_dyn=reset_dyn,
       first_time_shards=first_time_shards,
     )
-    return await self.send("gacha_details", template_kwargs=dict(use_string_templates=string_templates))
+    return await self.send("gacha_info", template_kwargs=dict(use_string_templates=string_templates))
 
 
 class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
@@ -780,8 +780,8 @@ class Give(TargetMixin, CurrencyMixin, WriterCommand):
       return await self.send(self.States.INVALID_VALUE)
     if self.target_id == self.caller_id:
       return await self.send(self.States.INVALID_SELF)
-    if self.target_user.bot:
-      return await self.send(self.States.INVALID_BOT)
+    # if self.target_user.bot:
+    #   return await self.send(self.States.INVALID_BOT)
     if not isinstance(self.target_user, Member):
       return await self.send(self.States.INVALID_NONMEMBER)
 

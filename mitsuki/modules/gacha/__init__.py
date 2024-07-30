@@ -70,11 +70,11 @@ class GachaModule(Extension):
   # ===========================================================================
 
   @gacha_cmd.subcommand(
-    sub_cmd_name="details",
-    sub_cmd_description="View details on playing the gacha"
+    sub_cmd_name="info",
+    sub_cmd_description="View information on playing the gacha"
   )
-  async def details_cmd(self, ctx: SlashContext):
-    await commands.Details.create(ctx).run()
+  async def info_cmd(self, ctx: SlashContext):
+    await commands.Info.create(ctx).run()
 
   # ===========================================================================
   # ===========================================================================

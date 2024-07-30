@@ -1,7 +1,7 @@
-# /gacha details
-# View details on playing the gacha.
+# /gacha info
+# View information on playing the gacha.
 
-_namespace: gacha_details
+_namespace: gacha_info
 
 
 _:
@@ -18,7 +18,7 @@ _:
   
       ※ Resets on ${reset_str} ${reset_dyn}
 
-      ${gacha_details_first_time_info}
+      ${gacha_info_first_time_info}
     inline    : false # fields.inline
   - name      : Rarities
     value     : ${rarities_info}
