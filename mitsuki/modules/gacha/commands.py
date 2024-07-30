@@ -145,69 +145,67 @@ class Errors(CurrencyMixin, ReaderCommand):
 class Info(CurrencyMixin, ReaderCommand):
   data: "Info.Data"
 
+  class States(StrEnum):
+    INFO = "gacha_info"
+
+  class Strings(StrEnum):
+    FIRST_TIME_INFO = "gacha_info_first_time_info"
+
   @define(slots=False)
   class Data(AsDict):
-    daily_info: str
-    cost_info: str
-    rarities_info: str
     cost: int
     daily: int
-    reset_str: str
-    reset_dyn: str
-    first_time_shards: int = 0
+    daily_reset_s: str
+    daily_reset_r: str
+    daily_first_time: int = 0
 
 
   async def run(self):
-    currency_icon = gacha.currency_icon
-    currency_name = gacha.currency_name
     string_templates = []
 
-    # Cost info
-    cost = gacha.cost
-    cost_info = f"{currency_icon} **{cost}** {currency_name}"
+    reset_datetime = Timestamp.fromdatetime(daily_reset_time())
 
-    # Daily info
+    cost  = gacha.cost
     daily = gacha.daily_shards
+    daily_reset_s = reset_datetime.strftime("%H:%M UTC%z")
+    daily_reset_r = reset_datetime.format("R")
 
-    reset_dt = Timestamp.fromdatetime(daily_reset_time())
-    reset_str = reset_dt.strftime("%H:%M UTC%z")
-    reset_dyn = reset_dt.format("R")
-
-    first_time_shards = 0
-    daily_info = f"{currency_icon} **{daily}** {currency_name}\n※ Resets on {reset_str} {reset_dyn}"
+    daily_first_time = 0
     if gacha.first_time_shards and gacha.first_time_shards > 0:
-      first_time_shards = gacha.first_time_shards
-      string_templates.append("gacha_info_first_time_info")
-      daily_info = daily_info + f"\n※ First time daily bonus: {currency_icon} {first_time_shards}"
+      daily_first_time = gacha.first_time_shards
+      string_templates.append(self.Strings.FIRST_TIME_INFO)
 
-    # Rarities info
-    rarities = sorted(gacha.rarities)
-    rarities_info_list = []
-    for rarity in rarities:
+    lines_data = {
+      "m_rates": [],
+      "m_dupes": [],
+      "m_pity": []
+    }
+    for rarity in sorted(gacha.rarities):
       rate = gacha.rates[rarity] * 100.0
       pity = gacha.pity.get(rarity, 0)
       dupe = gacha.dupe_shards.get(rarity, 0)
       star = gacha.stars.get(rarity) or f"{rarity}"
 
-      rarity_info = f"{star} **{rate:.5}%**"
+      lines_data["m_rates"].append({"star": star, "rate": f"{rate:.5}"})
       if dupe > 0:
-        rarity_info = rarity_info + f" • {currency_icon} **{dupe}**"
+        lines_data["m_dupes"].append({"star": star, "dupe": dupe})
       if pity > 0:
-        rarity_info = rarity_info + f" • one guaranteed in **{pity}** rolls"
-      rarities_info_list.append(rarity_info.strip())
-    rarities_info = "\n".join(rarities_info_list)
+        lines_data["m_pity"].append({"star": star, "pity": pity})
 
     self.data = self.Data(
-      daily_info=daily_info,
-      cost_info=cost_info,
-      rarities_info=rarities_info,
       cost=cost,
       daily=daily,
-      reset_str=reset_str,
-      reset_dyn=reset_dyn,
-      first_time_shards=first_time_shards,
+      daily_reset_s=daily_reset_s,
+      daily_reset_r=daily_reset_r,
+      daily_first_time=daily_first_time,
     )
-    return await self.send("gacha_info", template_kwargs=dict(use_string_templates=string_templates))
+    return await self.send(
+      "gacha_info",
+      lines_data=lines_data,
+      template_kwargs={
+        "use_string_templates": string_templates
+      }
+    )
 
 
 class Profile(TargetMixin, CurrencyMixin, ReaderCommand):

@@ -4,25 +4,68 @@
 _namespace: gacha_info
 
 
+# [Multiline]
 _:
   title: >-
     Mitsuki Gacha
-  fields:
-  - name      : Cost
-    value     : >-
-      ${currency_icon} **${cost}** ${currency_name}
-    inline    : false # fields.inline
-  - name      : Dailies
-    value     : >-
-      ${currency_icon} **${daily}** ${currency_name}
-  
-      ※ Resets on ${reset_str} ${reset_dyn}
+  description: >-
+    `/gacha daily` - Claim your daily ${currency_icon} **${currency_name}**
 
-      ${gacha_info_first_time_info}
-    inline    : false # fields.inline
-  - name      : Rarities
-    value     : ${rarities_info}
-    inline    : false # fields.inline
+    `/gacha roll` - Roll using ${currency_icon} **${currency_name}**
+
+    `/gacha give` - Give another server member ${currency_icon} **${currency_name}**
+
+    `/gacha profile` - View your or someone's gacha progress
+
+    `/gacha cards` - View your or someone's card collection (list view)
+
+    `/gacha gallery` - View your or someone's card collection (gallery view)
+
+    `/gacha view` - View a card someone has already obtained
+
+  fields:
+  - name      : Daily
+    value     : >-
+      Get ${currency_icon} **${daily}**
+    inline    : true
+  - name      : Daily (1st time)
+    value     : >-
+      Get ${gacha_info_first_time_info}
+    inline    : true
+  - name      : Roll
+    value     : >-
+      Use ${currency_icon} **${cost}**
+    inline    : true
+  - name      : Daily reset (Claim daily again)
+    value     : >-
+      ${daily_reset_s} ${daily_reset_r}
+    inline    : false
+  - name      : Rates
+    value     : ${m_rates}
+    inline    : false
+  - name      : On Duplicate
+    value     : ${m_dupes}
+    inline    : false
+  - name      : Pity
+    value     : ${m_pity}
+    inline    : false
+
+  multiline:
+  - id           : m_rates
+    value        : >-
+      ${star} **${rate}%**
+    value_ifnone : "-"
+    inline       : true
+  - id           : m_dupes
+    value        : >-
+      ${star} ${currency_icon} **${dupe}**
+    value_ifnone : "-"
+    inline       : true
+  - id           : m_pity
+    value        : >-
+      ${star} **${pity}**
+    value_ifnone : "-"
+    inline       : true
 
 first_time_info: >-
-  ※ First time daily bonus: ${currency_icon} ${first_time_shards}
+  ${currency_icon} **${daily_first_time}**
