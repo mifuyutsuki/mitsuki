@@ -1,0 +1,136 @@
+_namespace: schedule_configure
+
+
+_:
+  base_template: admin
+  title: >-
+    ${title}
+  description: >-
+    Schedule for **${guild_name}**
+  thumbnail: >-
+    ${guild_icon}
+  fields:
+  - name   : Channel
+    value  : >-
+      ${post_channel_mention}
+    inline : false
+  - name   : Post format
+    value  : >-
+      ```
+      
+      ${format}
+      ```
+    inline : false
+  - name   : Active
+    value  : >-
+      **${active}**
+    inline : true
+  - name   : Pin
+    value  : >-
+      **${pin}**
+    inline : true
+  - name   : Discovery
+    value  : >-
+      **${discoverable}**
+    inline : true
+  - name   : Next if activated now in
+    value  : >-
+      ${next_fire_f}
+    inline : false
+  - name   : Schedule managers
+    value  : >-
+      ${manager_role_mentions}
+    inline : false
+
+
+select_channel:
+  base_template: admin
+  title: >-
+    Select Channel for ${title}
+  description: >-
+    Required permissions for sending: `Send Messages`
+
+    Required permissions for pin: `Manage Messages`, `View Channel`, `Read Message History`
+
+
+    **WARNING**: If pin is enabled on this Schedule, changing this setting removes the current
+    pinned message and disables pin.
+  thumbnail: >-
+    ${guild_icon}
+
+
+select_roles:
+  base_template: admin
+  title: >-
+    Select Roles for ${title}
+  description: >-
+    Members with these roles can add, edit, and delete messages in this Schedule.
+  thumbnail: >-
+    ${guild_icon}
+
+
+edit_title_success:
+  base_template: admin
+  title: >-
+    Title Edited
+  description: >-
+    Press `Refresh` in the configure menu to show changes.
+
+
+edit_format_success:
+  base_template: admin
+  title: >-
+    Format Edited
+  description: >-
+    Press `Refresh` in the configure menu to show changes.
+
+
+edit_routine_success:
+  base_template: admin
+  title: >-
+    Routine Edited
+  description: >-
+    Next post if activated now is ${next_fire_f}
+
+
+    Press `Refresh` in the configure menu to show changes.
+
+
+not_ready:
+  title: >-
+    Error
+  description: >-
+    Cannot activate this Schedule.
+
+
+    Make sure the bot has the permissions to post in the target channel.
+  color: error
+
+
+title_already_exists:
+  title: >-
+    Error
+  description: >-
+    A schedule in this server with this title already exists.
+
+
+requires_send_permissions:
+  title: >-
+    Error
+  description: >-
+    The bot has no permissions to post in the channel.
+
+
+    Requires: `Send Messages`
+  color: error
+
+
+requires_pin_permissions:
+  title: >-
+    Error
+  description: >-
+    The bot has no permissions to pin in the channel.
+
+
+    Requires: `Send Messages`, `Manage Messages`, `View Channel`, `Read Message History`
+  color: error

@@ -15,41 +15,36 @@ from interactions import (
   InteractionContext,
   Member,
 )
-from interactions.client.errors import (
-  AlreadyDeferred,
-  HTTPException,
-)
 from interactions.api.events import Component
 
 from rapidfuzz.utils import default_process
+from rapidfuzz import fuzz
 
 import unicodedata
 import regex as re
 
 __all__ = (
-  "UserDenied",
-  "BotDenied",
+  "ratio",
   "escape_text",
   "process_text",
   "remove_accents",
+  "truncate",
   "is_caller",
   "get_member_color",
   "get_member_color_value",
 )
 
 
-class UserDenied(Exception):
-  def __init__(self, requires: str) -> None:
-    self.requires = requires
-
-
-class BotDenied(Exception):
-  def __init__(self, requires: str) -> None:
-    self.requires = requires
-
-
 _escape_text_re = re.compile(r"[*_`.+(){}!#|:@<>~\-\[\]\\\/]")
 _remove_accents_re = re.compile(r"\p{Mn}")
+
+
+def ratio(s1: str, s2: str, processor=None):
+  return (
+    (0.55 * fuzz.token_ratio(s1, s2, processor=processor))
+    + (0.35 * fuzz.ratio(s1, s2, processor=processor))
+    + (0.10 * fuzz.partial_ratio(s1, s2, processor=processor))
+  )
 
 
 def escape_text(text: str):
@@ -77,6 +72,10 @@ def remove_accents(text: str):
   return _remove_accents_re.sub('', unicodedata.normalize('NFKD', text))
 
 
+def truncate(text: str, length: int = 100):
+  return text if len(text) < length else text[:length - 3].strip() + "..."
+
+
 def is_caller(ctx: BaseContext):
   """
   Produce a command check for whether the component is activated by the caller.
@@ -93,7 +92,7 @@ def is_caller(ctx: BaseContext):
 
   async def check(component: Component):
     c = component.ctx.author.id == ctx.author.id
-    if not is_caller:
+    if not c:
       await component.ctx.send(
         "This interaction is not for you", 
         ephemeral=True

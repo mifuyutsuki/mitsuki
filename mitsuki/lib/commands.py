@@ -17,23 +17,32 @@ Mitsuki messages library (mitsuki.lib.messages).
 
 from mitsuki import bot
 from mitsuki.lib import messages
-from mitsuki.lib.paginators import Paginator
+from mitsuki.lib.paginators import Paginator, SelectionPaginator
 from mitsuki.lib.userdata import new_session
 
 from attrs import define, asdict as _asdict
 from typing import Optional, Union, List, Dict, Any
 from enum import StrEnum
+from asyncio import iscoroutinefunction
 from interactions import (
+  Client,
   Snowflake,
   User,
   Member,
   InteractionContext,
+  ComponentContext,
   AutocompleteContext,
   Message,
+  StringSelectOption,
+  ActionRow,
+  BaseComponent,
+  spread_to_rows
 )
 from sqlalchemy.ext.asyncio import AsyncSession
+import re
 
 __all__ = (
+  "CustomID",
   "AsDict",
   "Caller",
   "Target",
@@ -53,6 +62,49 @@ def _bot_data():
     "bot_username": bot.user.display_name,
     "bot_usericon": bot.user.avatar_url
   }
+
+
+class CustomID(str):
+  def __add__(self, other):
+    return CustomID(str(self) + str(other))
+
+  def prompt(self):
+    return self + "|prompt"
+
+  def response(self):
+    return self + "|response"
+
+  def select(self):
+    return self + "|select"
+
+  def confirm(self):
+    return self + "|confirm"
+
+  def action(self, action: str):
+    return self + f"|{action}"
+
+  def id(self, value: Any):
+    return self + f":{value}"
+
+  def numeric_id_pattern(self):
+    return re.compile(re.escape(self) + r":[0-9]+$")
+
+  def string_id_pattern(self):
+    return re.compile(re.escape(self) + r":.+$")
+
+  def get_id(self):
+    return self.split(":")[-1]
+
+  def get_ids(self):
+    return self.split(":")[1:]
+
+  @classmethod
+  def get_id_from(cls, ctx: ComponentContext):
+    return cls(ctx.custom_id).get_id()
+
+  @classmethod
+  def get_ids_from(cls, ctx: ComponentContext):
+    return cls(ctx.custom_id).get_ids()
 
 
 class AsDict:
@@ -109,6 +161,11 @@ class Command:
   data: Optional["AsDict"] = None
   message: Optional[Message] = None
   state: Optional[StrEnum] = None
+  edit_origin: bool = False
+
+  @property
+  def bot(self):
+    return self.ctx.bot
 
   @classmethod
   def create(cls, ctx: InteractionContext):
@@ -127,6 +184,10 @@ class Command:
 
   def set_state(self, state: StrEnum):
     self.state = state
+
+  @property
+  def has_origin(self):
+    return hasattr(self.ctx, "edit_origin") and iscoroutinefunction(self.ctx.edit_origin)
 
   @property
   def caller_id(self):
@@ -166,7 +227,7 @@ class Command:
         raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
-    if edit_origin and hasattr(self.ctx, "edit_origin"):
+    if (edit_origin or self.edit_origin) and self.has_origin:
       send = self.ctx.edit_origin
     else:
       send = self.ctx.send
@@ -180,8 +241,12 @@ class Command:
     return self.message
 
   async def defer(self, ephemeral: bool = False, edit_origin: bool = False, suppress_error: bool = False):
-    if hasattr(self.ctx, "edit_origin"):
-      return await self.ctx.defer(ephemeral=ephemeral, edit_origin=edit_origin, suppress_error=suppress_error)
+    if self.has_origin:
+      return await self.ctx.defer(
+        ephemeral=ephemeral and not (edit_origin or self.edit_origin),
+        edit_origin=edit_origin or self.edit_origin,
+        suppress_error=suppress_error
+      )
     else:
       return await self.ctx.defer(ephemeral=ephemeral, suppress_error=suppress_error)
 
@@ -205,6 +270,12 @@ class WriterCommand(Command):
     edit_origin: bool = False,
     **kwargs
   ):
+    if not template:
+      if self.state:
+        template = self.state
+      else:
+        raise RuntimeError("Unspecified message template or state")
+
     async with new_session() as session:
       try:
         await self.transaction(session)
@@ -224,6 +295,7 @@ class WriterCommand(Command):
 
 
 class TargetMixin:
+  bot: "Client"
   target_data: "Target"
   target_user: Union[Member, User]
 
@@ -234,6 +306,11 @@ class TargetMixin:
   def set_target(self, target: Union[Member, User]):
     self.target_user = target
     self.target_data = Target.set(target)
+
+  async def fetch_target(self, target: Union[Member, User, Snowflake]):
+    if isinstance(target, Snowflake):
+      target = await self.bot.fetch_user(target)
+    return self.set_target(target)
 
   def asdict(self):
     return super().asdict() | self.target_data.asdict()
@@ -272,17 +349,22 @@ class MultifieldMixin:
     other_data: Optional[dict] = None,
     template_kwargs: Optional[dict] = None,
     timeout: int = 0,
+    extra_components: Optional[List[BaseComponent]] = None,
     **kwargs
   ):
-    if self.state:
-      template = self.state
-    else:
-      raise RuntimeError("Unspecified message template or state")
+    if not template:
+      if self.state:
+        template = self.state
+      else:
+        raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
     message = self.message_multifield(template, other_data, **template_kwargs)
     paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
     paginator.show_select_menu = True
+    if extra_components and len(extra_components) > 0:
+      paginator.extra_components = spread_to_rows(*extra_components)
+
     self.message = await paginator.send(self.ctx, content=message.content, **kwargs)
     return self.message
 
@@ -296,10 +378,11 @@ class MultifieldMixin:
     template_kwargs: Optional[dict] = None,
     **kwargs
   ):
-    if self.state:
-      template = self.state
-    else:
-      raise RuntimeError("Unspecified message template or state")
+    if not template:
+      if self.state:
+        template = self.state
+      else:
+        raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
     message = self.message_multifield(template, other_data, **template_kwargs)
@@ -316,17 +399,22 @@ class MultifieldMixin:
     other_data: Optional[dict] = None,
     template_kwargs: Optional[dict] = None,
     timeout: int = 0,
+    extra_components: Optional[List[BaseComponent]] = None,
     **kwargs
   ):
-    if self.state:
-      template = self.state
-    else:
-      raise RuntimeError("Unspecified message template or state")
+    if not template:
+      if self.state:
+        template = self.state
+      else:
+        raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
     message = self.message_multipage(template, other_data, **template_kwargs)
     paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
     paginator.show_select_menu = True
+    if extra_components and len(extra_components) > 0:
+      paginator.extra_components = spread_to_rows(*extra_components)
+
     self.message = await paginator.send(self.ctx, content=message.content, **kwargs)
     return self.message
 
@@ -340,16 +428,60 @@ class MultifieldMixin:
     template_kwargs: Optional[dict] = None,
     **kwargs
   ):
-    if self.state:
-      template = self.state
-    else:
-      raise RuntimeError("Unspecified message template or state")
+    if not template:
+      if self.state:
+        template = self.state
+      else:
+        raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
     message = self.message_multipage(template, other_data, **template_kwargs)
     self.message = await self.ctx.send(
       content=message.content, embed=message.embed[page_index] if message.embed else None, **kwargs
     )
+    return self.message
+
+
+class SelectionMixin(MultifieldMixin):
+  selection_values: List[Union[StringSelectOption, str]]
+  selection_per_page: int = 6
+  selection_placeholder: Optional[str] = None
+
+
+  async def selection_callback(self, ctx: ComponentContext):
+    raise NotImplementedError
+
+
+  async def send_selection(
+    self,
+    template: Optional[str] = None,
+    *,
+    other_data: Optional[dict] = None,
+    template_kwargs: Optional[dict] = None,
+    timeout: int = 0,
+    extra_components: Optional[List[BaseComponent]] = None,
+    **kwargs
+  ):
+    if not template:
+      if self.state:
+        template = self.state
+      else:
+        raise RuntimeError("Unspecified message template or state")
+    template_kwargs = template_kwargs or {}
+
+    message = self.message_multifield(template, other_data, **template_kwargs)
+    paginator = SelectionPaginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
+    if extra_components and len(extra_components) > 0:
+      paginator.extra_components = spread_to_rows(*extra_components)
+
+    # paginator.show_select_menu = True
+    paginator.selection_values = self.selection_values
+    paginator.selection_callback = self.selection_callback
+    paginator.selection_per_page = self.selection_per_page
+    if self.selection_placeholder:
+      paginator.selection_placeholder = self.selection_placeholder
+
+    self.message = await paginator.send(self.ctx, content=message.content, **kwargs)
     return self.message
 
 

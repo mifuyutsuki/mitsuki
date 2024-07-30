@@ -1,0 +1,108 @@
+_namespace: schedule_message
+
+# [Multifield/Selection]
+list:
+  title: >-
+    Messages for "${schedule_title}" (${page}/${pages})
+  description: >-
+    `${total_messages}` available
+  thumbnail: >-
+    ${guild_icon}
+  field:
+    name   : ${posted_mark} ${schedule_title} \#${number_s} (ID:${id})
+    value  : >-
+      ${long_partial_message}
+    inline : false
+
+
+list_empty:
+  title: >-
+    Messages for "${schedule_title}"
+  description: >-
+    No messages setup for this schedule yet.
+
+    Press the "Add" button to add a new message
+  thumbnail: >-
+    ${guild_icon}
+
+
+view:
+  title: >-
+    ${schedule_title} \#${number_s} (ID:${id})
+  description: >-
+    ${message}
+  fields:
+  - name   : Tags
+    value  : >-
+      ${tags}
+    inline : false
+  - name   : Posted
+    value  : >-
+      ${posted_mark} ${schedule_message_message_link}
+    inline : false
+  - name   : Created
+    value  : >-
+      ${date_created_f} by ${created_by_mention}
+    inline : false
+  - name   : Modified
+    value  : >-
+      ${date_modified_f} by ${modified_by_mention}
+
+
+add_success:
+  title: >-
+    Message added
+  fields:
+  - name   : Server
+    value  : ${guild_name}
+    inline : true
+  - name   : Schedule
+    value  : ${schedule_title}
+    inline : true
+  - name   : Post No.
+    value  : ${number}
+    inline : true
+  - name   : Message
+    value  : ${message}
+    inline : false
+  - name   : Tags
+    value  : ${tags}
+    inline : false
+
+
+edit_success:
+  title: >-
+    Message Edited
+  description: >-
+    Press `Refresh` in the message view to show changes.
+  fields:
+  - name   : Message
+    value  : >-
+      ${message}
+    inline : false
+
+
+delete_confirm:
+  title: >-
+    Delete Message?
+  description: >-
+    Are you sure to delete ${schedule_title} \#${number_s} (ID:${id})?
+
+
+    If this is a backlogged message, messages after this number will be renumbered forward.
+  fields:
+  - name   : Message
+    value  : >-
+      ${message}
+    inline : false
+
+
+delete_success:
+  title: >-
+    Deleted Message
+  description: >-
+    Deleted ${schedule_title} \#${number_s} (ID:${id})
+
+
+message_link:
+  ${message_link} on ${date_posted_f}

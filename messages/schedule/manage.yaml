@@ -1,0 +1,114 @@
+# /schedule manage
+# Manage Schedules in a server.
+
+_namespace: schedule_manage
+
+# [Multifield/Selection]
+list:
+  title: >-
+    Schedules for "${guild_name}"
+  description: >-
+    `${total_schedules}` Schedules available to manage
+  thumbnail: >-
+    ${guild_icon}
+  field:
+    name   : ${title}
+    value  : >-
+      ${active_mark} • ${post_channel_mention} • ${posted_number} posted
+    inline : false
+
+list_unavailable:
+  title: >-
+    Schedules for "${guild_name}"
+  description: >-
+    No Schedules available to manage.
+
+    Schedules you can manage based on your roles will appear here.
+  thumbnail: >-
+    ${guild_icon}
+
+list_empty:
+  title: >-
+    Schedules for "${guild_name}"
+  description: >-
+    No schedules setup for this server yet.
+    
+    Press the "Create" button to create a new Schedule. (Requires server admin)
+  thumbnail: >-
+    ${guild_icon}
+
+view:
+  title: >-
+    ${title}
+  description: >-
+    Schedule for **${guild_name}**
+  thumbnail: >-
+    ${guild_icon}
+  fields:
+  - name   : Channel
+    value  : >-
+      ${post_channel_mention}
+    inline : false
+  - name   : Backlog \#
+    value  : >-
+      **${backlog_number}**
+    inline : true
+  - name   : Posted \#
+    value  : >-
+      **${posted_number}**
+    inline : true
+  - name   : Total \#
+    value  : >-
+      **${current_number}**
+    inline : true
+  - name   : Active
+    value  : >-
+      **${active}**
+    inline : true
+  - name   : Pin Message
+    value  : >-
+      **${pin}**
+    inline : true
+  - name   : Discoverable
+    value  : >-
+      **${discoverable}**
+    inline : true
+  - name   : Next in
+    value  : >-
+      ${next_fire_f}
+    inline : false
+  - name   : Created
+    value  : >-
+      ${date_created_f} by ${created_by_mention}
+    inline : false
+  - name   : Modified
+    value  : >-
+      ${date_modified_f} by ${modified_by_mention}
+    inline : false
+  - name   : Schedule Managers
+    value  : >-
+      ${manager_role_mentions}
+    inline : false
+
+create_already_exists:
+  base_template: admin
+  title: >-
+    Error
+  description: >-
+    A schedule in this server with this title already exists.
+  color: error
+
+create_success:
+  base_template: admin
+  title: >-
+    Schedule Created
+  description: >-
+    Go to Configure in `/schedule manage` to set up and activate this Schedule,
+    add messages, and more.
+  fields:
+  - name   : Server
+    value  : ${guild_name}
+    inline : true
+  - name   : Schedule
+    value  : ${schedule_title}
+    inline : true

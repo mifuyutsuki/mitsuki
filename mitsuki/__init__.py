@@ -13,6 +13,20 @@
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
+# Init Mitsuki logging first - may be used by other Mitsuki modules
+import logging
+from sys import stderr, stdout
+
+_log_format = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
+# TODO: Move Mitsuki logs to stdout when more actions are logged e.g. gacha rolls
+_mitsuki_log_handler = logging.StreamHandler(stderr)
+_mitsuki_log_handler.setFormatter(_log_format)
+_mitsuki_logger = logging.getLogger("mitsuki")
+_mitsuki_logger.setLevel(logging.INFO)
+_mitsuki_logger.addHandler(_mitsuki_log_handler)
+logger = _mitsuki_logger
+
 from interactions import (
   Status,
   Activity,
@@ -33,13 +47,14 @@ from interactions.api.events import (
   ComponentError,
   ComponentCompletion,
   AutocompleteCompletion,
+  ModalCompletion,
 )
 from interactions.client.errors import (
   CommandCheckFailure,
   CommandOnCooldown,
   MaxConcurrencyReached,
-  DiscordError,
   HTTPException,
+  BadArgument,
 )
 from interactions.client.const import CLIENT_FEATURE_FLAGS
 from interactions.client.mixins.send import SendMixin
@@ -56,7 +71,7 @@ import logging
 # Settings must load first
 from mitsuki import settings
 
-from mitsuki.utils import UserDenied, BotDenied
+from mitsuki.lib.errors import UserDenied, BotDenied
 from mitsuki.lib.messages import load_message
 from mitsuki.lib.userdata import initialize
 from mitsuki.version import __version__
@@ -65,22 +80,18 @@ __all__ = (
   "__version__",
   "bot",
   "run",
+  "logger",
   "init_event",
-  "help_cmd",
 )
 
-logging.basicConfig(
-  format="%(asctime)s [%(levelname)s] %(name)s:%(lineno)d: %(message)s",
-  level=logging.INFO if settings.mitsuki.log_info else logging.WARNING
-)
-logger = logging.getLogger(__name__)
+# These depend on Mitsuki settings, so it's down here
+_interactions_log_handler = logging.StreamHandler(stderr)
+_interactions_log_handler.setFormatter(_log_format)
+_interactions_logger = logging.getLogger("interactions")
+_interactions_logger.setLevel(logging.INFO if settings.mitsuki.log_info else logging.WARNING)
+_interactions_logger.addHandler(_interactions_log_handler)
 
 init_event = asyncio.Event()
-
-help_cmd = SlashCommand(
-  name="help",
-  description="Help on available commands and other info"
-)
 
 
 class Bot(Client):
@@ -99,6 +110,7 @@ class Bot(Client):
     self.send_command_tracebacks = False
     self.status_index = 0
     self.arona = Random()
+    self.logger = _interactions_logger
 
 
   @listen(Startup)
@@ -111,7 +123,8 @@ class Bot(Client):
   @listen(Ready)
   async def on_ready(self):
     await self.next_status()
-    print(f"Ready: {self.user.tag} ({self.user.id})")
+    curr_time = datetime.now(tz=timezone.utc).isoformat(sep=" ")
+    print(f"Ready: {curr_time} UTC | {self.user.tag} ({self.user.id}) @ {len(self.guilds)} guild(s)")
 
 
   @Task.create(IntervalTrigger(seconds=max(60, settings.mitsuki.status_cycle)))
@@ -148,7 +161,7 @@ class Bot(Client):
   @listen(ComponentError, disable_default_listeners=True)
   async def on_component_error(self, event: ComponentError):
     return await self.error_handler(event)
-  
+
 
   async def error_handler(self, event: Union[CommandError, ComponentError]):
     # default ephemeral to true unless it's an unknown exception
@@ -162,6 +175,8 @@ class Bot(Client):
       message = ctx_load_message("error_concurrency")
     elif isinstance(event.error, CommandCheckFailure):
       message = ctx_load_message("error_command_perms")
+    elif isinstance(event.error, BadArgument):
+      message = ctx_load_message("error_argument", data={"message": str(event.error)})
     elif isinstance(event.error, BotDenied):
       message = ctx_load_message("error_denied_bot", data={"requires": event.error.requires})
     elif isinstance(event.error, UserDenied):
@@ -170,12 +185,12 @@ class Bot(Client):
       isinstance(event.error.code, int) and (500 <= event.error.code < 600)
     ):
       error_repr = str(event.error)
-      logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
+      self.logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
       message = ctx_load_message("error_server", data={"error_repr": error_repr})
       ephemeral = False
     else:
       error_repr = _format_tb(event.error)
-      logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
+      self.logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
       message = ctx_load_message("error", data={"error_repr": error_repr})
       ephemeral = False
 
@@ -187,30 +202,33 @@ class Bot(Client):
   async def on_command_completion(self, event: CommandCompletion):
     if isinstance(event.ctx, InteractionContext):
       command_name = event.ctx.invoke_target
-      logger.info(f"Command emitted: {command_name}")
-      if len(event.ctx.kwargs) > 0:
+
+      if len(event.ctx.kwargs) <= 0:
+        self.logger.info(f"Command called: {command_name}")
+      else:
         kwargs = {k: str(v) for k, v in event.ctx.kwargs.items()}
-        logger.info(f"kwargs: {kwargs}")
+        self.logger.info(f"Command called: {command_name} | {kwargs}")
 
 
   @listen(ComponentCompletion)
   async def on_component_completion(self, event: ComponentCompletion):
-    command_name = event.ctx.invoke_target
-    try:
-      component_name = event.ctx.custom_id.split("|")[1]
-    except Exception:
-      component_name = event.ctx.custom_id
-
-    logger.info(f"Component emitted: {command_name}: {component_name}")
-    if len(event.ctx.values) > 0:
-      values = [str(v) for v in event.ctx.args]
-      logger.info(f"values: {values}")
+    component_name = event.ctx.custom_id
+    if len(event.ctx.values) <= 0:
+      self.logger.info(f"Component called: {component_name}")
+    else:
+      self.logger.info(f"Component called: {component_name} | {event.ctx.values}")
 
 
   @listen(AutocompleteCompletion)
   async def on_autocomplete_completion(self, event: AutocompleteCompletion):
     command_name = event.ctx.invoke_target
-    logger.info(f"Autocomplete emitted: {command_name}: {event.ctx.input_text}")
+    self.logger.info(f"Autocomplete called: {command_name}: {event.ctx.input_text}")
+
+
+  @listen(ModalCompletion)
+  async def on_modal_completion(self, event: ModalCompletion):
+    command_name = event.ctx.custom_id
+    self.logger.info(f"Modal called: {command_name} | {event.ctx.responses}")
 
 
 bot = Bot()
@@ -256,6 +274,7 @@ def run():
   bot.load_extension("mitsuki.modules.system")
   bot.load_extension("mitsuki.modules.info")
   bot.load_extension("mitsuki.modules.gacha")
+  bot.load_extension("mitsuki.modules.schedule")
 
   # fixes image loading issues?
   # CLIENT_FEATURE_FLAGS["FOLLOWUP_INTERACTIONS_FOR_IMAGES"] = True

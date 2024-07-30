@@ -38,7 +38,6 @@ from interactions.api.events import Startup
 from typing import Optional
 
 from mitsuki import init_event
-from mitsuki.utils import UserDenied
 
 from . import commands
 from .gachaman import gacha
@@ -71,11 +70,11 @@ class GachaModule(Extension):
   # ===========================================================================
 
   @gacha_cmd.subcommand(
-    sub_cmd_name="details",
-    sub_cmd_description="View details on playing the gacha"
+    sub_cmd_name="info",
+    sub_cmd_description="View information on playing the gacha"
   )
-  async def details_cmd(self, ctx: SlashContext):
-    await commands.Details.create(ctx).run()
+  async def info_cmd(self, ctx: SlashContext):
+    await commands.Info.create(ctx).run()
 
   # ===========================================================================
   # ===========================================================================
@@ -174,14 +173,11 @@ class GachaModule(Extension):
   ):
     await commands.Cards.create(ctx).run(user, sort)
 
-  @component_callback(commands.Cards.CUSTOM_ID_RE)
+  @component_callback(commands.CustomIDs.CARDS.numeric_id_pattern())
   @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 15.0)
   async def cards_btn_cmd(self, ctx: ComponentContext):
-    if target := await commands.Cards.target_from_custom_id(ctx.custom_id):
-      await commands.Cards.create(ctx).run(target)
-    else:
-      await ctx.edit_origin()
+    return await commands.Cards.create(ctx).run_from_button()
 
 
   # ===========================================================================
@@ -221,14 +217,11 @@ class GachaModule(Extension):
   ):
     await commands.Gallery.create(ctx).run(user, sort)
 
-  @component_callback(commands.Gallery.CUSTOM_ID_RE)
+  @component_callback(commands.CustomIDs.GALLERY.numeric_id_pattern())
   @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 15.0)
   async def gallery_btn_cmd(self, ctx: ComponentContext):
-    if target := await commands.Gallery.target_from_custom_id(ctx.custom_id):
-      await commands.Gallery.create(ctx).run(target)
-    else:
-      await ctx.edit_origin()
+    return await commands.Gallery.create(ctx).run_from_button()
 
 
   # ===========================================================================
@@ -247,30 +240,16 @@ class GachaModule(Extension):
     autocomplete=True,
     opt_type=OptionType.STRING,
     min_length=3,
-    max_length=128
+    max_length=100
   )
-  @slash_option(
-    name="user",
-    description="View cards in a user's collection",
-    required=False,
-    opt_type=OptionType.USER
-  )
-  async def view_cmd(
-    self,
-    ctx: SlashContext,
-    name: str,
-    user: Optional[BaseUser] = None
-  ):
-    await commands.View.create(ctx).run(name, user)
+  async def view_cmd(self, ctx: SlashContext, name: str):
+    await commands.View.create(ctx).run(name)
 
-  @component_callback(commands.View.CUSTOM_ID_RE)
+  @component_callback(commands.CustomIDs.VIEW.string_id_pattern())
   @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 15.0)
   async def view_btn_cmd(self, ctx: ComponentContext):
-    if search_key := await commands.View.search_key_from_custom_id(ctx.custom_id):
-      await commands.View.create(ctx).run(search_key)
-    else:
-      await ctx.edit_origin()
+    return await commands.View.create(ctx).view_from_button()
 
   @view_cmd.autocomplete("name")
   async def view_cmd_autocomplete(self, ctx: AutocompleteContext):
@@ -335,8 +314,6 @@ class GachaModule(Extension):
     target: BaseUser,
     amount: int
   ):
-    if not await is_owner()(ctx) and not ctx.author.has_permission(Permissions.ADMINISTRATOR):
-      raise UserDenied(requires="Bot Owner or Server Admin")
     await commands.GiveAdmin.create(ctx).run(target, amount)
 
 
@@ -349,8 +326,6 @@ class GachaModule(Extension):
   )
   @auto_defer(ephemeral=True)
   async def system_reload_cmd(self, ctx: SlashContext):
-    if not await is_owner()(ctx) and not ctx.author.has_permission(Permissions.ADMINISTRATOR):
-      raise UserDenied(requires="Bot Owner or Server Admin")
     await commands.ReloadAdmin.create(ctx).run()
 
 
@@ -363,6 +338,4 @@ class GachaModule(Extension):
   )
   @auto_defer(ephemeral=True)
   async def system_cards_cmd(self, ctx: SlashContext):
-    if not await is_owner()(ctx) and not ctx.author.has_permission(Permissions.ADMINISTRATOR):
-      raise UserDenied(requires="Bot Owner or Server Admin")
     await commands.ViewAdmin.create(ctx).run(sort="id")

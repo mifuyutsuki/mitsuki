@@ -57,14 +57,18 @@ new_session = async_sessionmaker(engine, expire_on_commit=False)
 
 
 class AsDict:
-  def asdict(self):
-    return _asdict(self)
+  def asdict(self, recurse: bool = False):
+    return _asdict(self, recurse=recurse)
 
 
 class Base(DeclarativeBase, AsyncAttrs):
   def asdict(self):
     #: Source: https://stackoverflow.com/a/1960546
     return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+  @property
+  def columns(self):
+    return [c.name for c in self.__table__.columns]
 
 
 async def initialize():

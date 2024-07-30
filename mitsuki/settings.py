@@ -15,8 +15,7 @@ from typing import Optional, Dict, Any, List
 from attrs import frozen, field
 from os import environ
 
-import logging
-logger = logging.getLogger(__name__)
+from mitsuki import logger
 
 __all__ = (
   "mitsuki",

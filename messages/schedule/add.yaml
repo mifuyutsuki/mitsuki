@@ -1,0 +1,15 @@
+_namespace: schedule_add
+
+_:
+  title: >-
+    Message added
+  fields:
+  - name   : Server
+    value  : ${guild_name}
+    inline : true
+  - name   : Schedule
+    value  : ${schedule_title}
+    inline : true
+  - name   : Message
+    value  : ${number}\. ${message}
+    inline : false
