@@ -296,7 +296,7 @@ class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
         Button(
           style=ButtonStyle.BLURPLE,
           label="View last rolled",
-          custom_id=CustomIDs.VIEW.id(f"@{last_card_id}"),
+          custom_id=CustomIDs.VIEW.id(last_card_id),
         ),
       ])
 

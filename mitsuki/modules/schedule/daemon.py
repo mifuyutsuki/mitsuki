@@ -12,7 +12,7 @@
 
 from interactions import (
   Task,
-  CronTrigger as _CronTrigger,
+  CronTrigger,
   Client,
 )
 from interactions.client.errors import Forbidden, NotFound
@@ -23,12 +23,6 @@ from datetime import datetime
 from mitsuki import bot, logger
 from mitsuki.lib.userdata import new_session
 from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes, timestamp_now
-
-
-# Fix for double calls
-class CronTrigger(_CronTrigger):
-  def next_fire(self):
-    return croniter(self.cron, self.last_call_time.astimezone(self.tz)).next(datetime)
 
 
 class DaemonTask:
