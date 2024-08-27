@@ -23,6 +23,15 @@ insufficient_funds:
     Need ${currency_icon} **${cost}**, has ${currency_icon} ${shards}
   color: error
 
+# Specified card not found.
+# card_key : Card name or ID
+card_not_found:
+  title: >-
+    Card not found
+  description: >-
+    Cannot find card with key `${card_key}`.
+  color: error
+
 # Reload gacha configuration.
 # /system gacha reload (/gacha admin reload)
 # cards : Number of cards in roster
