@@ -161,7 +161,17 @@ class CustomIDs:
   MESSAGE_DELETE = CustomID("schedule_message_delete")
   """Delete a message in a Schedule. (id: Message ID; confirm)"""
 
+  MESSAGE_REORDER = CustomID("schedule_message_reorder")
+  """Reorder a message in a queue-type Schedule. (id: Message ID; modal)"""
 
+  MESSAGE_REORDER_FRONT = CustomID("schedule_message_reorder|front")
+  """Reorder a message to front of a queue-type Schedule. (id: Message ID)"""
+  
+  MESSAGE_REORDER_BACK = CustomID("schedule_message_reorder|back")
+  """Reorder a message to back of a queue-type Schedule. (id: Message ID)"""
+
+
+# TODO: Raise a custom error instead of this thing
 class Errors(ReaderCommand):
   async def not_in_guild(self):
     await self.send("schedule_error_not_in_guild", ephemeral=True)
@@ -183,9 +193,11 @@ class Errors(ReaderCommand):
   async def message_not_found(self):
     await self.send("schedule_error_message_not_found", ephemeral=True)
 
-
   async def invalid_input(self, field: str):
     await self.send("schedule_error_invalid_input", other_data={"field": field}, ephemeral=True)
+
+  async def out_of_range(self, field: str):
+    await self.send("schedule_error_out_of_range", other_data={"field": field}, ephemeral=True)
 
 
 class ManageSchedules(SelectionMixin, ReaderCommand):
@@ -464,6 +476,11 @@ class ManageMessages(SelectionMixin, ReaderCommand):
           style=ButtonStyle.BLURPLE,
           label="Edit...",
           custom_id=CustomIDs.MESSAGE_EDIT.prompt().id(message_id)
+        ),
+        Button(
+          style=ButtonStyle.BLURPLE,
+          label="Renumber...",
+          custom_id=CustomIDs.MESSAGE_REORDER.id(message_id),
         ),
         Button(
           style=ButtonStyle.RED,
@@ -1332,6 +1349,250 @@ class EditMessage(WriterCommand):
 
   async def transaction(self, session: AsyncSession):
     await self.schedule_message.update_modify(session, self.ctx.author.id)
+
+
+class ReorderMessage(WriterCommand):
+  state: "ReorderMessage.States"
+  data: "ReorderMessage.Data"
+
+  schedule_message: ScheduleMessage
+  new_number: int
+
+  class States(StrEnum):
+    SELECT = "schedule_message_reorder_select"
+    SUCCESS = "schedule_message_reorder_success"
+
+
+  async def select(self):
+    """
+    Open the reorder menu for a given message. Schedule type QUEUE only.
+
+    Inputs:
+      Message ID from component Custom ID
+
+    Buttons:
+      To Front  : Move message to front of queue
+      Custom... : Select a number (prompt)
+      To Back   : Move message to back of queue
+    """
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+
+    if self.has_origin:
+      await self.defer(edit_origin=True)
+    else:
+      await self.defer(ephemeral=True)
+
+    message_id = int(CustomID.get_id_from(self.ctx))
+    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
+    if not message:
+      return await Errors.create(self.ctx).message_not_found()
+
+    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
+    if not schedule:
+      return await Errors.create(self.ctx).message_not_found()
+
+    components = [
+      ActionRow(
+        Button(
+          style=ButtonStyle.BLURPLE,
+          label="To Front",
+          custom_id=CustomIDs.MESSAGE_REORDER_FRONT.id(message_id),
+          disabled=message.number <= schedule.posted_number + 1
+        ),
+        Button(
+          style=ButtonStyle.BLURPLE,
+          label="Custom...",
+          custom_id=CustomIDs.MESSAGE_REORDER.prompt().id(message_id),
+        ),
+        Button(
+          style=ButtonStyle.BLURPLE,
+          label="To Back",
+          custom_id=CustomIDs.MESSAGE_REORDER_BACK.id(message_id),
+          disabled=message.number == schedule.current_number
+        )
+      ),
+      ActionRow(
+        Button(
+          style=ButtonStyle.GRAY,
+          label="Back to Message",
+          custom_id=CustomIDs.MESSAGE_VIEW.id(message_id),
+        )
+      )
+    ]
+    sent = await self.send(
+      self.States.SELECT,
+      other_data=schedule.asdict() | message.asdict(),
+      components=components,
+    )
+
+    try:
+      _ = await self.ctx.bot.wait_for_component(sent, components, timeout=30)
+    except TimeoutError:
+      if sent:
+        await self.ctx.edit(sent, components=[
+          ActionRow(
+            Button(
+              style=ButtonStyle.GRAY,
+              label="Refresh",
+              custom_id=CustomIDs.MESSAGE_REORDER.id(message_id),
+            ),
+            Button(
+              style=ButtonStyle.GRAY,
+              label="Back to Message",
+              custom_id=CustomIDs.MESSAGE_VIEW.id(message_id),
+            )
+          )
+        ])
+
+
+  async def to_front(self):
+    """
+    Move message to front of queue.
+  
+    Inputs:
+      Message ID from component Custom ID
+    """
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+
+    if self.has_origin:
+      await self.defer(edit_origin=True)
+    else:
+      await self.defer(ephemeral=True)
+
+    message_id = int(CustomID.get_id_from(self.ctx))
+    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
+    if not message:
+      return await Errors.create(self.ctx).message_not_found()
+
+    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
+    if not schedule:
+      return await Errors.create(self.ctx).message_not_found()
+
+    self.schedule_message = message
+    self.new_number       = schedule.posted_number + 1
+    return await self.send_commit(
+      self.States.SUCCESS,
+      other_data=message.asdict(),
+      components=[
+        Button(
+          style=ButtonStyle.GRAY,
+          label="Back to Message",
+          custom_id=CustomIDs.MESSAGE_VIEW.id(message_id),
+        )
+      ]
+    )
+
+
+  async def to_back(self):
+    """
+    Move message to back of queue.
+  
+    Inputs:
+      Message ID from component Custom ID
+    """
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+
+    if self.has_origin:
+      await self.defer(edit_origin=True)
+    else:
+      await self.defer(ephemeral=True)
+
+    message_id = int(CustomID.get_id_from(self.ctx))
+    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
+    if not message:
+      return await Errors.create(self.ctx).message_not_found()
+
+    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
+    if not schedule:
+      return await Errors.create(self.ctx).message_not_found()
+
+    self.schedule_message = message
+    self.new_number       = schedule.current_number
+    return await self.send_commit(
+      self.States.SUCCESS,
+      other_data=message.asdict(),
+      components=[
+        Button(
+          style=ButtonStyle.GRAY,
+          label="Back to Message",
+          custom_id=CustomIDs.MESSAGE_VIEW.id(message_id),
+        )
+      ]
+    )
+
+
+  async def prompt(self):
+    """
+    [Prompt] Move message to a specified valid number.
+  
+    Inputs:
+      Message ID from component Custom ID
+    """
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+
+    message_id = int(CustomID.get_id_from(self.ctx))
+    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
+    if not message:
+      return await Errors.create(self.ctx).message_not_found()
+
+    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
+    if not schedule:
+      return await Errors.create(self.ctx).message_not_found()
+
+    return await self.ctx.send_modal(
+      modal=Modal(
+        ShortText(
+          label="Number",
+          custom_id="number",
+          placeholder=f"Number from {schedule.posted_number + 1} to {schedule.current_number}",
+          required=True,
+        ),
+        title=f"Reorder Message",
+        custom_id=CustomIDs.MESSAGE_REORDER.response().id(message_id)
+      )
+    )
+
+
+  async def response(self, number_s: str):
+    """
+    [Response] Move message to a specified valid number.
+  
+    Inputs:
+      Message ID from component Custom ID
+      New number from prompt
+    """
+    if not self.ctx.guild:
+      return await Errors.create(self.ctx).not_in_guild()
+    await self.defer(ephemeral=True)
+
+    message_id = int(CustomID.get_id_from(self.ctx))
+    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
+    if not message:
+      return await Errors.create(self.ctx).message_not_found()
+
+    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
+    if not schedule:
+      return await Errors.create(self.ctx).message_not_found()
+
+    # Number check
+    if not number_s.isnumeric():
+      return await Errors.create(self.ctx).invalid_input("Schedule message number")
+    number = int(number_s)
+    if not (schedule.posted_number < number <= schedule.current_number):
+      return await Errors.create(self.ctx).out_of_range("Schedule message number")
+
+    # Renumber
+    self.schedule_message = message
+    self.new_number       = number
+    return await self.send_commit(self.States.SUCCESS, other_data=message.asdict(), components=[])
+
+
+  async def transaction(self, session: AsyncSession):
+    await self.schedule_message.update_renumber(session, self.new_number, author=self.ctx.author.id)
 
 
 class DeleteMessage(WriterCommand):

@@ -92,6 +92,8 @@ class Schedule(AsDict):
   last_fire: Optional[float] = field(default=None)
 
   backlog_number: int = field(init=False)
+  front_number: int = field(init=False)
+  back_number: int = field(init=False)
   active_mark: str = field(init=False)
   post_channel_mention: str = field(init=False)
   created_by_mention: str = field(init=False)
@@ -102,13 +104,15 @@ class Schedule(AsDict):
   next_fire_f: str = field(init=False)
 
   def __attrs_post_init__(self):
-    self.backlog_number       = self.current_number - self.posted_number
-    self.active_mark          = "✅ Active" if self.active else "⏸️ Inactive"
-    self.post_channel_mention = f"<#{self.post_channel}>" if self.post_channel else "No channel selected"
-    self.created_by_mention   = f"<@{self.created_by}>"
-    self.modified_by_mention  = f"<@{self.modified_by}>"
-    self.date_created_f       = f"<t:{int(self.date_created)}:f>"
-    self.date_modified_f      = f"<t:{int(self.date_modified)}:f>"
+    self.backlog_number         = self.current_number - self.posted_number
+    self.front_number           = self.posted_number + 1 if self.current_number > 0 else 0
+    self.back_number            = self.current_number
+    self.active_mark            = "✅ Active" if self.active else "⏸️ Inactive"
+    self.post_channel_mention   = f"<#{self.post_channel}>" if self.post_channel else "No channel selected"
+    self.created_by_mention     = f"<@{self.created_by}>"
+    self.modified_by_mention    = f"<@{self.modified_by}>"
+    self.date_created_f         = f"<t:{int(self.date_created)}:f>"
+    self.date_modified_f        = f"<t:{int(self.date_modified)}:f>"
 
     if self.active and self.backlog_number > 0:
       self.next_fire_f        = f"<t:{int(self.cron().next(float))}:f>"

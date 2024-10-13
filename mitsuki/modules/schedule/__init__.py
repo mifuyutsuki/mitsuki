@@ -200,6 +200,30 @@ class ScheduleModule(Extension):
     return await commands.EditMessage.create(ctx).response(message, tags)
 
   # ===========================================================================
+  # Reorder Message
+  # ===========================================================================
+
+  @component_callback(commands.CustomIDs.MESSAGE_REORDER.string_id_pattern())
+  async def message_reorder_menu_btn(self, ctx: ComponentContext):
+    return await commands.ReorderMessage.create(ctx).select()
+
+  @component_callback(commands.CustomIDs.MESSAGE_REORDER_FRONT.string_id_pattern())
+  async def message_reorder_front_btn(self, ctx: ComponentContext):
+    return await commands.ReorderMessage.create(ctx).to_front()
+
+  @component_callback(commands.CustomIDs.MESSAGE_REORDER_BACK.string_id_pattern())
+  async def message_reorder_back_btn(self, ctx: ComponentContext):
+    return await commands.ReorderMessage.create(ctx).to_back()
+
+  @component_callback(commands.CustomIDs.MESSAGE_REORDER.prompt().string_id_pattern())
+  async def message_reorder_prompt_btn(self, ctx: ComponentContext):
+    return await commands.ReorderMessage.create(ctx).prompt()
+
+  @modal_callback(commands.CustomIDs.MESSAGE_REORDER.response().string_id_pattern())
+  async def message_reorder_response_btn(self, ctx: ModalContext, number: str):
+    return await commands.ReorderMessage.create(ctx).response(number)
+
+  # ===========================================================================
   # Delete Message
   # ===========================================================================
 

@@ -82,6 +82,35 @@ edit_success:
     inline : false
 
 
+reorder_select:
+  title: >-
+    Reorder Message
+  description: >-
+    Move this question to front or back of the message queue.
+
+
+    Front ← Current → Back
+
+    __\#${front_number}__ ← __**\#${number_s}**__ → __\#${back_number}__
+  fields:
+  - name   : ${schedule_title} \#${number_s} (ID:${id})
+    value  : >-
+      ${long_partial_message}
+    inline : true
+
+
+reorder_success:
+  title: >-
+    Message Reordered
+  description: >-
+    Press `Back to Message` below or `Refresh` in the above dialog to show changes.
+  fields:
+  - name   : Message
+    value  : >-
+      ${message}
+    inline : false
+
+
 delete_confirm:
   title: >-
     Delete Message?
