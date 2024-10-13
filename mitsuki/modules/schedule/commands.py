@@ -213,8 +213,6 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
 
   @define(slots=False)
   class Data(AsDict):
-    guild_name: str
-    guild_icon: str
     total_schedules: int
 
 
@@ -254,21 +252,17 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
           allowed_schedules.append(schedule)
 
     self.data = self.Data(
-      guild_name=self.ctx.guild.name,
-      guild_icon=self.ctx.guild.icon.url if self.ctx.guild.icon else self.ctx.bot.user.avatar_url,
       total_schedules=len(allowed_schedules)
     )
 
     if len(allowed_schedules) <= 0 and not can_create:
       return await self.send(
         self.States.LIST_UNAVAILABLE,
-        template_kwargs={"escape_data_values": "guild_name"},
         components=[],
       )
     if len(allowed_schedules) <= 0:
       return await self.send(
         self.States.LIST_EMPTY,
-        template_kwargs={"escape_data_values": "guild_name"},
         components=buttons,
       )
 
@@ -278,7 +272,6 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
     self.field_data = allowed_schedules
     await self.send_selection(
       self.States.LIST,
-      template_kwargs={"escape_data_values": "guild_name"},
       extra_components=buttons,
     )
 
@@ -310,16 +303,11 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
       await self.defer(ephemeral=True)
 
     self.data = self.Data(
-      guild_name=self.ctx.guild.name,
-      guild_icon=self.ctx.guild.icon.url if self.ctx.guild.icon else self.ctx.bot.user.avatar_url,
       total_schedules=0
     )
     await self.send(
       self.States.VIEW,
       other_data=schedule.asdict(),
-      template_kwargs={
-        "escape_data_values": "guild_name"
-      },
       components=[
         ActionRow(
           Button(
@@ -366,7 +354,6 @@ class ManageMessages(SelectionMixin, ReaderCommand):
 
   @define(slots=False)
   class Data(AsDict):
-    guild_name: str
     total_messages: int
 
 
@@ -387,7 +374,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
     schedule_messages = await ScheduleMessage.fetch_by_schedule(
       self.ctx.guild.id, schedule.title
     )
-    self.data = self.Data(guild_name=self.ctx.guild.name, total_messages=len(schedule_messages))
+    self.data = self.Data(total_messages=len(schedule_messages))
 
     buttons = [
       Button(
@@ -508,7 +495,6 @@ class CreateSchedule(WriterCommand):
   @define(slots=False)
   class Data(AsDict):
     schedule_title: str
-    guild_name: str
 
 
   async def prompt(self):
@@ -558,7 +544,7 @@ class CreateSchedule(WriterCommand):
     if schedule_title in (s.title for s in guild_schedules):
       return await self.send(self.States.ALREADY_EXISTS)
 
-    self.data = self.Data(schedule_title=schedule_title, guild_name=self.ctx.guild.name)
+    self.data = self.Data(schedule_title=schedule_title)
     self.schedule = Schedule.create(self.ctx, schedule_title)
 
     await self.send_commit(self.States.SUCCESS)
@@ -592,8 +578,7 @@ class ConfigureSchedule(WriterCommand):
 
   @define(slots=False)
   class Data(AsDict):
-    guild_name: str
-    guild_icon: str
+    pass
 
 
   async def main(self):
@@ -614,10 +599,6 @@ class ConfigureSchedule(WriterCommand):
     if not schedule:
       return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
 
-    self.data = self.Data(
-      guild_name=self.ctx.guild.name,
-      guild_icon=self.ctx.guild.icon.url if self.ctx.guild.icon else self.ctx.bot.user.avatar_url,
-    )
     await self.send(
       self.States.MAIN,
       other_data=schedule.asdict(),
@@ -1162,11 +1143,7 @@ class AddMessage(WriterCommand):
 
   @define(slots=False)
   class Data(AsDict):
-    schedule_title: str
-    guild_name: str
-    message: str
-    number: str
-    tags: Optional[str] = None
+    pass
 
 
   async def prompt_from_button(self):
@@ -1222,12 +1199,7 @@ class AddMessage(WriterCommand):
     if len(message) <= 0:
       return await Errors.create(self.ctx).invalid_input("Schedule message")
 
-    # Actual addition goes here
-    if schedule.type == ScheduleTypes.QUEUE:
-      number = str(schedule.current_number + 1)
-    else:
-      number = "???"
-
+    # Create message
     self.schedule_message = schedule.create_message(self.caller_id, message)
     if len(schedule.assign(self.schedule_message)) >= 2000:
       return await Errors.create(self.ctx).message_too_long()
@@ -1235,14 +1207,7 @@ class AddMessage(WriterCommand):
       tags = re.sub(r"[\s]+", " ", tags).strip().lower()
       self.schedule_message.tags = " ".join(sorted(set(tags.split())))
 
-    self.data = self.Data(
-      schedule_title=escape_text(schedule.title),
-      guild_name=self.ctx.guild.name,
-      message=message,
-      number=number,
-      tags=self.schedule_message.tags
-    )
-    await self.send_commit(self.States.SUCCESS, components=[])
+    await self.send_commit(self.States.SUCCESS, other_data=self.schedule_message.asdict(), components=[])
 
 
   async def transaction(self, session: AsyncSession):
@@ -1260,11 +1225,7 @@ class EditMessage(WriterCommand):
 
   @define(slots=False)
   class Data(AsDict):
-    schedule_title: str
-    guild_name: str
-    message: str
-    number: str
-    tags: Optional[str] = None
+    pass
 
 
   async def prompt(self):
@@ -1336,14 +1297,6 @@ class EditMessage(WriterCommand):
       return await Errors.create(self.ctx).message_too_long()
 
     self.schedule_message = message_object
-    self.data = self.Data(
-      schedule_title=escape_text(schedule.title),
-      guild_name=self.ctx.guild.name,
-      message=self.schedule_message.message,
-      number=self.schedule_message.number_s,
-      tags=self.schedule_message.tags
-    )
-
     return await self.send_commit(self.States.SUCCESS, other_data=message_object.asdict(), components=[])
 
 
@@ -1607,10 +1560,7 @@ class DeleteMessage(WriterCommand):
 
   @define(slots=False)
   class Data(AsDict):
-    schedule_title: str
-    guild_name: str
-    number: str
-    id: int
+    pass
 
 
   async def confirm(self):
@@ -1623,17 +1573,17 @@ class DeleteMessage(WriterCommand):
       await self.defer(ephemeral=True)
 
     message_id = int(CustomID.get_id_from(self.ctx))
-    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
-    if not message:
+    message_object = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
+    if not message_object:
       return await Errors.create(self.ctx).message_not_found()
 
-    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
+    schedule = await check_fetch_schedule(self.ctx, f"{message_object.schedule_id}")
     if not schedule:
       return await Errors.create(self.ctx).message_not_found()
 
     return await self.send(
       self.States.CONFIRM,
-      other_data=message.asdict(),
+      other_data=message_object.asdict(),
       components=[
         Button(
           style=ButtonStyle.GREEN,
