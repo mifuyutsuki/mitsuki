@@ -1315,6 +1315,12 @@ class ReorderMessage(WriterCommand):
     SELECT = "schedule_message_reorder_select"
     SUCCESS = "schedule_message_reorder_success"
 
+  def new_number_dict(self):
+    return {
+      "number": self.new_number,
+      "number_s": f"{self.new_number}"
+    }
+
 
   async def select(self):
     """
@@ -1427,7 +1433,7 @@ class ReorderMessage(WriterCommand):
     self.new_number       = schedule.posted_number + 1
     return await self.send_commit(
       self.States.SUCCESS,
-      other_data=message.asdict(),
+      other_data=message.asdict() | self.new_number_dict(),
       components=[
         Button(
           style=ButtonStyle.GRAY,
@@ -1466,7 +1472,7 @@ class ReorderMessage(WriterCommand):
     self.new_number       = schedule.current_number
     return await self.send_commit(
       self.States.SUCCESS,
-      other_data=message.asdict(),
+      other_data=message.asdict() | self.new_number_dict(),
       components=[
         Button(
           style=ButtonStyle.GRAY,
@@ -1541,7 +1547,11 @@ class ReorderMessage(WriterCommand):
     # Renumber
     self.schedule_message = message
     self.new_number       = number
-    return await self.send_commit(self.States.SUCCESS, other_data=message.asdict(), components=[])
+    return await self.send_commit(
+      self.States.SUCCESS,
+      other_data=message.asdict() | self.new_number_dict(),
+      components=[]
+    )
 
 
   async def transaction(self, session: AsyncSession):
