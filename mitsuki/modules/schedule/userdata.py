@@ -270,6 +270,19 @@ class Schedule(AsDict):
       return await session.scalar(query)
 
 
+  def post_time_of(self, message: "Message"):
+    if not message.number:
+      raise ValueError("Message has no loaded or defined number")
+    if message.number <= self.posted_number:
+      return message.date_posted
+
+    cron = self.cron()
+    for _ in range(message.number - self.posted_number):
+      __ = cron.next(datetime)
+
+    return cron.get_current(float)    
+
+
   async def next(self):
     query = (
       select(schema.Message)

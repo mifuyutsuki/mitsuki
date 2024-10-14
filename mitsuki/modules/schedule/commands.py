@@ -454,9 +454,14 @@ class ManageMessages(SelectionMixin, ReaderCommand):
     if message.message_id:
       string_templates.append("schedule_message_message_link")
 
+    other_data = {}
+    if schedule.type == ScheduleTypes.QUEUE and not message.date_posted:
+      other_data |= {"target_post_time_f": f"<t:{int(schedule.post_time_of(message))}:f>"}
+      string_templates.append("schedule_message_target_post_time")
+
     await self.send(
       self.States.VIEW,
-      other_data=message.asdict(),
+      other_data=message.asdict() | other_data,
       template_kwargs=dict(use_string_templates=string_templates),
       components=[
         Button(

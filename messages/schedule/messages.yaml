@@ -38,9 +38,9 @@ view:
     value  : >-
       ${tags}
     inline : false
-  - name   : Posted
+  - name   : Post Date
     value  : >-
-      ${posted_mark} ${schedule_message_message_link}
+      ${posted_mark} ${schedule_message_message_link}${schedule_message_target_post_time}
     inline : false
   - name   : Created
     value  : >-
@@ -129,6 +129,10 @@ delete_success:
     Deleted Message in "${schedule_title}"
   description: >-
     Deleted ${schedule_title} \#${number_s} (ID:${id})
+
+
+target_post_time:
+  ${target_post_time_f}
 
 
 message_link:
