@@ -34,6 +34,7 @@ from . import schema
 from mitsuki import bot
 from mitsuki.lib.checks import has_bot_channel_permissions
 from mitsuki.lib.userdata import new_session, AsDict
+from mitsuki.utils import process_text, ratio
 
 
 # =================================================================================================
@@ -476,6 +477,53 @@ class Message(AsDict):
     self.date_created_f = f"<t:{int(self.date_created)}:f>"
     self.date_modified_f = f"<t:{int(self.date_modified)}:f>"
     self.date_posted_f = f"<t:{int(self.date_posted)}:f>" if self.date_posted else "-"
+
+
+  @classmethod
+  async def search(
+    cls,
+    search_key: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    guild: Optional[Snowflake] = None,
+    discoverable_only: bool = True,
+    limit: Optional[int] = None
+  ):
+    if not search_key and not tags:
+      raise ValueError("Search key and tags cannot be both empty")
+
+    search_query = (
+      select(
+        schema.Message.id,
+        schema.Message.number,
+        schema.Message.message
+      )
+      .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule_id)
+    )
+    if guild:
+      search_query = search_query.where(schema.Schedule.guild == guild)
+    if discoverable_only:
+      search_query = search_query.where(schema.Schedule.discoverable == True)
+    if tags:
+      processed_tags = (tag.lower().replace("/", "//").replace("%", "/%") for tag in tags)
+      joined_tags = "%".join(sorted(processed_tags))
+      search_query = search_query.where(schema.Message.tags.like(f"%{joined_tags}%", escape="/"))
+
+    async with new_session() as session:
+      results = (await session.execute(search_query)).all()
+
+    if search_key:
+      matches = [
+        (
+          result.id,
+          ratio(search_key, result.message, processor=process_text)
+        )
+        for result in results
+      ]
+    else:
+      matches = [(result.id, result.number) for result in results]
+    matches.sort(key=lambda r: r[-1], reverse=True)
+
+    return [await cls.fetch(match[0], guild=guild) for match in (matches[:limit] if limit else matches)]
 
 
   @classmethod
