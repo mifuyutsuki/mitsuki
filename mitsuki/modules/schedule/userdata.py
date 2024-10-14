@@ -469,7 +469,7 @@ class Message(AsDict):
     self.long_partial_message = self.message if len(self.message) < 1024 else self.message[:1022].strip() + "..."
     self.posted_mark = "✅" if self.message_link != "-" else "🕗"
 
-    self.schedule_channel_mention = f"<>" if self.schedule_channel else "-"
+    self.schedule_channel_mention = f"<#{self.schedule_channel}>" if self.schedule_channel else "-"
     self.created_by_mention = f"<@{self.created_by}>"
     self.modified_by_mention = f"<@{self.modified_by}>"
     self.post_time_f = f"<t:{int(self.post_time)}:f>" if self.post_time else "-"
