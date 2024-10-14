@@ -21,7 +21,7 @@ list_empty:
   description: >-
     No messages setup for this schedule yet.
 
-    Press the "Add" button to add a new message
+    Press the `Add` button to add a new message
   thumbnail: >-
     ${guild_icon}
 
@@ -31,6 +31,8 @@ view:
     ${schedule_title} \#${number_s} (ID:${id})
   description: >-
     ${message}
+  thumbnail: >-
+    ${guild_icon}
   fields:
   - name   : Tags
     value  : >-
@@ -51,18 +53,9 @@ view:
 
 add_success:
   title: >-
-    Message added
+    Message Added to "${schedule_title}"
   fields:
-  - name   : Server
-    value  : ${guild_name}
-    inline : true
-  - name   : Schedule
-    value  : ${schedule_title}
-    inline : true
-  - name   : Post No.
-    value  : ${number}
-    inline : true
-  - name   : Message
+  - name   : \#${number_s} (ID:${id})
     value  : ${message}
     inline : false
   - name   : Tags
@@ -72,42 +65,47 @@ add_success:
 
 edit_success:
   title: >-
-    Message Edited
+    Message Edited in "${schedule_title}"
   description: >-
-    Press `Refresh` in the message view to show changes.
+    Press `Refresh` to show changes.
   fields:
-  - name   : Message
-    value  : >-
-      ${message}
+  - name   : \#${number_s} (ID:${id})
+    value  : ${message}
+    inline : false
+  - name   : Tags
+    value  : ${tags}
     inline : false
 
 
 reorder_select:
   title: >-
-    Reorder Message
+    Reorder Message in "${schedule_title}"
   description: >-
     Move this question to front or back of the message queue.
-
-
-    Front ← Current → Back
-
-    __\#${front_number}__ ← __**\#${number_s}**__ → __\#${back_number}__
   fields:
+  - name   : Front ← Current → Back
+    value  : >-
+      ${front_number} ⯇ __**${number_s}**__ ⯈ ${back_number}
+    inline : false
   - name   : ${schedule_title} \#${number_s} (ID:${id})
     value  : >-
       ${long_partial_message}
-    inline : true
+    inline : false
 
 
 reorder_success:
   title: >-
-    Message Reordered
+    Message Reordered in "${schedule_title}"
   description: >-
-    Press `Back to Message` below or `Refresh` in the above dialog to show changes.
+    ## ${old_number_s} → __${number_s}__
+
+    Press `Back to Message` or `Refresh` to show changes.
   fields:
-  - name   : Message
-    value  : >-
-      ${message}
+  - name   : \#${number_s} (ID:${id})
+    value  : ${message}
+    inline : false
+  - name   : Tags
+    value  : ${tags}
     inline : false
 
 
@@ -118,9 +116,9 @@ delete_confirm:
     Are you sure to delete ${schedule_title} \#${number_s} (ID:${id})?
 
 
-    If this is a backlogged message, messages after this number will be renumbered forward.
+    If this is a backlogged message, messages after this number will be reordered forward.
   fields:
-  - name   : Message
+  - name   : \#${number_s} (ID:${id})
     value  : >-
       ${message}
     inline : false
@@ -128,7 +126,7 @@ delete_confirm:
 
 delete_success:
   title: >-
-    Deleted Message
+    Deleted Message in "${schedule_title}"
   description: >-
     Deleted ${schedule_title} \#${number_s} (ID:${id})
 

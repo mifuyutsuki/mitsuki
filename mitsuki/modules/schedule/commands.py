@@ -1317,6 +1317,8 @@ class ReorderMessage(WriterCommand):
 
   def new_number_dict(self):
     return {
+      "old_number": self.schedule_message.number,
+      "old_number_s": f"{self.schedule_message.number}",
       "number": self.new_number,
       "number_s": f"{self.new_number}"
     }
