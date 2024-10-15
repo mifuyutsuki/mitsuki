@@ -1209,8 +1209,7 @@ class AddMessage(WriterCommand):
     if len(schedule.assign(self.schedule_message)) >= 2000:
       return await Errors.create(self.ctx).message_too_long()
     if tags:
-      tags = re.sub(r"[\s]+", " ", tags).strip().lower()
-      self.schedule_message.tags = " ".join(sorted(set(tags.split())))
+      self.schedule_message.set_tags(tags)
 
     await self.send_commit(self.States.SUCCESS, other_data=self.schedule_message.asdict(), components=[])
 
@@ -1292,14 +1291,13 @@ class EditMessage(WriterCommand):
       return await Errors.create(self.ctx).invalid_input("Schedule message tags")
 
     message_object.message = message
-    if tags:
-      tags = re.sub(r"[\s]+", " ", tags).strip().lower()
-      message_object.tags = " ".join(sorted(set(tags.split())))
-    else:
-      message_object.tags = None
-
     if len(schedule.assign(message_object)) > 2000:
       return await Errors.create(self.ctx).message_too_long()
+
+    if tags:
+      message_object.set_tags(tags)
+    else:
+      message_object.tags = None
 
     self.schedule_message = message_object
     return await self.send_commit(self.States.SUCCESS, other_data=message_object.asdict(), components=[])

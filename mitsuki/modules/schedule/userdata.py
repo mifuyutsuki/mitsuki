@@ -28,6 +28,7 @@ from croniter import croniter
 from typing import List, Union, Optional, Any, Callable, TypeVar
 from string import Template
 from enum import IntEnum
+import re
 
 from . import schema
 
@@ -479,6 +480,18 @@ class Message(AsDict):
     self.date_posted_f = f"<t:{int(self.date_posted)}:f>" if self.date_posted else "-"
 
 
+  @staticmethod
+  def process_tags(tags: str):
+    # Convert commas to spaces; remove redundant whitespace
+    processed = re.sub(r"[\s]+", " ", tags.replace(",", " ")).strip().lower()
+    # Remove redundant items; sort alphabetically
+    return " ".join(sorted(set(processed.split(" "))))
+
+
+  def set_tags(self, tags: str):
+    self.tags = self.process_tags(tags)
+
+
   @classmethod
   async def search(
     cls,
@@ -504,9 +517,8 @@ class Message(AsDict):
     if discoverable_only:
       search_query = search_query.where(schema.Schedule.discoverable == True)
     if tags:
-      processed_tags = (tag.lower().replace("/", "//").replace("%", "/%") for tag in tags)
-      joined_tags = "%".join(sorted(processed_tags))
-      search_query = search_query.where(schema.Message.tags.like(f"%{joined_tags}%", escape="/"))
+      processed_tags = cls.process_tags(tags).replace("/", "//").replace("%", "/%")
+      search_query = search_query.where(schema.Message.tags.like(f"%{processed_tags}%", escape="/"))
 
     async with new_session() as session:
       results = (await session.execute(search_query)).all()
