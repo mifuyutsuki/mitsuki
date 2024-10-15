@@ -473,6 +473,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
           style=ButtonStyle.BLURPLE,
           label="Renumber...",
           custom_id=CustomIDs.MESSAGE_REORDER.id(message_id),
+          disabled=message.date_posted is not None or schedule.backlog_number < 2
         ),
         Button(
           style=ButtonStyle.RED,
@@ -1368,6 +1369,7 @@ class ReorderMessage(WriterCommand):
           style=ButtonStyle.BLURPLE,
           label="Custom...",
           custom_id=CustomIDs.MESSAGE_REORDER.prompt().id(message_id),
+          disabled=schedule.backlog_number < 2
         ),
         Button(
           style=ButtonStyle.BLURPLE,
