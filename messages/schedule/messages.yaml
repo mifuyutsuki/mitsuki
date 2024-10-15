@@ -9,8 +9,10 @@ list:
   thumbnail: >-
     ${guild_icon}
   field:
-    name   : ${posted_mark} ${schedule_title} \#${number_s} (ID:${id})
+    name   : ${posted_mark} (ID-${id}) ${schedule_title} \#${number_s}
     value  : >-
+      `${tags}`
+
       ${long_partial_message}
     inline : false
 
@@ -28,7 +30,7 @@ list_empty:
 
 view:
   title: >-
-    ${schedule_title} \#${number_s} (ID:${id})
+    (ID-${id}) ${schedule_title} \#${number_s}
   description: >-
     ${message}
   thumbnail: >-
@@ -36,7 +38,7 @@ view:
   fields:
   - name   : Tags
     value  : >-
-      ${tags}
+      `${tags}`
     inline : false
   - name   : Post Date
     value  : >-
@@ -55,11 +57,11 @@ add_success:
   title: >-
     Message Added to "${schedule_title}"
   fields:
-  - name   : \#${number_s} (ID:${id})
-    value  : ${message}
-    inline : false
-  - name   : Tags
-    value  : ${tags}
+  - name   : ${schedule_title} \#${number_s}
+    value  : >-
+      `${tags}`
+
+      ${message}
     inline : false
 
 
@@ -69,7 +71,7 @@ edit_success:
   description: >-
     Press `Refresh` to show changes.
   fields:
-  - name   : \#${number_s} (ID:${id})
+  - name   : (ID-${id}) ${schedule_title} \#${number_s}
     value  : ${message}
     inline : false
   - name   : Tags
@@ -87,8 +89,10 @@ reorder_select:
     value  : >-
       ${front_number} ⯇ __**${number_s}**__ ⯈ ${back_number}
     inline : false
-  - name   : ${schedule_title} \#${number_s} (ID:${id})
+  - name   : (ID-${id}) ${schedule_title} \#${number_s}
     value  : >-
+      `${tags}`
+
       ${long_partial_message}
     inline : false
 
@@ -101,11 +105,11 @@ reorder_success:
 
     Press `Back to Message` or `Refresh` to show changes.
   fields:
-  - name   : \#${number_s} (ID:${id})
-    value  : ${message}
-    inline : false
-  - name   : Tags
-    value  : ${tags}
+  - name   : (ID-${id}) ${schedule_title} \#${number_s}
+    value  : >-
+      `${tags}`
+
+      ${message}
     inline : false
 
 
@@ -113,14 +117,16 @@ delete_confirm:
   title: >-
     Delete Message?
   description: >-
-    Are you sure to delete ${schedule_title} \#${number_s} (ID:${id})?
+    Are you sure to delete (ID-${id}) ${schedule_title} \#${number_s}?
 
 
     If this is a backlogged message, messages after this number will be reordered forward.
   fields:
-  - name   : \#${number_s} (ID:${id})
+  - name   : (ID-${id}) ${schedule_title} \#${number_s}
     value  : >-
-      ${message}
+      `${tags}`
+
+      ${long_partial_message}
     inline : false
 
 
@@ -128,7 +134,7 @@ delete_success:
   title: >-
     Deleted Message in "${schedule_title}"
   description: >-
-    Deleted ${schedule_title} \#${number_s} (ID:${id})
+    Deleted (ID-${id}) ${schedule_title} \#${number_s}
 
 
 target_post_time:
