@@ -112,7 +112,12 @@ async def has_bot_channel_permissions(
 
   channel = await bot.fetch_channel(channel_id)
   if not channel:
+    # Channel does not exist
     return False
+  if not hasattr(channel, "permissions_for"):
+    # Channel has no permissions to check against (No access?)
+    return False
+
   if not isinstance(permissions, list):
     permissions = [permissions]
 
