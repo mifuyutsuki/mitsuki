@@ -716,8 +716,9 @@ class Message(AsDict):
     for key in ["id"]:
       values.pop(key)
 
-    statement = insert(schema.Message).values(values)
-    await session.execute(statement)
+    statement = insert(schema.Message).values(values).returning(schema.Message.id)
+    result    = (await session.execute(statement)).first()
+    self.id   = result.id if result else None
 
 
   async def update_reorder(self, session: AsyncSession, new_number: int, author: Optional[Snowflake] = None):

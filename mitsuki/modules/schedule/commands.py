@@ -1212,7 +1212,23 @@ class AddMessage(WriterCommand):
     if tags:
       self.schedule_message.set_tags(tags)
 
-    await self.send_commit(self.States.SUCCESS, other_data=self.schedule_message.asdict(), components=[])
+    m = await self.send_commit(self.States.SUCCESS, other_data=self.schedule_message.asdict(), components=[])
+
+    # Delayed action to fetch message id
+    if m and self.schedule_message.id:
+      await self.ctx.edit(m, components=[
+        Button(
+          style=ButtonStyle.GRAY,
+          label="Go to Message",
+          custom_id=CustomIDs.MESSAGE_VIEW.id(self.schedule_message.id)
+        ),
+        Button(
+          style=ButtonStyle.BLURPLE,
+          label="Reorder...",
+          custom_id=CustomIDs.MESSAGE_REORDER.id(self.schedule_message.id),
+          disabled=schedule.backlog_number <= 0
+        ),
+      ])
 
 
   async def transaction(self, session: AsyncSession):
