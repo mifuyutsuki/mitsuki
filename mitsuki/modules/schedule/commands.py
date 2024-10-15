@@ -453,6 +453,8 @@ class ManageMessages(SelectionMixin, ReaderCommand):
     string_templates = []
     if message.message_id:
       string_templates.append("schedule_message_message_link")
+    if not schedule.active:
+      string_templates.append("schedule_message_schedule_inactive")
 
     other_data = {}
     if schedule.type == ScheduleTypes.QUEUE and not message.date_posted:
