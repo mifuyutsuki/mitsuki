@@ -471,7 +471,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
         ),
         Button(
           style=ButtonStyle.BLURPLE,
-          label="Renumber...",
+          label="Reorder...",
           custom_id=CustomIDs.MESSAGE_REORDER.id(message_id),
           disabled=message.date_posted is not None or schedule.backlog_number < 2
         ),
@@ -1551,7 +1551,7 @@ class ReorderMessage(WriterCommand):
     if not (schedule.posted_number < number <= schedule.current_number):
       return await Errors.create(self.ctx).out_of_range("Schedule message number")
 
-    # Renumber
+    # Reorder
     self.schedule_message = message
     self.new_number       = number
     return await self.send_commit(
@@ -1562,7 +1562,7 @@ class ReorderMessage(WriterCommand):
 
 
   async def transaction(self, session: AsyncSession):
-    await self.schedule_message.update_renumber(session, self.new_number, author=self.ctx.author.id)
+    await self.schedule_message.update_reorder(session, self.new_number, author=self.ctx.author.id)
 
 
 class DeleteMessage(WriterCommand):

@@ -720,7 +720,7 @@ class Message(AsDict):
     await session.execute(statement)
 
 
-  async def update_renumber(self, session: AsyncSession, new_number: int, author: Optional[Snowflake] = None):
+  async def update_reorder(self, session: AsyncSession, new_number: int, author: Optional[Snowflake] = None):
     # Cannot renumber to a negative value
     if new_number < 0:
       raise ValueError(f"Cannot renumber Message to a negative number '{new_number}'")
