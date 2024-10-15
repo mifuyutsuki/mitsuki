@@ -525,7 +525,7 @@ class CreateSchedule(WriterCommand):
     )
 
 
-  async def run(self, schedule_title: str):
+  async def response(self, schedule_title: str):
     if not self.ctx.guild:
       return await Errors.create(self.ctx).not_in_guild()
     await assert_user_permissions(
@@ -1185,11 +1185,11 @@ class AddMessage(WriterCommand):
     )
 
 
-  async def run_from_prompt(self, message: str, tags: Optional[str] = None):
-    return await self.run(CustomID.get_id_from(self.ctx), message, tags)
+  async def response_from_prompt(self, message: str, tags: Optional[str] = None):
+    return await self.response(CustomID.get_id_from(self.ctx), message, tags)
 
 
-  async def run(self, schedule_key: str, message: str, tags: Optional[str] = None):
+  async def response(self, schedule_key: str, message: str, tags: Optional[str] = None):
     if not self.ctx.guild:
       return await Errors.create(self.ctx).not_in_guild()
     await self.defer(ephemeral=True)

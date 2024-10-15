@@ -97,7 +97,7 @@ class ScheduleModule(Extension):
 
   @modal_callback(commands.CustomIDs.SCHEDULE_CREATE.response())
   async def create_response(self, ctx: ModalContext, title: str):
-    return await commands.CreateSchedule.create(ctx).run(title)
+    return await commands.CreateSchedule.create(ctx).response(title)
 
   # ===========================================================================
   # Configure Schedule
@@ -185,7 +185,7 @@ class ScheduleModule(Extension):
 
   @modal_callback(commands.CustomIDs.MESSAGE_ADD.response().string_id_pattern())
   async def message_add_response(self, ctx: ModalContext, message: str, tags: Optional[str] = None):
-    return await commands.AddMessage.create(ctx).run_from_prompt(message, tags)
+    return await commands.AddMessage.create(ctx).response_from_prompt(message, tags)
 
   # ===========================================================================
   # Edit Message
