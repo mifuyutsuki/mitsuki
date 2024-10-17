@@ -498,7 +498,7 @@ class Message(AsDict):
     search_key: Optional[str] = None,
     tags: Optional[List[str]] = None,
     guild: Optional[Snowflake] = None,
-    discoverable_only: bool = True,
+    public: bool = True,
     limit: Optional[int] = None
   ):
     if not search_key and not tags:
@@ -514,8 +514,8 @@ class Message(AsDict):
     )
     if guild:
       search_query = search_query.where(schema.Schedule.guild == guild)
-    if discoverable_only:
-      search_query = search_query.where(schema.Schedule.discoverable == True)
+    if public:
+      search_query = search_query.where(schema.Schedule.discoverable == True).where(schema.Message.message_id != None)
     if tags:
       processed_tags = cls.process_tags(tags).replace("/", "//").replace("%", "/%")
       search_query = search_query.where(schema.Message.tags.like(f"%{processed_tags}%", escape="/"))
