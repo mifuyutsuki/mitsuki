@@ -28,12 +28,14 @@ from croniter import croniter
 from typing import List, Union, Optional, Any, Callable, TypeVar
 from string import Template
 from enum import IntEnum
+import re
 
 from . import schema
 
 from mitsuki import bot
 from mitsuki.lib.checks import has_bot_channel_permissions
 from mitsuki.lib.userdata import new_session, AsDict
+from mitsuki.utils import process_text, ratio
 
 
 # =================================================================================================
@@ -92,6 +94,8 @@ class Schedule(AsDict):
   last_fire: Optional[float] = field(default=None)
 
   backlog_number: int = field(init=False)
+  front_number: int = field(init=False)
+  back_number: int = field(init=False)
   active_mark: str = field(init=False)
   post_channel_mention: str = field(init=False)
   created_by_mention: str = field(init=False)
@@ -102,13 +106,15 @@ class Schedule(AsDict):
   next_fire_f: str = field(init=False)
 
   def __attrs_post_init__(self):
-    self.backlog_number       = self.current_number - self.posted_number
-    self.active_mark          = "✅ Active" if self.active else "⏸️ Inactive"
-    self.post_channel_mention = f"<#{self.post_channel}>" if self.post_channel else "No channel selected"
-    self.created_by_mention   = f"<@{self.created_by}>"
-    self.modified_by_mention  = f"<@{self.modified_by}>"
-    self.date_created_f       = f"<t:{int(self.date_created)}:f>"
-    self.date_modified_f      = f"<t:{int(self.date_modified)}:f>"
+    self.backlog_number         = self.current_number - self.posted_number
+    self.front_number           = self.posted_number + 1 if self.current_number > 0 else 0
+    self.back_number            = self.current_number
+    self.active_mark            = "✅ Active" if self.active else "⏸️ Inactive"
+    self.post_channel_mention   = f"<#{self.post_channel}>" if self.post_channel else "No channel selected"
+    self.created_by_mention     = f"<@{self.created_by}>"
+    self.modified_by_mention    = f"<@{self.modified_by}>"
+    self.date_created_f         = f"<t:{int(self.date_created)}:f>"
+    self.date_modified_f        = f"<t:{int(self.date_modified)}:f>"
 
     if self.active and self.backlog_number > 0:
       self.next_fire_f        = f"<t:{int(self.cron().next(float))}:f>"
@@ -264,6 +270,19 @@ class Schedule(AsDict):
     )
     async with new_session() as session:
       return await session.scalar(query)
+
+
+  def post_time_of(self, message: "Message"):
+    if not message.number:
+      raise ValueError("Message has no loaded or defined number")
+    if message.number <= self.posted_number:
+      return message.date_posted
+
+    cron = self.cron()
+    for _ in range(message.number - self.posted_number):
+      __ = cron.next(datetime)
+
+    return cron.get_current(float)    
 
 
   async def next(self):
@@ -452,13 +471,71 @@ class Message(AsDict):
     self.long_partial_message = self.message if len(self.message) < 1024 else self.message[:1022].strip() + "..."
     self.posted_mark = "✅" if self.message_link != "-" else "🕗"
 
-    self.schedule_channel_mention = f"<>" if self.schedule_channel else "-"
+    self.schedule_channel_mention = f"<#{self.schedule_channel}>" if self.schedule_channel else "-"
     self.created_by_mention = f"<@{self.created_by}>"
     self.modified_by_mention = f"<@{self.modified_by}>"
     self.post_time_f = f"<t:{int(self.post_time)}:f>" if self.post_time else "-"
     self.date_created_f = f"<t:{int(self.date_created)}:f>"
     self.date_modified_f = f"<t:{int(self.date_modified)}:f>"
     self.date_posted_f = f"<t:{int(self.date_posted)}:f>" if self.date_posted else "-"
+
+
+  @staticmethod
+  def process_tags(tags: str):
+    # Convert commas to spaces; remove redundant whitespace
+    processed = re.sub(r"[\s]+", " ", tags.replace(",", " ")).strip().lower()
+    # Remove redundant items; sort alphabetically
+    return " ".join(sorted(set(processed.split(" "))))
+
+
+  def set_tags(self, tags: str):
+    self.tags = self.process_tags(tags)
+
+
+  @classmethod
+  async def search(
+    cls,
+    search_key: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    guild: Optional[Snowflake] = None,
+    public: bool = True,
+    limit: Optional[int] = None
+  ):
+    if not search_key and not tags:
+      raise ValueError("Search key and tags cannot be both empty")
+
+    search_query = (
+      select(
+        schema.Message.id,
+        schema.Message.number,
+        schema.Message.message
+      )
+      .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule_id)
+    )
+    if guild:
+      search_query = search_query.where(schema.Schedule.guild == guild)
+    if public:
+      search_query = search_query.where(schema.Schedule.discoverable == True).where(schema.Message.message_id != None)
+    if tags:
+      processed_tags = cls.process_tags(tags).replace("/", "//").replace("%", "/%")
+      search_query = search_query.where(schema.Message.tags.like(f"%{processed_tags}%", escape="/"))
+
+    async with new_session() as session:
+      results = (await session.execute(search_query)).all()
+
+    if search_key:
+      matches = [
+        (
+          result.id,
+          ratio(search_key, result.message, processor=process_text)
+        )
+        for result in results
+      ]
+    else:
+      matches = [(result.id, result.number) for result in results]
+    matches.sort(key=lambda r: r[-1], reverse=True)
+
+    return [await cls.fetch(match[0], guild=guild) for match in (matches[:limit] if limit else matches)]
 
 
   @classmethod
@@ -639,11 +716,12 @@ class Message(AsDict):
     for key in ["id"]:
       values.pop(key)
 
-    statement = insert(schema.Message).values(values)
-    await session.execute(statement)
+    statement = insert(schema.Message).values(values).returning(schema.Message.id)
+    result    = (await session.execute(statement)).first()
+    self.id   = result.id if result else None
 
 
-  async def update_renumber(self, session: AsyncSession, new_number: int, author: Optional[Snowflake] = None):
+  async def update_reorder(self, session: AsyncSession, new_number: int, author: Optional[Snowflake] = None):
     # Cannot renumber to a negative value
     if new_number < 0:
       raise ValueError(f"Cannot renumber Message to a negative number '{new_number}'")

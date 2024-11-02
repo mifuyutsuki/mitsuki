@@ -55,15 +55,6 @@ __all__ = (
 )
 
 
-def _bot_data():
-  return {
-    "bot_userid": bot.user.id,
-    "bot_user": bot.user.mention,
-    "bot_username": bot.user.display_name,
-    "bot_usericon": bot.user.avatar_url
-  }
-
-
 class CustomID(str):
   def __add__(self, other):
     return CustomID(str(self) + str(other))
@@ -154,10 +145,26 @@ class Target(AsDict):
     return cls(target_userid=id, target_user=f"<@{id}>", target_username=username, target_usericon=usericon)
 
 
+@define(slots=False)
+class Guild(AsDict):
+  guild_id: int
+  guild_name: str
+  guild_icon: str
+
+  @classmethod
+  def set(cls, ctx: InteractionContext, default_to_avatar: bool = True):
+    return cls(
+      guild_id=ctx.guild.id,
+      guild_name=ctx.guild.name,
+      guild_icon=ctx.guild.icon.url if ctx.guild.icon else ctx.author.avatar_url if default_to_avatar else ""
+    )
+
+
 class Command:
   ctx: InteractionContext
   caller_data: "Caller"
   caller_user: Union[Member, User]
+  guild_data: Optional["Guild"]
   data: Optional["AsDict"] = None
   message: Optional[Message] = None
   state: Optional[StrEnum] = None
@@ -166,6 +173,14 @@ class Command:
   @property
   def bot(self):
     return self.ctx.bot
+
+  def bot_data(self):
+    return {
+      "bot_userid": self.bot.user.id,
+      "bot_user": self.bot.user.mention,
+      "bot_username": self.bot.user.display_name,
+      "bot_usericon": self.bot.user.avatar_url
+    }
 
   @classmethod
   def create(cls, ctx: InteractionContext):
@@ -181,6 +196,7 @@ class Command:
     self.ctx = ctx
     self.caller_user = ctx.author
     self.caller_data = Caller.set(ctx.author)
+    self.guild_data  = Guild.set(ctx) if ctx.guild else None
 
   def set_state(self, state: StrEnum):
     self.state = state
@@ -254,7 +270,12 @@ class Command:
     raise NotImplementedError
 
   def asdict(self):
-    return (self.data.asdict() if self.data else {}) | _bot_data() | self.caller_data.asdict()
+    return (
+      (self.data.asdict() if self.data else {})
+      | self.bot_data()
+      | self.caller_data.asdict()
+      | (self.guild_data.asdict() if self.guild_data else {})
+    )
 
 
 class ReaderCommand(Command):

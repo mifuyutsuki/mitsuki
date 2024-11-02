@@ -34,3 +34,10 @@ invalid_input:
   description: >-
     Not a valid input for ${field}.
   color: error
+
+out_of_range:
+  title: >-
+    Invalid Input Range
+  description: >-
+    Not a valid input range for ${field}.
+  color: error

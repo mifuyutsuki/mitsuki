@@ -9,8 +9,10 @@ list:
   thumbnail: >-
     ${guild_icon}
   field:
-    name   : ${posted_mark} ${schedule_title} \#${number_s} (ID:${id})
+    name   : ${posted_mark} (ID-${id}) ${schedule_title} \#${number_s}
     value  : >-
+      `${tags}`
+
       ${long_partial_message}
     inline : false
 
@@ -21,24 +23,26 @@ list_empty:
   description: >-
     No messages setup for this schedule yet.
 
-    Press the "Add" button to add a new message
+    Press the `Add` button to add a new message
   thumbnail: >-
     ${guild_icon}
 
 
 view:
   title: >-
-    ${schedule_title} \#${number_s} (ID:${id})
+    (ID-${id}) ${schedule_title} \#${number_s}
   description: >-
     ${message}
+  thumbnail: >-
+    ${guild_icon}
   fields:
   - name   : Tags
     value  : >-
-      ${tags}
+      `${tags}`
     inline : false
-  - name   : Posted
+  - name   : Post Date ${schedule_message_schedule_inactive}
     value  : >-
-      ${posted_mark} ${schedule_message_message_link}
+      ${posted_mark} ${schedule_message_message_link}${schedule_message_target_post_time}
     inline : false
   - name   : Created
     value  : >-
@@ -51,18 +55,23 @@ view:
 
 add_success:
   title: >-
-    Message added
+    Message Added to "${schedule_title}"
   fields:
-  - name   : Server
-    value  : ${guild_name}
-    inline : true
-  - name   : Schedule
-    value  : ${schedule_title}
-    inline : true
-  - name   : Post No.
-    value  : ${number}
-    inline : true
-  - name   : Message
+  - name   : ${schedule_title} \#${number_s}
+    value  : >-
+      `${tags}`
+
+      ${message}
+    inline : false
+
+
+edit_success:
+  title: >-
+    Message Edited in "${schedule_title}"
+  description: >-
+    Press `Refresh` to show changes.
+  fields:
+  - name   : (ID-${id}) ${schedule_title} \#${number_s}
     value  : ${message}
     inline : false
   - name   : Tags
@@ -70,14 +79,36 @@ add_success:
     inline : false
 
 
-edit_success:
+reorder_select:
   title: >-
-    Message Edited
+    Reorder Message in "${schedule_title}"
   description: >-
-    Press `Refresh` in the message view to show changes.
+    Move this question to front or back of the message queue.
   fields:
-  - name   : Message
+  - name   : Front ← Current → Back
     value  : >-
+      ${front_number} ⯇ __**${number_s}**__ ⯈ ${back_number}
+    inline : false
+  - name   : (ID-${id}) ${schedule_title} \#${number_s}
+    value  : >-
+      `${tags}`
+
+      ${long_partial_message}
+    inline : false
+
+
+reorder_success:
+  title: >-
+    Message Reordered in "${schedule_title}"
+  description: >-
+    ## ${old_number_s} → __${number_s}__
+
+    Press `Back to Message` or `Refresh` to show changes.
+  fields:
+  - name   : (ID-${id}) ${schedule_title} \#${number_s}
+    value  : >-
+      `${tags}`
+
       ${message}
     inline : false
 
@@ -86,22 +117,32 @@ delete_confirm:
   title: >-
     Delete Message?
   description: >-
-    Are you sure to delete ${schedule_title} \#${number_s} (ID:${id})?
+    Are you sure to delete (ID-${id}) ${schedule_title} \#${number_s}?
 
 
-    If this is a backlogged message, messages after this number will be renumbered forward.
+    If this is a backlogged message, messages after this number will be reordered forward.
   fields:
-  - name   : Message
+  - name   : (ID-${id}) ${schedule_title} \#${number_s}
     value  : >-
-      ${message}
+      `${tags}`
+
+      ${long_partial_message}
     inline : false
 
 
 delete_success:
   title: >-
-    Deleted Message
+    Deleted Message in "${schedule_title}"
   description: >-
-    Deleted ${schedule_title} \#${number_s} (ID:${id})
+    Deleted (ID-${id}) ${schedule_title} \#${number_s}
+
+
+schedule_inactive:
+  (Schedule inactive)
+
+
+target_post_time:
+  ${target_post_time_f}
 
 
 message_link:
