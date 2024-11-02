@@ -648,7 +648,12 @@ class View(CurrencyMixin, SelectionMixin, AutocompleteMixin, ReaderCommand):
       return await self.send_autocomplete(options)
 
     options.extend([
-      self.option(truncate(card.name), f"@{card.card}")
+      self.option(
+        truncate(
+          (("★" * card.rarity) if card.rarity <= 6 else f"{card.rarity}★") + f" {card.name}"
+        ),
+        f"@{card.card}"
+      )
       for card in await self.card_search(input_text, 9-len(options))
     ])
     await self.send_autocomplete(options)
