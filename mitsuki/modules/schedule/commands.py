@@ -171,6 +171,64 @@ class CustomIDs:
   """Reorder a message to back of a queue-type Schedule. (id: Message ID)"""
 
 
+class Templates(StrEnum):
+  # List Messages (/schedule list)
+  LIST             = "schedule_list"
+  LIST_NO_MESSAGES = "schedule_list_no_messages"
+
+  # View Message (/schedule view)
+  VIEW_SEARCH_RESULTS = "schedule_view_search_results"
+  VIEW_NO_RESULTS     = "schedule_view_no_results"
+  VIEW_NO_MESSAGES    = "schedule_view_no_messages"
+  VIEW_MESSAGE        = "schedule_view"
+
+  # Manage Schedules
+  SCHEDULES_LIST             = "schedule_manage_list" # Multifield/Selection
+  SCHEDULES_LIST_EMPTY       = "schedule_manage_list_empty"
+  SCHEDULES_LIST_UNAVAILABLE = "schedule_manage_list_unavailable"
+  SCHEDULES_VIEW             = "schedule_manage_view"
+
+  # Create Schedule
+  SCHEDULES_CREATE_SUCCESS        = "schedule_manage_create_success"
+  SCHEDULES_CREATE_ALREADY_EXISTS = "schedule_manage_create_already_exists"  
+
+  # Configure Schedule (Select)
+  CONFIGURE_MENU    = "schedule_configure"
+  CONFIGURE_CHANNEL = "schedule_configure_select_channel"
+  CONFIGURE_ROLES   = "schedule_configure_select_roles"
+  CONFIGURE_ROUTINE = "schedule_configure_select_routine" # Future
+
+  # Configure Schedule (Response)
+  CONFIGURE_TITLE_SUCCESS   = "schedule_configure_edit_title_success"
+  CONFIGURE_FORMAT_SUCCESS  = "schedule_configure_edit_format_success"
+  CONFIGURE_ROUTINE_SUCCESS = "schedule_configure_edit_routine_success"
+
+  # Configure Schedule (Errors)
+  CONFIGURE_ERROR_NOT_READY                = "schedule_configure_not_ready"
+  CONFIGURE_ERROR_TITLE_ALREADY_EXISTS     = "schedule_configure_title_already_exists"
+  CONFIGURE_ERROR_SEND_PERMISSION_REQUIRED = "schedule_configure_requires_send_permissions"
+  CONFIGURE_ERROR_PIN_PERMISSION_REQUIRED  = "schedule_configure_requires_pin_permissions"
+
+  # Manage Messages (Select)
+  MESSAGES_LIST           = "schedule_message_list"
+  MESSAGES_LIST_EMPTY     = "schedule_message_list_empty"
+  MESSAGES_VIEW           = "schedule_message_view"
+
+  # Add Message
+  MESSAGE_ADD_SUCCESS     = "schedule_message_add_success"
+
+  # Edit Message
+  MESSAGE_EDIT_SUCCESS    = "schedule_message_edit_success"
+
+  # Reorder Message
+  MESSAGE_REORDER_SELECT  = "schedule_message_reorder_select"
+  MESSAGE_REORDER_SUCCESS = "schedule_message_reorder_success"
+
+  # Delete Message
+  MESSAGE_DELETE_CONFIRM  = "schedule_message_delete_confirm"
+  MESSAGE_DELETE_SUCCESS  = "schedule_message_delete_success"
+
+
 # TODO: Raise a custom error instead of this thing
 class Errors(ReaderCommand):
   async def not_in_guild(self):
@@ -201,15 +259,8 @@ class Errors(ReaderCommand):
 
 
 class ManageSchedules(SelectionMixin, ReaderCommand):
-  state: "ManageSchedules.States"
   data: "ManageSchedules.Data"
   schedules: List[Schedule]
-
-  class States(StrEnum):
-    LIST             = "schedule_manage_list"
-    LIST_EMPTY       = "schedule_manage_list_empty"
-    LIST_UNAVAILABLE = "schedule_manage_list_unavailable"
-    VIEW             = "schedule_manage_view"
 
   @define(slots=False)
   class Data(AsDict):
@@ -256,24 +307,15 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
     )
 
     if len(allowed_schedules) <= 0 and not can_create:
-      return await self.send(
-        self.States.LIST_UNAVAILABLE,
-        components=[],
-      )
+      return await self.send(Templates.SCHEDULES_LIST_UNAVAILABLE, components=[])
     if len(allowed_schedules) <= 0:
-      return await self.send(
-        self.States.LIST_EMPTY,
-        components=buttons,
-      )
+      return await self.send(Templates.SCHEDULES_LIST_EMPTY, components=buttons)
 
     self.selection_values = [schedule.title for schedule in allowed_schedules]
     self.selection_placeholder = "Select a Schedule to manage..."
 
     self.field_data = allowed_schedules
-    await self.send_selection(
-      self.States.LIST,
-      extra_components=buttons,
-    )
+    await self.send_selection(Templates.SCHEDULES_LIST, extra_components=buttons)
 
 
   async def selection_callback(self, ctx: ComponentContext):
@@ -306,7 +348,7 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
       total_schedules=0
     )
     await self.send(
-      self.States.VIEW,
+      Templates.SCHEDULES_VIEW,
       other_data=schedule.asdict(),
       components=[
         ActionRow(
@@ -344,13 +386,7 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
 
 
 class ManageMessages(SelectionMixin, ReaderCommand):
-  state: "ManageMessages.States"
   data: "ManageMessages.Data"
-
-  class States(StrEnum):
-    LIST         = "schedule_message_list"
-    NO_LIST      = "schedule_message_list_empty"
-    VIEW         = "schedule_message_view"
 
   @define(slots=False)
   class Data(AsDict):
@@ -396,7 +432,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
 
     if len(schedule_messages) <= 0:
       await self.send(
-        self.States.NO_LIST,
+        Templates.MESSAGES_LIST_EMPTY,
         other_data={"schedule_title": schedule.title},
         components=buttons
       )
@@ -414,7 +450,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
     ]
     self.selection_placeholder = "Message to view or edit..."
     await self.send_selection(
-      self.States.LIST,
+      Templates.MESSAGES_LIST,
       other_data={"schedule_title": schedule.title},
       extra_components=buttons
     )
@@ -462,7 +498,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
       string_templates.append("schedule_message_target_post_time")
 
     await self.send(
-      self.States.VIEW,
+      Templates.MESSAGES_VIEW,
       other_data=message.asdict() | other_data,
       template_kwargs=dict(use_string_templates=string_templates),
       components=[
@@ -492,17 +528,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
 
 
 class CreateSchedule(WriterCommand):
-  state: "CreateSchedule.States"
-  data: "CreateSchedule.Data"
   schedule: Schedule
-
-  class States(StrEnum):
-    SUCCESS        = "schedule_manage_create_success"
-    ALREADY_EXISTS = "schedule_manage_create_already_exists"
-
-  @define(slots=False)
-  class Data(AsDict):
-    schedule_title: str
 
 
   async def prompt(self):
@@ -550,12 +576,10 @@ class CreateSchedule(WriterCommand):
     # Duplicate check
     guild_schedules = await Schedule.fetch_many(guild=self.ctx.guild.id)
     if schedule_title in (s.title for s in guild_schedules):
-      return await self.send(self.States.ALREADY_EXISTS)
+      return await self.send(Templates.SCHEDULES_CREATE_ALREADY_EXISTS)
 
-    self.data = self.Data(schedule_title=schedule_title)
     self.schedule = Schedule.create(self.ctx, schedule_title)
-
-    await self.send_commit(self.States.SUCCESS)
+    await self.send_commit(Templates.SCHEDULES_CREATE_SUCCESS, other_data={"schedule_title": schedule_title})
 
 
   async def transaction(self, session: AsyncSession):
@@ -563,32 +587,6 @@ class CreateSchedule(WriterCommand):
 
 
 class ConfigureSchedule(WriterCommand):
-  state: "ConfigureSchedule.States"
-  data: "ConfigureSchedule.Data"
-
-  class States(StrEnum):
-    MAIN           = "schedule_configure"
-    SELECT_CHANNEL = "schedule_configure_select_channel"
-    SELECT_ROLES   = "schedule_configure_select_roles"
-
-    EDIT_TITLE_SUCCESS   = "schedule_configure_edit_title_success"
-    EDIT_FORMAT_SUCCESS  = "schedule_configure_edit_format_success"
-    EDIT_ROUTINE_SUCCESS = "schedule_configure_edit_routine_success"
-
-    # Errors
-    NOT_READY                = "schedule_configure_not_ready"
-    TITLE_ALREADY_EXISTS     = "schedule_configure_title_already_exists"
-    SEND_PERMISSION_REQUIRED = "schedule_configure_requires_send_permissions"
-    PIN_PERMISSION_REQUIRED  = "schedule_configure_requires_pin_permissions"
-
-    # Future
-    SELECT_ROUTINE = "schedule_configure_select_routine"
-
-  @define(slots=False)
-  class Data(AsDict):
-    pass
-
-
   async def main(self):
     if not self.ctx.guild:
       return await Errors.create(self.ctx).not_in_guild()
@@ -608,7 +606,7 @@ class ConfigureSchedule(WriterCommand):
       return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
 
     await self.send(
-      self.States.MAIN,
+      Templates.CONFIGURE_MENU,
       other_data=schedule.asdict(),
       components=[
         ActionRow(
@@ -726,12 +724,12 @@ class ConfigureSchedule(WriterCommand):
 
     # Same title check
     if title == schedule.title:
-      return await self.send(self.States.EDIT_TITLE_SUCCESS)
+      return await self.send(Templates.CONFIGURE_TITLE_SUCCESS)
 
     # Duplicate check
     guild_schedules = await Schedule.fetch_many(guild=self.ctx.guild.id)
     if title in (s.title for s in guild_schedules):
-      return await self.send(self.States.TITLE_ALREADY_EXISTS)
+      return await self.send(Templates.CONFIGURE_ERROR_TITLE_ALREADY_EXISTS)
 
     schedule.title = title
 
@@ -739,7 +737,7 @@ class ConfigureSchedule(WriterCommand):
       await schedule.update_modify(session, self.ctx.author.id)
       await session.commit()
 
-    return await self.send(self.States.EDIT_TITLE_SUCCESS)
+    return await self.send(Templates.CONFIGURE_TITLE_SUCCESS)
 
 
   async def prompt_format(self):
@@ -793,7 +791,7 @@ class ConfigureSchedule(WriterCommand):
 
     # Same format check
     if format == schedule.format:
-      return await self.send(self.States.EDIT_FORMAT_SUCCESS)
+      return await self.send(Templates.CONFIGURE_FORMAT_SUCCESS)
 
     schedule.format = format
 
@@ -801,7 +799,7 @@ class ConfigureSchedule(WriterCommand):
       await schedule.update_modify(session, self.ctx.author.id)
       await session.commit()
 
-    return await self.send(self.States.EDIT_FORMAT_SUCCESS)
+    return await self.send(Templates.CONFIGURE_FORMAT_SUCCESS)
 
 
   # async def select_routine(self):
@@ -844,6 +842,7 @@ class ConfigureSchedule(WriterCommand):
     )
 
 
+  # TODO: Custom routines
   async def set_routine(self, time: str):
     if not self.ctx.guild:
       return await Errors.create(self.ctx).not_in_guild()
@@ -872,7 +871,7 @@ class ConfigureSchedule(WriterCommand):
     # Set routine
     if f"{minute} {hour} * * *" == schedule.post_routine:
       next_fire = f"<t:{int(schedule.cron().next(float))}:f>"
-      return await self.send(self.States.EDIT_ROUTINE_SUCCESS, other_data={"next_fire_f": next_fire})
+      return await self.send(Templates.CONFIGURE_ROUTINE_SUCCESS, other_data={"next_fire_f": next_fire})
 
     schedule.post_routine = f"{minute} {hour} * * *"
     async with new_session() as session:
@@ -880,7 +879,7 @@ class ConfigureSchedule(WriterCommand):
       await session.commit()
 
     next_fire = f"<t:{int(schedule.cron().next(float))}:f>"
-    return await self.send(self.States.EDIT_ROUTINE_SUCCESS, other_data={"next_fire_f": next_fire})
+    return await self.send(Templates.CONFIGURE_ROUTINE_SUCCESS, other_data={"next_fire_f": next_fire})
 
 
   async def toggle_active(self):
@@ -900,7 +899,7 @@ class ConfigureSchedule(WriterCommand):
       await daemon.deactivate(schedule)
       schedule.deactivate()
     elif not await schedule.is_valid():
-      return await self.send(self.States.NOT_READY, ephemeral=True)
+      return await self.send(Templates.CONFIGURE_ERROR_NOT_READY, ephemeral=True)
     else:
       await daemon.activate(schedule)
       schedule.activate()
@@ -941,7 +940,7 @@ class ConfigureSchedule(WriterCommand):
         Permissions.SEND_MESSAGES
       ]
     ):
-      return await self.send(self.States.PIN_PERMISSION_REQUIRED, ephemeral=True)
+      return await self.send(Templates.CONFIGURE_ERROR_PIN_PERMISSION_REQUIRED, ephemeral=True)
 
     schedule.pin = not schedule.pin
 
@@ -995,7 +994,7 @@ class ConfigureSchedule(WriterCommand):
       current_channel = await self.ctx.guild.fetch_channel(schedule.post_channel)
 
     return await self.send(
-      self.States.SELECT_CHANNEL,
+      Templates.CONFIGURE_CHANNEL,
       other_data=schedule.asdict(),
       components=[
         ActionRow(
@@ -1032,7 +1031,7 @@ class ConfigureSchedule(WriterCommand):
 
     # Permission check - Send Messages
     if not await has_bot_channel_permissions(self.ctx.bot, channel.id, Permissions.SEND_MESSAGES):
-      return await self.send(self.States.SEND_PERMISSION_REQUIRED, ephemeral=True)
+      return await self.send(Templates.CONFIGURE_ERROR_SEND_PERMISSION_REQUIRED, ephemeral=True)
 
     # Don't modify if the current channel is selected
     if channel.id == schedule.post_channel:
@@ -1081,7 +1080,7 @@ class ConfigureSchedule(WriterCommand):
           current_roles.append(role)
 
     return await self.send(
-      self.States.SELECT_ROLES,
+      Templates.CONFIGURE_ROLES,
       other_data=schedule.asdict(),
       components=[
         ActionRow(
@@ -1141,17 +1140,8 @@ class ConfigureSchedule(WriterCommand):
 
 
 class AddMessage(WriterCommand):
-  state: "AddMessage.States"
-  data: "AddMessage.Data"
   schedule: Schedule
   schedule_message: ScheduleMessage
-
-  class States(StrEnum):
-    SUCCESS = "schedule_message_add_success"
-
-  @define(slots=False)
-  class Data(AsDict):
-    pass
 
 
   async def prompt_from_button(self):
@@ -1214,7 +1204,7 @@ class AddMessage(WriterCommand):
     if tags:
       self.schedule_message.set_tags(tags)
 
-    m = await self.send_commit(self.States.SUCCESS, other_data=self.schedule_message.asdict(), components=[])
+    m = await self.send_commit(Templates.MESSAGE_ADD_SUCCESS, other_data=self.schedule_message.asdict(), components=[])
 
     # Delayed action to fetch message id
     if m and self.schedule_message.id:
@@ -1319,7 +1309,7 @@ class EditMessage(WriterCommand):
       message_object.tags = None
 
     self.schedule_message = message_object
-    return await self.send_commit(self.States.SUCCESS, other_data=message_object.asdict(), components=[])
+    return await self.send_commit(Templates.MESSAGE_EDIT_SUCCESS, other_data=message_object.asdict(), components=[])
 
 
   async def transaction(self, session: AsyncSession):
@@ -1327,15 +1317,9 @@ class EditMessage(WriterCommand):
 
 
 class ReorderMessage(WriterCommand):
-  state: "ReorderMessage.States"
-  data: "ReorderMessage.Data"
-
   schedule_message: ScheduleMessage
   new_number: int
 
-  class States(StrEnum):
-    SELECT = "schedule_message_reorder_select"
-    SUCCESS = "schedule_message_reorder_success"
 
   def new_number_dict(self):
     return {
@@ -1405,7 +1389,7 @@ class ReorderMessage(WriterCommand):
       )
     ]
     sent = await self.send(
-      self.States.SELECT,
+      Templates.MESSAGE_REORDER_SELECT,
       other_data=schedule.asdict() | message.asdict(),
       components=components,
     )
@@ -1457,7 +1441,7 @@ class ReorderMessage(WriterCommand):
     self.schedule_message = message
     self.new_number       = schedule.posted_number + 1
     return await self.send_commit(
-      self.States.SUCCESS,
+      Templates.MESSAGE_REORDER_SUCCESS,
       other_data=message.asdict() | self.new_number_dict(),
       components=[
         Button(
@@ -1496,7 +1480,7 @@ class ReorderMessage(WriterCommand):
     self.schedule_message = message
     self.new_number       = schedule.current_number
     return await self.send_commit(
-      self.States.SUCCESS,
+      Templates.MESSAGE_REORDER_SUCCESS,
       other_data=message.asdict() | self.new_number_dict(),
       components=[
         Button(
@@ -1573,7 +1557,7 @@ class ReorderMessage(WriterCommand):
     self.schedule_message = message
     self.new_number       = number
     return await self.send_commit(
-      self.States.SUCCESS,
+      Templates.MESSAGE_REORDER_SUCCESS,
       other_data=message.asdict() | self.new_number_dict(),
       components=[]
     )
@@ -1584,18 +1568,7 @@ class ReorderMessage(WriterCommand):
 
 
 class DeleteMessage(WriterCommand):
-  state: "DeleteMessage.States"
-  data: "DeleteMessage.Data"
-
   schedule_message: ScheduleMessage
-
-  class States(StrEnum):
-    CONFIRM = "schedule_message_delete_confirm"
-    SUCCESS = "schedule_message_delete_success"
-
-  @define(slots=False)
-  class Data(AsDict):
-    pass
 
 
   async def confirm(self):
@@ -1617,7 +1590,7 @@ class DeleteMessage(WriterCommand):
       return await Errors.create(self.ctx).message_not_found()
 
     return await self.send(
-      self.States.CONFIRM,
+      Templates.MESSAGE_DELETE_CONFIRM,
       other_data=message_object.asdict(),
       components=[
         Button(
@@ -1653,7 +1626,7 @@ class DeleteMessage(WriterCommand):
       return await Errors.create(self.ctx).message_not_found()
 
     self.schedule_message = message_object
-    return await self.send_commit(self.States.SUCCESS, other_data=message_object.asdict(), components=[])
+    return await self.send_commit(Templates.MESSAGE_DELETE_SUCCESS, other_data=message_object.asdict(), components=[])
 
 
   async def transaction(self, session: AsyncSession):
