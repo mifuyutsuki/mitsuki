@@ -11,23 +11,65 @@
 # GNU Affero General Public License for more details.
 
 __all__ = (
+  "MitsukiException",
+  "ProviderError",
+  "MitsukiSoftException",
   "UserDenied",
   "BotDenied",
+  "InteractionDenied",
   "ScopeDenied",
 )
 
 
-class UserDenied(Exception):
+class MitsukiException(Exception):
+  """Base class for Mitsuki bot exceptions."""
+
+  TEMPLATE: str = "error"
+
+
+class ProviderError(MitsukiException):
+  """Could not connect to upstream provider, please try again later."""
+
+  TEMPLATE: str = "error_provider"
+
+
+class MitsukiSoftException(MitsukiException):
+  """
+  Mitsuki bot exceptions which do not need error logging, such as permission errors.
+
+  Exception messages under this class are always ephemeral.
+  """
+
+
+class UserDenied(MitsukiSoftException):
+  """User lacks permissions to do an action, such as running an admin command."""
+
+  TEMPLATE: str = "error_denied_user"
+
   def __init__(self, requires: str) -> None:
     self.requires = requires
 
 
-class BotDenied(Exception):
+class BotDenied(MitsukiSoftException):
+  """Bot lacks permissions to do an action, such as changing bot's own nickname."""
+
+  TEMPLATE: str = "error_denied_bot"
+
   def __init__(self, requires: str) -> None:
     self.requires = requires
+
+
+class InteractionDenied(MitsukiSoftException):
+  """User selected a component not meant for the user."""
+
+  TEMPLATE: str = "error_denied_interaction"
 
 
 # TODO: Scope errors
-class ScopeDenied(Exception):
+class ScopeDenied(MitsukiSoftException):
+  """Scope-restricted command was run outside of its scope."""
+
+  TEMPLATE: str = "error_denied_scope"
+
   def __init__(self, scope: str) -> None:
     self.scope = scope
