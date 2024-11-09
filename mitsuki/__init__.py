@@ -64,6 +64,7 @@ from datetime import datetime, timezone
 from random import Random
 from functools import partial
 from typing import Union
+from enum import StrEnum
 
 import asyncio
 import logging
@@ -71,7 +72,7 @@ import logging
 # Settings must load first
 from mitsuki import settings
 
-from mitsuki.lib.errors import UserDenied, BotDenied
+from mitsuki.lib.errors import MitsukiSoftException
 from mitsuki.lib.messages import load_message
 from mitsuki.lib.userdata import initialize
 from mitsuki.version import __version__
@@ -92,6 +93,14 @@ _interactions_logger.setLevel(logging.INFO if settings.mitsuki.log_info else log
 _interactions_logger.addHandler(_interactions_log_handler)
 
 init_event = asyncio.Event()
+
+class Templates(StrEnum):
+  ERROR_COOLDOWN = "error_cooldown"
+  ERROR_CONCURRENCY = "error_concurrency"
+  ERROR_CHECK = "error_command_perms"
+  ERROR_ARGUMENT = "error_argument"
+  ERROR_SERVER = "error_server"
+  ERROR = "error"
 
 
 class Bot(Client):
@@ -168,30 +177,35 @@ class Bot(Client):
     ephemeral = True
     ctx_load_message = partial(load_message, user=event.ctx.author)
 
-    if isinstance(event.error, CommandOnCooldown):
+    if isinstance(event.error, MitsukiSoftException):
+      ephemeral = event.error.EPHEMERAL
+      message = ctx_load_message(event.error.TEMPLATE, data=event.error.data)
+
+    elif isinstance(event.error, CommandOnCooldown):
       cooldown_seconds = int(event.error.cooldown.get_cooldown_time())
-      message = ctx_load_message("error_cooldown", data={"cooldown_seconds": cooldown_seconds})
+      message = ctx_load_message(Templates.ERROR_COOLDOWN, data={"cooldown_seconds": cooldown_seconds})
+
     elif isinstance(event.error, MaxConcurrencyReached):
-      message = ctx_load_message("error_concurrency")
+      message = ctx_load_message(Templates.ERROR_CONCURRENCY)
+
     elif isinstance(event.error, CommandCheckFailure):
-      message = ctx_load_message("error_command_perms")
+      message = ctx_load_message(Templates.ERROR_CHECK)
+
     elif isinstance(event.error, BadArgument):
-      message = ctx_load_message("error_argument", data={"message": str(event.error)})
-    elif isinstance(event.error, BotDenied):
-      message = ctx_load_message("error_denied_bot", data={"requires": event.error.requires})
-    elif isinstance(event.error, UserDenied):
-      message = ctx_load_message("error_denied_user", data={"requires": event.error.requires})
+      message = ctx_load_message(Templates.ERROR_ARGUMENT, data={"message": str(event.error)})
+
     elif isinstance(event.error, HTTPException) and (
       isinstance(event.error.code, int) and (500 <= event.error.code < 600)
     ):
       error_repr = str(event.error)
       self.logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
-      message = ctx_load_message("error_server", data={"error_repr": error_repr})
+      message = ctx_load_message(Templates.ERROR_SERVER, data={"error_repr": error_repr})
       ephemeral = False
+
     else:
       error_repr = _format_tb(event.error)
       self.logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
-      message = ctx_load_message("error", data={"error_repr": error_repr})
+      message = ctx_load_message(Templates.ERROR, data={"error_repr": error_repr})
       ephemeral = False
 
     if isinstance(event.ctx, SendMixin):
