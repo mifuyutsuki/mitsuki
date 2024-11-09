@@ -25,6 +25,7 @@ class MitsukiException(Exception):
   """Base class for Mitsuki bot exceptions."""
 
   TEMPLATE: str = "error"
+  data: dict[str, str] = {}
 
 
 class ProviderError(MitsukiException):
@@ -35,10 +36,12 @@ class ProviderError(MitsukiException):
 
 class MitsukiSoftException(MitsukiException):
   """
-  Mitsuki bot exceptions which do not need error logging, such as permission errors.
+  Base class for Mitsuki bot exceptions which do not need error logging, such as permission errors.
 
-  Exception messages under this class are always ephemeral.
+  Exception messages under this class are ephemeral by default.
   """
+
+  EPHEMERAL: bool = True
 
 
 class UserDenied(MitsukiSoftException):
@@ -48,6 +51,9 @@ class UserDenied(MitsukiSoftException):
 
   def __init__(self, requires: str) -> None:
     self.requires = requires
+    self.data = {
+      "requires": requires,
+    }
 
 
 class BotDenied(MitsukiSoftException):
@@ -57,6 +63,9 @@ class BotDenied(MitsukiSoftException):
 
   def __init__(self, requires: str) -> None:
     self.requires = requires
+    self.data = {
+      "requires": requires,
+    }
 
 
 class InteractionDenied(MitsukiSoftException):
