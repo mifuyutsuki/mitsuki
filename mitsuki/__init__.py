@@ -209,7 +209,7 @@ class Bot(Client):
       ephemeral = False
 
     if isinstance(event.ctx, SendMixin):
-      await event.ctx.send(**message.to_dict(), ephemeral=ephemeral)
+      await event.ctx.send(**message.to_dict(), components=[], ephemeral=ephemeral)
 
 
   @listen(CommandCompletion)
