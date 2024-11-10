@@ -6,8 +6,8 @@ _:
   title: >-
     Application Error
   description: >-
-    An error has occured - please contact bot operator.
-    
+    Please contact bot operator.
+
     ```
     
     ${error_repr}
@@ -29,8 +29,8 @@ server:
   title: >-
     Server Error
   description: >-
-    A server error has occured - please try again later.
-    
+    Please try again later.
+
     ```
     
     ${error_repr}
@@ -50,6 +50,15 @@ denied_user:
   color: error
 
 
+# User lacks permissions to do an action, such as running an admin command. (Unspecified requirements)
+denied_user_unspecified:
+  title: >-
+    Permission Error
+  description: >-
+    You don't have permissions to run this command.
+  color: error
+
+
 # Bot lacks permissions to do an action, such as changing bot's own nickname.
 denied_bot:
   title: >-
@@ -62,6 +71,7 @@ denied_bot:
   color: error
 
 
+# User selected a component not meant for the user.
 denied_interaction:
   title: >-
     Permission Error
@@ -70,41 +80,87 @@ denied_interaction:
   color: error
 
 
+# Scope-restricted command was run outside of its scope.
 denied_scope:
   title: >-
-    Permission Error
+    Command Unavailable
   description: >-
-    This command is restricted to selected channel(s).
-    
+    This command is only available in selected channel(s).
+  
 
     Scope: `${scope}`
   color: error
 
 
-# Message if a command is on cooldown.
-cooldown:
+# Guild-only command was run outside of a guild.
+out_of_guild:
   title: >-
-    Command on Cooldown
+    Command Unavailable
   description: >-
-    Try again in ${cooldown_seconds} seconds
+    This command is only available in servers.
   color: error
 
 
-# Message if the application reached max concurrency.
+# Not a valid input for a field.
+bad_input:
+  title: >-
+    Invalid Input
+  description: >-
+    Not a valid input for `${field}`.
+  color: error
+
+
+# Not a valid input range for a numeric field.
+bad_input_range:
+  title: >-
+    Invalid Input Range
+  description: >-
+    Not a valid input range for `${field}`.
+  color: error
+
+
+# Input is too long.
+bad_length:
+  title: >-
+    Input Too Long
+  description: >-
+    Input for `${field}` is too long. (${length} > ${max_length})
+  color: error
+
+
+# Input is too long. (Unspecified length)
+bad_length_unspecified:
+  title: >-
+    Input Too Long
+  description: >-
+    Input for `${field}` is too long.
+  color: error
+
+
+# Command is in cooldown.
+cooldown:
+  title: >-
+    Cooldown
+  description: >-
+    Try again in `${cooldown_seconds}` seconds.
+  color: error
+
+
+# Application is busy. (Max concurrency)
 concurrency:
   title: >-
-    Application Error
+    Application Busy
   description: >-
-    Maximum concurrent application usage reached, please try again later
+    Please try again later.
   color: error
   
 
-# Message if a command check (almost always a permissions check) has occured.
+# User lacks permission to run a command.
 command_perms:
   title: >-
     Permission Error
   description: >-
-    You do not have permissions to run this command
+    You do not have permissions to run this command.
   color: error
 
 

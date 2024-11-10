@@ -10,6 +10,9 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
+from typing import Optional
+
+
 __all__ = (
   "MitsukiException",
   "ProviderError",
@@ -18,6 +21,10 @@ __all__ = (
   "BotDenied",
   "InteractionDenied",
   "ScopeDenied",
+  "OutOfGuild",
+  "BadInput",
+  "BadInputRange",
+  "BadLength",
 )
 
 
@@ -74,11 +81,52 @@ class InteractionDenied(MitsukiSoftException):
   TEMPLATE: str = "error_denied_interaction"
 
 
-# TODO: Scope errors
 class ScopeDenied(MitsukiSoftException):
   """Scope-restricted command was run outside of its scope."""
 
   TEMPLATE: str = "error_denied_scope"
 
   def __init__(self, scope: str) -> None:
-    self.scope = scope
+    self.data = {"scope": scope}
+
+
+class OutOfGuild(MitsukiSoftException):
+  """Guild-only command was run outside of a guild."""
+
+  TEMPLATE: str = "error_out_of_guild"
+
+
+class BadInput(MitsukiSoftException):
+  """Not a valid input for a field."""
+
+  TEMPLATE: str = "error_bad_input"
+
+  def __init__(self, field: str):
+    self.data = {"field": field}
+
+
+class BadInputRange(MitsukiSoftException):
+  """Not a valid input range for a numeric field."""
+
+  TEMPLATE: str = "error_bad_input_range"
+
+  def __init__(self, field: str):
+    self.data = {"field": field}
+
+
+class BadLength(MitsukiSoftException):
+  """Input is too long."""
+
+  TEMPLATE: str = "error_bad_length_unspecified"
+
+  def __init__(self, field: str, length: Optional[int] = None, max_length: Optional[int] = None):
+    if length is not None and max_length is not None:
+      self.TEMPLATE = "error_bad_length"
+    else:
+      self.TEMPLATE = "error_bad_length_unspecified"
+
+    self.data = {
+      "field": field,
+      "length": length or "-",
+      "max_length": max_length or "-",
+    }
