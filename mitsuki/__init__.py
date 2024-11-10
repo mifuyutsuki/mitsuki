@@ -48,6 +48,7 @@ from interactions.api.events import (
   ComponentCompletion,
   AutocompleteCompletion,
   ModalCompletion,
+  ModalError,
 )
 from interactions.client.errors import (
   CommandCheckFailure,
@@ -169,6 +170,11 @@ class Bot(Client):
 
   @listen(ComponentError, disable_default_listeners=True)
   async def on_component_error(self, event: ComponentError):
+    return await self.error_handler(event)
+
+
+  @listen(ModalError, disable_default_listeners=True)
+  async def on_modal_error(self, event: ModalError):
     return await self.error_handler(event)
 
 
