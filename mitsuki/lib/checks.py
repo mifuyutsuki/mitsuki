@@ -23,10 +23,11 @@ from interactions.api.events import Component
 
 from typing import Union, List, Optional
 
-from .errors import BotDenied, UserDenied
+from .errors import BotDenied, UserDenied, OutOfGuild
 
 
 __all__ = (
+  "assert_in_guild",
   "assert_user_permissions",
   "assert_bot_permissions",
   "assert_bot_channel_permissions",
@@ -34,6 +35,11 @@ __all__ = (
   "has_bot_permissions",
   "has_bot_channel_permissions",
 )
+
+
+async def assert_in_guild(ctx: BaseContext):
+  if not ctx.guild:
+    raise OutOfGuild()
 
 
 async def assert_user_roles(
