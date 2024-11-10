@@ -55,6 +55,7 @@ from mitsuki.lib.commands import (
   SelectionMixin,
 )
 from mitsuki.lib.checks import (
+  assert_in_guild,
   assert_bot_permissions,
   assert_user_permissions,
   assert_user_roles,
@@ -62,47 +63,17 @@ from mitsuki.lib.checks import (
   has_user_roles,
   has_bot_channel_permissions,
 )
-from mitsuki.lib.errors import UserDenied
+from mitsuki.lib.errors import (
+  MitsukiSoftException,
+  UserDenied,
+  BadInput,
+  BadInputRange,
+  BadLength,
+)
 from mitsuki.lib.userdata import new_session
 
 from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes
 from .daemon import daemon
-
-
-async def fetch_schedule(ctx: InteractionContext, schedule_key: str):
-  # ID search
-  schedule = None
-  if schedule_key.isnumeric():
-    id = int(schedule_key)
-    schedule = await Schedule.fetch_by_id(id, guild=ctx.guild.id)
-
-  # If ID search fails, fallback here
-  if not schedule:
-    schedule = await Schedule.fetch(ctx.guild.id, schedule_key)
-  return schedule
-
-
-async def check_fetch_schedule(ctx: InteractionContext, schedule_key: str):
-  # Search
-  schedule = await fetch_schedule(ctx, schedule_key)
-
-  # Deny if no role and no admin
-  if not await has_schedule_permissions(ctx, schedule):
-    raise UserDenied("Server admin or Schedule manager role(s)")
-
-  # Schedule found (or no Schedule)
-  return schedule
-
-
-async def has_schedule_permissions(ctx: InteractionContext, schedule: Optional[Schedule] = None):
-  has_role  = False
-  has_admin = await has_user_permissions(ctx, Permissions.ADMINISTRATOR)
-
-  # Role check
-  if schedule and schedule.manager_role_objects:
-    has_role = await has_user_roles(ctx, schedule.manager_role_objects)
-
-  return has_role or has_admin
 
 
 class CustomIDs:
@@ -229,33 +200,77 @@ class Templates(StrEnum):
   MESSAGE_DELETE_SUCCESS  = "schedule_message_delete_success"
 
 
-# TODO: Raise a custom error instead of this thing
-class Errors(ReaderCommand):
-  async def not_in_guild(self):
-    await self.send("schedule_error_not_in_guild", ephemeral=True)
+class ScheduleException(MitsukiSoftException):
+  """Base class for Schedule exceptions."""
 
-  async def schedule_not_found(self, schedule_key: Optional[str] = None):
-    await self.send(
-      "schedule_error_schedule_not_found",
-      other_data={"schedule_title": escape_text(schedule_key or "-")},
-      ephemeral=True,
-    )
 
-  async def message_too_long(self, length: int):
-    await self.send(
-      "schedule_error_message_too_long",
-      other_data={"length": length},
-      ephemeral=True,
-    )
+class ScheduleNotFound(ScheduleException):
+  TEMPLATE: str = "schedule_error_schedule_not_found"
 
-  async def message_not_found(self):
-    await self.send("schedule_error_message_not_found", ephemeral=True)
+  def __init__(self, schedule_key: Optional[str] = None):
+    self.data = {"schedule_title": escape_text(schedule_key or "-")}    
 
-  async def invalid_input(self, field: str):
-    await self.send("schedule_error_invalid_input", other_data={"field": field}, ephemeral=True)
 
-  async def out_of_range(self, field: str):
-    await self.send("schedule_error_out_of_range", other_data={"field": field}, ephemeral=True)
+class MessageTooLong(ScheduleException):
+  TEMPLATE: str = "schedule_error_message_too_long"
+
+  def __init__(self, length: int):
+    self.data = {"length": length}
+
+
+class MessageNotFound(ScheduleException):
+  TEMPLATE: str = "schedule_error_message_not_found"
+
+
+async def fetch_schedule(ctx: InteractionContext, schedule_key: str):
+  # ID search
+  schedule = None
+  if schedule_key.isnumeric():
+    id = int(schedule_key)
+    schedule = await Schedule.fetch_by_id(id, guild=ctx.guild.id)
+  elif schedule_key.startswith("@") and schedule_key[1:].isnumeric():
+    id = int(schedule_key[1:])
+    schedule = await Schedule.fetch_by_id(id, guild=ctx.guild.id)
+
+  # If ID search fails, fallback here
+  if not schedule:
+    schedule = await Schedule.fetch(ctx.guild.id, schedule_key)
+
+  return schedule
+
+
+async def check_fetch_schedule(ctx: InteractionContext, schedule_key: str):
+  # Search
+  schedule = await fetch_schedule(ctx, schedule_key)
+
+  # Deny if no role and no admin
+  if not await has_schedule_permissions(ctx, schedule):
+    raise UserDenied("Server admin or Schedule manager role(s)")
+
+  # Throw error on no Schedule
+  if not schedule:
+    raise ScheduleNotFound(schedule_key=schedule_key)
+
+  # Schedule found (or no Schedule)
+  return schedule
+
+
+async def check_fetch_message(message_id: int, guild: Optional[Snowflake] = None):
+  message = await ScheduleMessage.fetch(message_id, guild=guild)
+  if not message:
+    raise MessageNotFound()
+  return message
+
+
+async def has_schedule_permissions(ctx: InteractionContext, schedule: Optional[Schedule] = None):
+  has_role  = False
+  has_admin = await has_user_permissions(ctx, Permissions.ADMINISTRATOR)
+
+  # Role check
+  if schedule and schedule.manager_role_objects:
+    has_role = await has_user_roles(ctx, schedule.manager_role_objects)
+
+  return has_role or has_admin
 
 
 class ManageSchedules(SelectionMixin, ReaderCommand):
@@ -268,8 +283,7 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
 
 
   async def list(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
 
     if self.has_origin:
       await self.defer(edit_origin=True)
@@ -331,13 +345,10 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
 
 
   async def view(self, schedule_key: str):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
 
     can_configure = await has_user_permissions(self.ctx, Permissions.ADMINISTRATOR)
-    schedule = await check_fetch_schedule(self.ctx, schedule_key)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(schedule_key)
+    schedule      = await check_fetch_schedule(self.ctx, schedule_key)
 
     if self.has_origin:
       await self.defer(edit_origin=True)
@@ -398,19 +409,14 @@ class ManageMessages(SelectionMixin, ReaderCommand):
 
 
   async def list(self, schedule_key: str):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
+
     self.edit_origin = True
     await self.defer(ephemeral=True)
 
     schedule = await check_fetch_schedule(self.ctx, schedule_key)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(schedule_key)
-
-    schedule_messages = await ScheduleMessage.fetch_by_schedule(
-      self.ctx.guild.id, schedule.title
-    )
-    self.data = self.Data(total_messages=len(schedule_messages))
+    messages = await ScheduleMessage.fetch_by_schedule(self.ctx.guild.id, schedule.title)
+    self.data = self.Data(total_messages=len(messages))
 
     buttons = [
       Button(
@@ -430,7 +436,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
       ),
     ]
 
-    if len(schedule_messages) <= 0:
+    if len(messages) <= 0:
       await self.send(
         Templates.MESSAGES_LIST_EMPTY,
         other_data={"schedule_title": schedule.title},
@@ -438,15 +444,15 @@ class ManageMessages(SelectionMixin, ReaderCommand):
       )
       return
 
-    self.field_data = schedule_messages
+    self.field_data = messages
     self.selection_values = [
       StringSelectOption(
-        label=f"{schedule.title} #{schedule_message.number or '???'} ",
-        value=str(schedule_message.id),
-        description=schedule_message.partial_message
+        label=f"{schedule.title} #{message.number or '???'} ",
+        value=str(message.id),
+        description=message.partial_message
       )
-      for schedule_message in schedule_messages
-      if schedule_message.id
+      for message in messages
+      if message.id
     ]
     self.selection_placeholder = "Message to view or edit..."
     await self.send_selection(
@@ -469,8 +475,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
 
 
   async def view(self, message_id: int, edit_origin: bool = False):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
 
     if not self.ctx.deferred:
       if edit_origin and self.has_origin:
@@ -478,13 +483,8 @@ class ManageMessages(SelectionMixin, ReaderCommand):
       else:
         await self.defer(ephemeral=True)
 
-    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
-    if not message:
-      return await Errors.create(self.ctx).message_not_found()
-
-    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(f"@{message.schedule_id}")
+    message  = await check_fetch_message(message_id, guild=self.ctx.guild.id)
+    schedule = await check_fetch_schedule(self.ctx, f"@{message.schedule_id}")
 
     string_templates = []
     if message.message_id:
@@ -532,8 +532,7 @@ class CreateSchedule(WriterCommand):
 
 
   async def prompt(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
@@ -555,8 +554,7 @@ class CreateSchedule(WriterCommand):
 
 
   async def response(self, schedule_title: str):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
@@ -571,7 +569,7 @@ class CreateSchedule(WriterCommand):
 
     # Length check
     if len(schedule_title) <= 0:
-      return await Errors.create(self.ctx).invalid_input("Schedule title")
+      raise BadInput(field="Schedule title")
 
     # Duplicate check
     guild_schedules = await Schedule.fetch_many(guild=self.ctx.guild.id)
@@ -588,8 +586,7 @@ class CreateSchedule(WriterCommand):
 
 class ConfigureSchedule(WriterCommand):
   async def main(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
@@ -601,9 +598,7 @@ class ConfigureSchedule(WriterCommand):
       await self.defer(ephemeral=True)
 
     schedule_id = int(CustomID.get_id_from(self.ctx))
-    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+    schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     await self.send(
       Templates.CONFIGURE_MENU,
@@ -674,17 +669,14 @@ class ConfigureSchedule(WriterCommand):
 
 
   async def prompt_title(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
     )
 
     schedule_id = int(CustomID.get_id_from(self.ctx))
-    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+    schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     return await self.ctx.send_modal(
       modal=Modal(
@@ -703,8 +695,7 @@ class ConfigureSchedule(WriterCommand):
 
 
   async def set_title(self, title: str):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
@@ -712,15 +703,13 @@ class ConfigureSchedule(WriterCommand):
     await self.defer(ephemeral=True)
 
     schedule_id = int(CustomID.get_id_from(self.ctx))
-    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+    schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     title = title.strip()
 
     # Length check
     if len(title) <= 0:
-      return await Errors.create(self.ctx).invalid_input("Schedule title")
+      raise BadInput(field="Schedule title")
 
     # Same title check
     if title == schedule.title:
@@ -741,17 +730,14 @@ class ConfigureSchedule(WriterCommand):
 
 
   async def prompt_format(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
     )
 
     schedule_id = int(CustomID.get_id_from(self.ctx))
-    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+    schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     return await self.ctx.send_modal(
       modal=Modal(
@@ -770,8 +756,7 @@ class ConfigureSchedule(WriterCommand):
 
 
   async def set_format(self, format: str):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
@@ -779,15 +764,13 @@ class ConfigureSchedule(WriterCommand):
     await self.defer(ephemeral=True)
 
     schedule_id = int(CustomID.get_id_from(self.ctx))
-    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+    schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     format = format.strip()
 
     # Length check
     if len(format) <= 0:
-      return await Errors.create(self.ctx).invalid_input("Schedule format")
+      raise BadInput(field="Schedule format")
 
     # Same format check
     if format == schedule.format:
@@ -803,8 +786,7 @@ class ConfigureSchedule(WriterCommand):
 
 
   # async def select_routine(self):
-  #   if not self.ctx.guild:
-  #     return await Errors.create(self.ctx).not_in_guild()
+  #   await assert_in_guild(self.ctx)
   #   await assert_user_permissions(
   #     self.ctx, Permissions.ADMINISTRATOR,
   #     "Server admin"
@@ -815,17 +797,15 @@ class ConfigureSchedule(WriterCommand):
 
 
   async def prompt_routine(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
     )
 
     schedule_id = int(CustomID.get_id_from(self.ctx))
-    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+    # Schedule existence check
+    _ = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     return await self.ctx.send_modal(
       modal=Modal(
@@ -844,8 +824,7 @@ class ConfigureSchedule(WriterCommand):
 
   # TODO: Custom routines
   async def set_routine(self, time: str):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
@@ -853,20 +832,18 @@ class ConfigureSchedule(WriterCommand):
     await self.defer(ephemeral=True)
 
     schedule_id = int(CustomID.get_id_from(self.ctx))
-    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+    schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     # HH:MM validation
     if not re.match(r"^[0-9]{1,2}:[0-9]{1,2}$", time):
-      return await Errors.create(self.ctx).invalid_input("daily post time")
+      raise BadInput(field="daily post time")
 
     # 00:00-24:00 validation (regex already ensures numeric)
     hour, minute = int(time.split(":")[0]), int(time.split(":")[1])
     if (hour, minute) == (24, 00):
       hour, minute = 0, 0
     if not (0 <= hour < 24) or not (0 <= minute < 60):
-      return await Errors.create(self.ctx).invalid_input("daily post time")
+      raise BadInput(field="daily post time")
 
     # Set routine
     if f"{minute} {hour} * * *" == schedule.post_routine:
@@ -883,17 +860,14 @@ class ConfigureSchedule(WriterCommand):
 
 
   async def toggle_active(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
     )
 
     schedule_id = int(CustomID.get_id_from(self.ctx))
-    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+    schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     if schedule.active:
       await daemon.deactivate(schedule)
@@ -912,17 +886,14 @@ class ConfigureSchedule(WriterCommand):
 
 
   async def toggle_pin(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
     )
 
     schedule_id = int(CustomID.get_id_from(self.ctx))
-    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+    schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     if schedule.pin and schedule.current_pin and schedule.post_channel:
       with suppress(Forbidden, NotFound):
@@ -951,17 +922,14 @@ class ConfigureSchedule(WriterCommand):
 
 
   async def toggle_discoverable(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
     )
 
     schedule_id = int(CustomID.get_id_from(self.ctx))
-    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
-    if not schedule:
-      await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+    schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     schedule.discoverable = not schedule.discoverable
 
@@ -972,8 +940,7 @@ class ConfigureSchedule(WriterCommand):
 
 
   async def select_channel(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
@@ -985,9 +952,7 @@ class ConfigureSchedule(WriterCommand):
       await self.defer(ephemeral=True)
 
     schedule_id = int(CustomID.get_id_from(self.ctx))
-    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
-    if not schedule:
-      await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+    schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     current_channel = None
     if schedule.post_channel:
@@ -1017,17 +982,14 @@ class ConfigureSchedule(WriterCommand):
 
 
   async def set_channel(self, channel: TYPE_ALL_CHANNEL):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
     )
 
     schedule_id = int(CustomID.get_id_from(self.ctx))
-    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+    schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     # Permission check - Send Messages
     if not await has_bot_channel_permissions(self.ctx.bot, channel.id, Permissions.SEND_MESSAGES):
@@ -1056,8 +1018,7 @@ class ConfigureSchedule(WriterCommand):
 
 
   async def select_roles(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
@@ -1069,9 +1030,7 @@ class ConfigureSchedule(WriterCommand):
       await self.defer(ephemeral=True)
 
     schedule_id = int(CustomID.get_id_from(self.ctx))
-    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
-    if not schedule:
-      await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+    schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     current_roles = []
     if schedule.manager_roles:
@@ -1109,17 +1068,14 @@ class ConfigureSchedule(WriterCommand):
 
 
   async def set_roles(self, roles: List[Role]):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await assert_user_permissions(
       self.ctx, Permissions.ADMINISTRATOR,
       "Server admin"
     )
 
     schedule_id = int(CustomID.get_id_from(self.ctx))
-    schedule = await Schedule.fetch_by_id(schedule_id, guild=self.ctx.guild.id)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(f"@{schedule_id}")
+    schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     current_roles = schedule.manager_role_objects
     target_roles = [role.id for role in roles]
@@ -1149,12 +1105,9 @@ class AddMessage(WriterCommand):
 
 
   async def prompt(self, schedule_key: str):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
 
     schedule = await check_fetch_schedule(self.ctx, schedule_key)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(schedule_key)
   
     schedule_title = schedule.title if len(schedule.title) <= 32 else schedule.title[:30].strip() + "..."
     return await self.ctx.send_modal(
@@ -1183,24 +1136,22 @@ class AddMessage(WriterCommand):
 
 
   async def response(self, schedule_key: str, message: str, tags: Optional[str] = None):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await self.defer(ephemeral=True)
 
     schedule = await check_fetch_schedule(self.ctx, schedule_key)
-    if not schedule:
-      return await Errors.create(self.ctx).schedule_not_found(schedule_key)
 
     message = message.strip()
 
     # Length check
     if len(message) <= 0:
-      return await Errors.create(self.ctx).invalid_input("Schedule message")
+      raise BadInput(field="Schedule message")
 
     # Create message
     self.schedule_message = schedule.create_message(self.caller_id, message)
-    if len(schedule.assign(self.schedule_message)) >= 2000:
-      return await Errors.create(self.ctx).message_too_long()
+    assigned_len = len(schedule.assign(self.schedule_message))
+    if assigned_len > 2000:
+      raise MessageTooLong(assigned_len)
     if tags:
       self.schedule_message.set_tags(tags)
 
@@ -1242,17 +1193,12 @@ class EditMessage(WriterCommand):
 
 
   async def prompt(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
 
     message_id = int(CustomID.get_id_from(self.ctx))
-    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
-    if not message:
-      return await Errors.create(self.ctx).message_not_found()
-
-    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
-    if not schedule:
-      return await Errors.create(self.ctx).message_not_found()
+    message    = await check_fetch_message(message_id, guild=self.ctx.guild.id)
+    # Schedule existence check
+    _ = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
 
     return await self.ctx.send_modal(
       modal=Modal(
@@ -1278,30 +1224,25 @@ class EditMessage(WriterCommand):
 
 
   async def response(self, message: str, tags: Optional[str] = None):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await self.defer(ephemeral=True)
 
-    message_id = int(CustomID.get_id_from(self.ctx))
-    message_object = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
-    if not message_object:
-      return await Errors.create(self.ctx).message_not_found()
-
-    schedule = await check_fetch_schedule(self.ctx, f"{message_object.schedule_id}")
-    if not schedule:
-      return await Errors.create(self.ctx).message_not_found()
+    message_id     = int(CustomID.get_id_from(self.ctx))
+    message_object = await check_fetch_message(message_id, guild=self.ctx.guild.id)
+    schedule       = await check_fetch_schedule(self.ctx, f"{message_object.schedule_id}")
 
     message = message.strip()
 
     # Length check
     if len(message) <= 0:
-      return await Errors.create(self.ctx).invalid_input("Schedule message")
+      raise BadInput(field="Schedule message")
     if tags and len(tags.strip()) <= 0:
-      return await Errors.create(self.ctx).invalid_input("Schedule message tags")
+      raise BadInput(field="Schedule message tags")
 
     message_object.message = message
-    if len(schedule.assign(message_object)) > 2000:
-      return await Errors.create(self.ctx).message_too_long()
+    assigned_len = len(schedule.assign(message_object))
+    if assigned_len > 2000:
+      raise MessageTooLong(assigned_len)
 
     if tags:
       message_object.set_tags(tags)
@@ -1342,8 +1283,7 @@ class ReorderMessage(WriterCommand):
       Custom... : Select a number (prompt)
       To Back   : Move message to back of queue
     """
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
 
     if self.has_origin:
       await self.defer(edit_origin=True)
@@ -1351,13 +1291,8 @@ class ReorderMessage(WriterCommand):
       await self.defer(ephemeral=True)
 
     message_id = int(CustomID.get_id_from(self.ctx))
-    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
-    if not message:
-      return await Errors.create(self.ctx).message_not_found()
-
-    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
-    if not schedule:
-      return await Errors.create(self.ctx).message_not_found()
+    message    = await check_fetch_message(message_id, guild=self.ctx.guild.id)
+    schedule   = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
 
     components = [
       ActionRow(
@@ -1421,8 +1356,7 @@ class ReorderMessage(WriterCommand):
     Inputs:
       Message ID from component Custom ID
     """
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
 
     if self.has_origin:
       await self.defer(edit_origin=True)
@@ -1430,13 +1364,8 @@ class ReorderMessage(WriterCommand):
       await self.defer(ephemeral=True)
 
     message_id = int(CustomID.get_id_from(self.ctx))
-    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
-    if not message:
-      return await Errors.create(self.ctx).message_not_found()
-
-    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
-    if not schedule:
-      return await Errors.create(self.ctx).message_not_found()
+    message    = await check_fetch_message(message_id, guild=self.ctx.guild.id)
+    schedule   = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
 
     self.schedule_message = message
     self.new_number       = schedule.posted_number + 1
@@ -1460,8 +1389,7 @@ class ReorderMessage(WriterCommand):
     Inputs:
       Message ID from component Custom ID
     """
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
 
     if self.has_origin:
       await self.defer(edit_origin=True)
@@ -1469,13 +1397,8 @@ class ReorderMessage(WriterCommand):
       await self.defer(ephemeral=True)
 
     message_id = int(CustomID.get_id_from(self.ctx))
-    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
-    if not message:
-      return await Errors.create(self.ctx).message_not_found()
-
-    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
-    if not schedule:
-      return await Errors.create(self.ctx).message_not_found()
+    message    = await check_fetch_message(message_id, guild=self.ctx.guild.id)
+    schedule   = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
 
     self.schedule_message = message
     self.new_number       = schedule.current_number
@@ -1499,17 +1422,11 @@ class ReorderMessage(WriterCommand):
     Inputs:
       Message ID from component Custom ID
     """
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
 
     message_id = int(CustomID.get_id_from(self.ctx))
-    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
-    if not message:
-      return await Errors.create(self.ctx).message_not_found()
-
-    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
-    if not schedule:
-      return await Errors.create(self.ctx).message_not_found()
+    message    = await check_fetch_message(message_id, guild=self.ctx.guild.id)
+    schedule   = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
 
     return await self.ctx.send_modal(
       modal=Modal(
@@ -1533,25 +1450,19 @@ class ReorderMessage(WriterCommand):
       Message ID from component Custom ID
       New number from prompt
     """
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
     await self.defer(ephemeral=True)
 
     message_id = int(CustomID.get_id_from(self.ctx))
-    message = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
-    if not message:
-      return await Errors.create(self.ctx).message_not_found()
-
-    schedule = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
-    if not schedule:
-      return await Errors.create(self.ctx).message_not_found()
+    message    = await check_fetch_message(message_id, guild=self.ctx.guild.id)
+    schedule   = await check_fetch_schedule(self.ctx, f"{message.schedule_id}")
 
     # Number check
     if not number_s.isnumeric():
-      return await Errors.create(self.ctx).invalid_input("Schedule message number")
+      raise BadInput(field="Schedule message number")
     number = int(number_s)
     if not (schedule.posted_number < number <= schedule.current_number):
-      return await Errors.create(self.ctx).out_of_range("Schedule message number")
+      raise BadInputRange(field="Schedule message number")
 
     # Reorder
     self.schedule_message = message
@@ -1572,22 +1483,17 @@ class DeleteMessage(WriterCommand):
 
 
   async def confirm(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
 
     if self.has_origin:
       await self.defer(edit_origin=True)
     else:
       await self.defer(ephemeral=True)
 
-    message_id = int(CustomID.get_id_from(self.ctx))
-    message_object = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
-    if not message_object:
-      return await Errors.create(self.ctx).message_not_found()
-
-    schedule = await check_fetch_schedule(self.ctx, f"{message_object.schedule_id}")
-    if not schedule:
-      return await Errors.create(self.ctx).message_not_found()
+    message_id     = int(CustomID.get_id_from(self.ctx))
+    message_object = await check_fetch_message(message_id, guild=self.ctx.guild.id)
+    # Schedule existence check
+    _ = await check_fetch_schedule(self.ctx, f"{message_object.schedule_id}")
 
     return await self.send(
       Templates.MESSAGE_DELETE_CONFIRM,
@@ -1608,22 +1514,17 @@ class DeleteMessage(WriterCommand):
 
 
   async def run(self):
-    if not self.ctx.guild:
-      return await Errors.create(self.ctx).not_in_guild()
+    await assert_in_guild(self.ctx)
 
     if self.has_origin:
       await self.defer(edit_origin=True)
     else:
       await self.defer(ephemeral=True)
 
-    message_id = int(CustomID.get_id_from(self.ctx))
-    message_object = await ScheduleMessage.fetch(message_id, guild=self.ctx.guild.id)
-    if not message_object:
-      return await Errors.create(self.ctx).message_not_found()
-
-    schedule = await check_fetch_schedule(self.ctx, f"{message_object.schedule_id}")
-    if not schedule:
-      return await Errors.create(self.ctx).message_not_found()
+    message_id     = int(CustomID.get_id_from(self.ctx))
+    message_object = await check_fetch_message(message_id, guild=self.ctx.guild.id)
+    # Schedule existence check
+    _ = await check_fetch_schedule(self.ctx, f"{message_object.schedule_id}")
 
     self.schedule_message = message_object
     return await self.send_commit(Templates.MESSAGE_DELETE_SUCCESS, other_data=message_object.asdict(), components=[])
