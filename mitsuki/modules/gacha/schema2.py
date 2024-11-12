@@ -103,3 +103,11 @@ class BannerCard(Base):
   id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
   card: Mapped[str] = mapped_column(ForeignKey("gacha_cards2.id"))
   banner: Mapped[str] = mapped_column(ForeignKey("gacha_banners.id"))
+
+
+class Tags(Base):
+  __tablename__ = "gacha_tags"
+
+  id: Mapped[str] = mapped_column(primary_key=True)
+  name: Mapped[str]
+  description: Mapped[str]
