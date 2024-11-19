@@ -88,8 +88,7 @@ class Banner(Base):
   active: Mapped[bool] = mapped_column(server_default=text("FALSE"))
   start_time: Mapped[Optional[float]]
   end_time: Mapped[Optional[float]]
-  weight: Mapped[float] = mapped_column(server_default=text("0.0"))
-  weight_type: Mapped[int] = mapped_column(server_default=text("0"))
+  rate: Mapped[float] = mapped_column(server_default=text("0.0"))
   min_rarity: Mapped[Optional[int]]
   max_rarity: Mapped[Optional[int]]
 
