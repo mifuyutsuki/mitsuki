@@ -17,34 +17,66 @@ currency_icon: 💠
 # 
 # Players can claim dailies worth the specified amount with /gacha daily, and
 # can then claim again after 00:00 on the timezone specified by daily_tz.
-daily_shards: 120
+daily_shards: 135
 
-# Amount of claimable daily gacha currency for server boosters.
+# [DISCONTINUED] Amount of claimable daily gacha currency for server boosters.
 # 
 # Valid servers are given by the premium_guilds list.
-# Set premium_guilds to a blank list to disable this feature. 
+# Set premium_guilds to a blank list to disable this feature.
 premium_daily_shards: 210
 
-# Servers (guild IDs) where premium shards are valid.
+# [DISCONTINUED] Servers (guild IDs) where premium shards are valid.
 # 
 # Set the below setting to blank to disable this feature. 
 premium_guilds:
 - 
 
 # Amount of claimable first-timer daily gacha currency.
-first_time_shards: 600
+first_time_shards: 625
 
-# Timezone for daily reset of daily gacha currency.
+# [DISCONTINUED] Timezone for daily reset of daily gacha currency.
 # 
-# [WARNING] This setting is now replaced by global setting mitsuki.daily_reset.
+# This setting is now replaced by global setting mitsuki.daily_reset.
 # 
 # Timezone is specified as a fixed offset from UTC in hours, disregarding
 # daylight savings time.
 daily_tz: 0
 
-# Gacha rates.
+# Rarity settings.
 # 
-# [NOTE] Rarity values are no longer limited to 9 as in v1.1.
+# Rarities are denoted with numbers from 1. Higher numbers indicate higher
+# rarities/qualities.
+# 
+# For the true rate of below rarities, each rate value is divided by the sum of
+# all rate values. The below rates will be equal to the true rate if all rate
+# values sum to 1.
+rarities:
+
+- value       : 1
+  rate        : 0.785
+  color       : 0x46a1eb
+  stars       : ⭐
+  dupe_shards : 75
+  pity        : null
+
+- value       : 2
+  rate        : 0.185
+  color       : 0x8e30db
+  stars       : ⭐⭐
+  dupe_shards : 150
+  pity        : 5
+
+- value       : 3
+  rate        : 0.030
+  color       : 0xe6bd37
+  stars       : ⭐⭐⭐
+  dupe_shards : 300
+  pity        : 25
+
+
+# [SUPERSEDED] Gacha rates.
+# 
+# Superseded by `rarities`.
 # 
 # Rarities, or more technically qualities, are denoted with numbers from 1.
 # Higher numbers indicate higher rarities/qualities. For the settings below,

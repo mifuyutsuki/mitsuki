@@ -1,5 +1,13 @@
-# Example gacha roster with 16 cards. (6 r1, 5 r2, 5 r3)
+# Example gacha roster with 16 cards. (6 1*, 5 2*, 5 3*)
 # Does not include images.
+
+# TODO:
+# - Field documentation
+# - Public release of rosc2y
+
+# Note:
+# You may need to enclose fields with double quotes
+# due to YAML reserved keywords.
 
 # Template
 # 
@@ -8,80 +16,135 @@
 #   series : 
 #   rarity : 
 #   image  : 
+#   group  :
+#   tags   :
+#   locked   : false
+#   limited  : false
+#   unlisted : false
 
 # ===============================================
 
 c1001:
   name   : Ume
-  series : Shirasagi
+  series : Shirasagi High
   type   : Character
   rarity : 3
   image  : 
-  
+  group  : Shirasagi High
+  tags   : sakura
+  limited  : false
+  locked   : false
+  unlisted : false
+
 c1002:
   name   : Kasumi
-  series : Shirasagi
+  series : Shirasagi High
   type   : Character
   rarity : 2
   image  : 
-  
+  group  : Shirasagi High
+  tags   : sakura
+  limited  : false
+  locked   : false
+  unlisted : false
+
 c1003:
   name   : Ichigo
-  series : Shirasagi
+  series : Shirasagi High
   type   : Character
   rarity : 2
   image  : 
-  
+  group  : Shirasagi High
+  tags   : sakura
+  limited  : false
+  locked   : false
+  unlisted : false
+
 c1004:
   name   : Wakaba
-  series : Shirasagi
+  series : Shirasagi High
   type   : Character
   rarity : 1
   image  : 
+  group  : Shirasagi High
+  tags   : sakura
+  limited  : false
+  locked   : false
+  unlisted : false
 
 c1005:
   name   : Ara
-  series : Shirasagi
+  series : Shirasagi High
   type   : Character
   rarity : 1
   image  : 
-  
+  group  : Shirasagi High
+  tags   : sakura
+  limited  : false
+  locked   : false
+  unlisted : false
+
 c1006:
   name   : Melati
-  series : Shirasagi
+  series : Shirasagi High
   type   : Character
   rarity : 1
   image  : 
+  group  : Shirasagi High
+  tags   : sakura
+  limited  : false
+  locked   : false
+  unlisted : false
 
 # ===============================================
 
 c2001:
   name   : Ayame
-  series : Magitech
+  series : Rikka Magitech
   type   : Character
   rarity : 3
   image  : 
-  
+  group  : Rikka Magitech
+  tags   : sakura
+  limited  : false
+  locked   : false
+  unlisted : false
+
 c2002:
   name   : Kusunoki
-  series : Magitech
+  series : Rikka Magitech
   type   : Character
   rarity : 3
   image  : 
-  
+  group  : Rikka Magitech
+  tags   : bamboo
+  limited  : false
+  locked   : false
+  unlisted : false
+
 c2003:
   name   : Pratama
-  series : Magitech
+  series : Rikka Magitech
   type   : Character
   rarity : 2
   image  : 
-  
+  group  : Rikka Magitech
+  tags   : bamboo
+  limited  : false
+  locked   : false
+  unlisted : false
+
 c2004:
   name   : Lily
-  series : Magitech
+  series : Rikka Magitech
   type   : Character
   rarity : 1
   image  : 
+  group  : Rikka Magitech
+  tags   : sakura
+  limited  : false
+  locked   : false
+  unlisted : false
 
 # ===============================================
 
@@ -91,36 +154,61 @@ c3001:
   type   : Character
   rarity : 3
   iamge  : 
+  group  : City of Rikka
+  tags   : bamboo
+  limited  : false
+  locked   : false
+  unlisted : false
 
 # ===============================================
 
 p1001:
   name   : Shirasagi High
-  series : Rikka
+  series : City of Rikka
   type   : Location
   rarity : 1
   iamge  : 
-  
+  group  : City of Rikka
+  tags   : 
+  limited  : false
+  locked   : false
+  unlisted : false
+
 p1002:
   name   : Cafe Cahaya Purnama
-  series : Rikka
+  series : City of Rikka
   type   : Location
   rarity : 1
   iamge  : 
-  
+  group  : City of Rikka
+  tags   : 
+  limited  : false
+  locked   : false
+  unlisted : false
+
 p1003:
   name   : Murasaki Park
-  series : Rikka
+  series : City of Rikka
   type   : Location
   rarity : 2
   iamge  : 
+  group  : City of Rikka
+  tags   : 
+  limited  : false
+  locked   : false
+  unlisted : false
 
 p1005:
   name   : Rikka Institute of Magical Technology 
-  series : Rikka
+  series : City of Rikka
   type   : Location
   rarity : 2
   iamge  : 
+  group  : City of Rikka
+  tags   : 
+  limited  : false
+  locked   : false
+  unlisted : false
 
 # ===============================================
 
@@ -130,3 +218,8 @@ p2001:
   type   : Location
   rarity : 3
   iamge  : 
+  group  : West Edge
+  tags   : 
+  limited  : false
+  locked   : false
+  unlisted : false
