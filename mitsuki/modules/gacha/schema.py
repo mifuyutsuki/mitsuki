@@ -20,132 +20,8 @@ from attrs import asdict as _asdict
 from mitsuki.lib.userdata import Base, AsDict
 from mitsuki.utils import escape_text
 
-
-class Rolls(Base):
-  __tablename__ = "gacha_rolls"
-
-  id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-  user: Mapped[int]
-  card: Mapped[str]
-  time: Mapped[float]
-
-  # card_ref: Mapped["Card"] = relationship(primaryjoin="foreign(Card.id) == Rolls.card", viewonly=True)
-
-  def __repr__(self):
-    return (
-      f"Rolls(id={self.id!r}, user={self.user!r}, "
-      f"time={self.time!r}, card={self.card!r})"
-    )
-
-
-class Currency(Base):
-  __tablename__ = "gacha_currency"
-
-  user: Mapped[int] = mapped_column(primary_key=True)
-  amount: Mapped[int]
-  last_daily: Mapped[Optional[float]]
-  first_daily: Mapped[Optional[float]]
-
-  def __repr__(self):
-    return (
-      f"Currency(user={self.user!r}, amount{self.amount!r}, "
-      f"last_daily={self.last_daily!r}, first_daily={self.first_daily!r})"
-    )
-
-
-class Inventory(Base):
-  __tablename__ = "gacha_inventory"
-
-  user: Mapped[int] = mapped_column(primary_key=True)
-  card: Mapped[str] = mapped_column(primary_key=True)
-  count: Mapped[int]
-  first_acquired: Mapped[Optional[float]]
-
-  # card_ref: Mapped["Card"] = relationship(primaryjoin="foreign(Card.id) == Inventory.card", viewonly=True)
-
-  def __repr__(self):
-    return (
-      f"Inventory(id={self.id!r}, user={self.user!r}, "
-      f"card={self.card!r}, count={self.count!r}, "
-      f"first_acquired={self.first_acquired!r})"
-    )
-
-
-# Legacy table, replaced by Pity2
-class Pity(Base):
-  __tablename__ = "gacha_pity"
-
-  user: Mapped[int] = mapped_column(primary_key=True)
-  counter1: Mapped[int]
-  counter2: Mapped[int]
-  counter3: Mapped[int]
-  counter4: Mapped[int]
-  counter5: Mapped[int]
-  counter6: Mapped[int]
-  counter7: Mapped[int]
-  counter8: Mapped[int]
-  counter9: Mapped[int]
-
-  def __repr__(self):
-    return (
-      f"Pity(user={self.user!r}, "
-      f"counter1={self.counter1!r}, "
-      f"counter2={self.counter2!r}, "
-      f"counter3={self.counter3!r}, "
-      f"counter4={self.counter4!r}, "
-      f"counter5={self.counter5!r}, "
-      f"counter6={self.counter6!r}, "
-      f"counter7={self.counter7!r}, "
-      f"counter8={self.counter8!r}, "
-      f"counter9={self.counter9!r})"
-    )
-
-
-class Pity2(Base):
-  __tablename__ = "gacha_pity2"
-
-  user: Mapped[int] = mapped_column(primary_key=True)
-  rarity: Mapped[int] = mapped_column(primary_key=True)
-  count: Mapped[int]
-
-  # rarity_ref: Mapped["Settings"] = relationship(primaryjoin="foreign(Settings.rarity) == Pity2.rarity", viewonly=True)
-
-  def __repr__(self) -> str:
-    return (
-      f"Pity2(user={self.user!r}, "
-      f"rarity={self.rarity!r}, count={self.count!r})"
-    )
-
-
-class Card(Base):
-  __tablename__ = "gacha_cards"
-
-  id: Mapped[str] = mapped_column(primary_key=True)
-  name: Mapped[str]
-  rarity: Mapped[int] = mapped_column(ForeignKey("gacha_settings.rarity"))
-  type: Mapped[str]
-  series: Mapped[str]
-  image: Mapped[Optional[str]]
-
-  # rarity_ref: Mapped["Settings"] = relationship()
-
-  def __repr__(self):
-    return (
-      f"Card(id={self.id!r}, name={self.name!r}, "
-      f"rarity={self.rarity!r}, type={self.type!r}, "
-      f"series={self.series!r}, image={self.image!r})"
-    )
-
-
-class Settings(Base):
-  __tablename__ = "gacha_settings"
-
-  rarity: Mapped[int] = mapped_column(primary_key=True)
-  rate: Mapped[float]
-  dupe_shards: Mapped[int] = mapped_column(default=0)
-  color: Mapped[int]
-  stars: Mapped[str]
-  pity: Mapped[Optional[int]]
+# New definitions
+from .schema2 import *
 
 
 # =============================================================================
@@ -210,11 +86,11 @@ class UserPity:
   count: int
 
   @classmethod
-  def create(cls, result: Pity2):
+  def create(cls, result: Pity):
     return cls(user=result.user, rarity=result.rarity, count=result.count)
 
   @classmethod
-  def create_many(cls, results: List[Pity2]):
+  def create_many(cls, results: List[Pity]):
     return [cls.create(result) for result in results]
 
   def asdict(self):

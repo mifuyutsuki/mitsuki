@@ -294,21 +294,21 @@ async def cards_stats(
   )
   subq_history = (
     select(
-      Rolls.card.label("card"),
-      func.min(Rolls.time).label("first_user_acquired"),
-      func.max(Rolls.time).label("last_user_acquired")
+      Roll.card.label("card"),
+      func.min(Roll.time).label("first_user_acquired"),
+      func.max(Roll.time).label("last_user_acquired")
     )
-    .group_by(Rolls.card)
+    .group_by(Roll.card)
     .subquery()
   )
   subq_first = (
-    select(subq_history, Rolls.user.label("first_user"))
-    .where(subq_history.c.first_user_acquired == Rolls.time)
+    select(subq_history, Roll.user.label("first_user"))
+    .where(subq_history.c.first_user_acquired == Roll.time)
     .subquery()
   )
   subq_last = (
-    select(subq_history, Rolls.user.label("last_user"))
-    .where(subq_history.c.last_user_acquired == Rolls.time)
+    select(subq_history, Roll.user.label("last_user"))
+    .where(subq_history.c.last_user_acquired == Roll.time)
     .subquery()
   )
   subq_cards = (
@@ -507,7 +507,7 @@ async def card_give(session: AsyncSession, user_id: Snowflake, card_id: str):
       )
   )
   rolls_statement = (
-    insert(Rolls)
+    insert(Roll)
     .values(user=user_id, card=card_id, time=current_time)
   )
 
@@ -523,8 +523,8 @@ async def card_give(session: AsyncSession, user_id: Snowflake, card_id: str):
 
 async def pity_get(user_id: Snowflake):
   statement = (
-    select(Pity2)
-    .where(Pity2.user == user_id)
+    select(Pity)
+    .where(Pity.user == user_id)
   )
 
   async with new_session() as session:
@@ -563,11 +563,11 @@ async def pity_update(
       continue
 
     statement = (
-      insert(Pity2)
+      insert(Pity)
       .values(user=user_id, rarity=rarity, count=1)
       .on_conflict_do_update(
         index_elements=["user", "rarity"],
-        set_=dict(count=0 if rarity == rolled_rarity else Pity2.__table__.c.count + 1)
+        set_=dict(count=0 if rarity == rolled_rarity else Pity.__table__.c.count + 1)
       )
     )
     await session.execute(statement)
@@ -575,8 +575,8 @@ async def pity_update(
 
 async def stats_user(user_id: Snowflake):
   subq_pity = (
-    select(Pity2.rarity, Pity2.count.label("pity_count"))
-    .where(Pity2.user == user_id)
+    select(Pity.rarity, Pity.count.label("pity_count"))
+    .where(Pity.user == user_id)
     .subquery()
   )
   subq_cards = (
@@ -588,17 +588,17 @@ async def stats_user(user_id: Snowflake):
   )
 
   subq_latest_time = (
-    select(Card.rarity, func.max(Rolls.time).label("time"))
-    .join(Rolls, Rolls.card == Card.id)
-    .where(Rolls.user == user_id)
+    select(Card.rarity, func.max(Roll.time).label("time"))
+    .join(Roll, Roll.card == Card.id)
+    .where(Roll.user == user_id)
     .group_by(Card.rarity)
     .subquery()
   )
   subq_latest = (
     select(Card, subq_latest_time)
-    .join(Rolls, Rolls.card == Card.id)
-    .join(subq_latest_time, subq_latest_time.c.time == Rolls.time)
-    .where(Rolls.user == user_id)
+    .join(Roll, Roll.card == Card.id)
+    .join(subq_latest_time, subq_latest_time.c.time == Roll.time)
+    .where(Roll.user == user_id)
     .subquery()
   )
 
