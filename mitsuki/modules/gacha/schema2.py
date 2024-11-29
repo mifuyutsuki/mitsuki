@@ -96,7 +96,7 @@ class Banner(Base):
 class BannerCard(Base):
   __tablename__ = "gacha_banner_cards"
   __table_args__ = (
-    UniqueConstraint("card", "banner")
+    UniqueConstraint("card", "banner"),
   )
 
   id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
