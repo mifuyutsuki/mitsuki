@@ -14,6 +14,7 @@ from yaml import safe_load
 from typing import Optional, Dict, Any, List
 from attrs import frozen, field
 from os import environ
+from datetime import datetime
 
 from mitsuki import logger
 
@@ -58,6 +59,14 @@ class MitsukiSettings:
   messages_default: Optional[str] = field(default=None)
   messages_dir: Optional[str] = field(default=None)
   messages_custom_dir: Optional[str] = field(default=None)
+
+  @property
+  def daily_reset_dt(self):
+    return datetime.strptime(self.daily_reset, "%H:%M%z")
+
+  @property
+  def daily_reset_tz(self):
+    return self.daily_reset_dt.tzinfo
 
 
 @frozen
