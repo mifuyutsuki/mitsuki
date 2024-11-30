@@ -31,6 +31,7 @@ __all__ = (
   "assert_user_permissions",
   "assert_bot_permissions",
   "assert_bot_channel_permissions",
+  "assert_bot_owner",
   "has_user_permissions",
   "has_bot_permissions",
   "has_bot_channel_permissions",
@@ -128,6 +129,11 @@ async def has_bot_channel_permissions(
     permissions = [permissions]
 
   return all(permission in channel.permissions_for(bot.user.id) for permission in permissions)
+
+
+async def assert_bot_owner(ctx: BaseContext):
+  if not await is_owner()(ctx):
+    raise UserDenied("Bot owner")
 
 
 def is_caller(ctx: BaseContext, message: Optional[str] = None):
