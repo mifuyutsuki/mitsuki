@@ -890,7 +890,12 @@ class UserCard(BaseCard, BaseRarity):
 
 
   @classmethod
-  async def fetch_all(cls, user: Union[BaseUser, Snowflake]) -> List["UserCard"]:
+  async def fetch_all(
+    cls,
+    user: Union[BaseUser, Snowflake],
+    *,
+    sort: Optional[str] = None
+  ) -> List["UserCard"]:
     """
     Fetch all cards in a user's inventory.
 
@@ -903,7 +908,6 @@ class UserCard(BaseCard, BaseRarity):
       # Snowflake is an instance of int
       raise TypeError("Cannot read user object of unsupported type")
 
-
     subq_rolls = (
       select(
         schema.Roll.card,
@@ -915,12 +919,35 @@ class UserCard(BaseCard, BaseRarity):
       .group_by(schema.Roll.card)
       .subquery("subq_rolls")
     )
-
     statement = (
       select(subq_rolls, schema.Card, schema.Settings)
       .join(schema.Card, schema.Card.id == subq_rolls.c.card)
       .join(schema.Settings, schema.Settings.rarity == schema.Card.rarity)
     )
+
+    sort = sort or "date"
+    match sort.lower():
+      case "rarity":
+        statement = statement.order_by(schema.Card.rarity.desc()).order_by(subq_rolls.c.first_acquired.desc())
+      case "alpha":
+        statement = statement.order_by(func.lower(schema.Card.name))
+      case "date":
+        statement = statement.order_by(subq_rolls.c.first_acquired.desc())
+      case "series":
+        statement = (
+          statement
+          .order_by(schema.Card.type)
+          .order_by(schema.Card.series)
+          .order_by(schema.Card.rarity)
+          .order_by(schema.Card.id)
+        )
+      case "count":
+        statement = statement.order_by(subq_rolls.c.count.desc()).order_by(subq_rolls.c.first_acquired.desc())
+      case "id":
+        statement = statement.order_by(schema.Card.id)
+      case _:
+        raise ValueError(f"Invalid sort setting '{sort}'")
+
     async with new_session() as session:
       results = (await session.execute(statement)).all()
 

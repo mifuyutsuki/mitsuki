@@ -506,15 +506,10 @@ class Roll(CurrencyMixin, WriterCommand):
 
 class Cards(TargetMixin, SelectionMixin, ReaderCommand):
   state: "Cards.States"
-  data: "Cards.Data"
 
   class States(StrEnum):
     NO_CARDS = "gacha_cards_no_cards"
     CARDS    = "gacha_cards"
-
-  @define(slots=False)
-  class Data(AsDict):
-    total_cards: int
 
 
   async def run_from_button(self):
@@ -525,17 +520,16 @@ class Cards(TargetMixin, SelectionMixin, ReaderCommand):
     await self.fetch_target(target or self.caller_user)
     await self.defer(suppress_error=True)
 
-    cards = await userdata.cards_user(self.target_id, sort=sort or "date")
-    self.data = self.Data(total_cards=len(cards))
+    cards = await api.UserCard.fetch_all(self.target_id, sort=sort)
 
     if len(cards) <= 0:
-      return await self.send(self.States.NO_CARDS)
+      return await self.send(self.States.NO_CARDS, other_data={"total_cards": 0})
 
     self.field_data = cards
     self.selection_values = [
       StringSelectOption(
         label=truncate(card.name, 100),
-        value=card.card,
+        value=card.id,
         description=truncate(
           (("★" * card.rarity) if card.rarity <= 6 else f"{card.rarity}★")
           + f" • {card.type} • {card.series}",
@@ -547,6 +541,7 @@ class Cards(TargetMixin, SelectionMixin, ReaderCommand):
     self.selection_placeholder = "Select a card in page to view..."
     return await self.send_selection(
       self.States.CARDS,
+      other_data={"total_cards": len(self.field_data)},
       template_kwargs=dict(escape_data_values=["name", "type", "series"]),
       timeout=45
     )
@@ -558,15 +553,10 @@ class Cards(TargetMixin, SelectionMixin, ReaderCommand):
 
 class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
   state: "Cards.States"
-  data: "Cards.Data"
 
   class States(StrEnum):
     NO_CARDS = "gacha_cards_no_cards"
     CARDS    = "gacha_cards_deck"
-
-  @define(slots=False)
-  class Data(AsDict):
-    total_cards: int
 
 
   async def run_from_button(self):
@@ -577,14 +567,14 @@ class Gallery(TargetMixin, MultifieldMixin, ReaderCommand):
     await self.fetch_target(target or self.caller_user)
     await self.defer(suppress_error=True)
 
-    self.field_data = await userdata.cards_user(self.target_id, sort=sort or "date")
-    self.data = self.Data(total_cards=len(self.field_data))
+    self.field_data = await api.UserCard.fetch_all(self.target_id, sort=sort)
 
-    if self.data.total_cards <= 0:
-      return await self.send(self.States.NO_CARDS)
+    if len(self.field_data) <= 0:
+      return await self.send(self.States.NO_CARDS, other_data={"total_cards": 0})
 
     await self.send_multipage(
       self.States.CARDS,
+      other_data={"total_cards": len(self.field_data)},
       template_kwargs=dict(escape_data_values=["type", "series"]),
       timeout=45
     )

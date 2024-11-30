@@ -27,7 +27,7 @@ _namespace: gacha_cards
 # stars       : Stars denoting rarity
 # image       : Image URL of card
 # -----------------------------------------------------------------------------
-# amount           : Amount of card acquired by target user
+# count            : Amount of card acquired by target user
 # first_acquired   : User first acquired time in timestamp
 # first_acquired_f : User first acquired time in dynamic timestamp (full)
 # -----------------------------------------------------------------------------
@@ -41,7 +41,7 @@ _:
   field       :
     name      : ${stars} ${name}
     value     : >-
-      `${amount}` • ${type} • ${series} • ${first_acquired_f}
+      `${count}` • ${type} • ${series} • ${first_acquired_f}
     inline    : false
 
 # Deck view
@@ -57,7 +57,7 @@ deck:
     ${stars} • ${type} • ${series}
 
 
-    `${amount}` in ${target_user}'s card collection
+    `${count}` in ${target_user}'s card collection
 
     First acquired by user: ${first_acquired_f}
   image: >-
