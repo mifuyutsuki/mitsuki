@@ -1,0 +1,46 @@
+_namespace: gacha_admin
+
+
+upload_error_download:
+  title: >-
+    Upload Error
+  description: >-
+    Unable to fetch uploaded roster file, try again later.
+
+    ```
+    
+    ${message}
+    ```
+  color: error
+
+
+upload_error_parse:
+  title: >-
+    Upload Error
+  description: >-
+    Cannot parse roster file. Make sure your file is valid YAML.
+
+    ```
+    
+    ${message}
+    ```
+  color: error
+
+
+upload_prompt:
+  title: >-
+    Upload Roster
+  description: >-
+    Found `${count}` card(s) in roster file:
+
+
+    * `${count_add}` cards **added**
+
+    * `${count_remove}` cards **removed**
+    
+    * `${count_change}` cards **changed**
+
+    * `${count_unaffected}` cards unaffected
+
+
+    Press "Update" to update the roster, or dismiss this message to cancel.

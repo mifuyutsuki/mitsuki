@@ -34,6 +34,7 @@ from interactions import (
   cooldown,
   Buckets,
   ContextType,
+  Attachment,
 )
 from interactions.api.events import Startup
 from typing import Optional
@@ -349,3 +350,22 @@ class GachaModule(Extension):
   @auto_defer(ephemeral=True)
   async def g_admin_cards_cmd(self, ctx: SlashContext):
     await commands.ViewAdmin.create(ctx).run(sort="id")
+
+
+  # ===========================================================================
+  # ===========================================================================
+
+
+  @g_admin_cmd.subcommand(
+    sub_cmd_name="upload",
+    sub_cmd_description="Upload and update gacha roster"
+  )
+  @slash_option(
+    name="file",
+    description="Gacha roster file (.yaml)",
+    opt_type=OptionType.ATTACHMENT,
+    required=True,
+  )
+  @auto_defer(ephemeral=True)
+  async def g_admin_upload_cmd(self, ctx: SlashContext, file: Attachment):
+    await commands.UploadAdmin.create(ctx).run(file)

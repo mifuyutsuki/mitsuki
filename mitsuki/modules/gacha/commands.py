@@ -13,6 +13,7 @@
 from attrs import define, field
 from typing import Optional, Union, List, Dict, Any, NamedTuple
 from enum import Enum, StrEnum
+from yaml import safe_load, YAMLError
 from interactions import (
   ComponentContext,
   Snowflake,
@@ -26,8 +27,10 @@ from interactions import (
   StringSelectMenu,
   StringSelectOption,
   Permissions,
+  Attachment,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
+import aiohttp
 
 from mitsuki import bot
 from mitsuki.utils import escape_text, process_text, truncate, get_member_color_value, ratio
@@ -883,3 +886,42 @@ class ReloadAdmin(ReaderCommand):
 
     self.data = self.Data(cards=len(gacha.cards))
     await self.send(self.States.RELOAD)
+
+
+class UploadAdmin(WriterCommand):
+  state: "UploadAdmin.States"
+
+  class States(StrEnum):
+    ERROR_DOWNLOAD = "gacha_admin_upload_error_download"
+    ERROR_PARSE = "gacha_admin_upload_error_parse"
+    PROMPT = "gacha_admin_upload_prompt"
+    SUCCESS = "gacha_admin_upload_success"
+
+
+  async def run(self, file: Attachment):
+    await assert_bot_owner(self.ctx)
+    await self.defer(ephemeral=True, suppress_error=True)
+
+    async with aiohttp.ClientSession() as session:
+      async with session.get(file.url) as response:
+        try:
+          response.raise_for_status()
+        except Exception as e:
+          await self.send(
+            self.States.ERROR_DOWNLOAD,
+            other_data={"message": str(e)}
+          )
+          return
+        try:
+          data = safe_load(await response.text())
+        except YAMLError as e:
+          await self.send(
+            self.States.ERROR_PARSE,
+            other_data={"message": str(e)}
+          )
+          return
+
+    cards = api.Card.parse_all(data, ignore_error=True)
+    # TODO: Diff cards
+
+    await self.send(self.States.PROMPT, other_data={"count": len(cards)})
