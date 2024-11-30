@@ -28,7 +28,7 @@ from interactions import (
 from yaml import safe_load
 from attrs import define, field
 from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Union, Optional, Any, Callable
+from typing import List, Dict, Union, Optional, Any, Tuple
 from enum import IntEnum
 from random import SystemRandom
 import asyncio
@@ -43,17 +43,21 @@ insert = postgres_insert if "postgresql" in engine.url.drivername else sqlite_in
 
 @define(kw_only=True)
 class Search:
+  id: str
   result: str
   score: float
 
   @classmethod
-  def process(cls, results: List[str], key: str, cutoff: float = 0.0):
+  def process(cls, results: List[Tuple[str, str]], key: str, cutoff: float = 0.0, limit: Optional[int] = None):
     li = [
-      cls(result=result, score=ratio(key, result, processor=process_text))
-      for result in results
+      cls(id=id, result=result, score=ratio(key, result, processor=process_text))
+      for id, result in results
     ]
     li.sort(key=lambda s: s.score, reverse=True)
-    return [i for i in li if i.score >= cutoff]
+    li = [i for i in li if i.score >= cutoff]
+    if limit:
+      return li[:limit]
+    return li
 
 
 @define(kw_only=True, slots=False)
@@ -537,8 +541,8 @@ class UserStats(BasePity, BaseRarity):
       select(
         schema.Settings,
         subq_pity,
-        func.ifnull(subq_cards.c.cards, 0).label("cards"),
-        func.ifnull(subq_cards.c.rolled, 0).label("rolled"),
+        func.coalesce(subq_cards.c.cards, 0).label("cards"),
+        func.coalesce(subq_cards.c.rolled, 0).label("rolled"),
       )
       .join(subq_pity, subq_pity.c.rarity == schema.Settings.rarity, isouter=True)
       .join(subq_cards, subq_cards.c.rarity == schema.Settings.rarity, isouter=True)
@@ -868,6 +872,152 @@ class UserCard(BaseCard, BaseRarity):
     return [
       cls(
         user=user, count=result.count, first_acquired=result.first_acquired, last_acquired=result.last_acquired,
+        **(result.Card.asdict() | result.Settings.asdict())
+      )
+      for result in results
+    ]
+
+
+@define(kw_only=True, slots=False)
+class CardStats(BaseCard, BaseRarity):
+  users: int = field(default=0)
+  rolled: int = field(default=0)
+
+  first_user_acquired: Optional[float] = field(default=None)
+  last_user_acquired: Optional[float] = field(default=None)
+
+  first_user: Optional[Snowflake] = field(default=None)
+  last_user: Optional[Snowflake] = field(default=None)
+
+  linked_name: str = field(init=False, default="-")
+
+  first_user_mention: str = field(init=False, default="-")
+  first_user_acquired_f: str = field(init=False, default="-")
+  first_user_acquired_d: str = field(init=False, default="-")
+
+  last_user_mention: str = field(init=False, default="-")
+  last_user_acquired_f: str = field(init=False, default="-")
+  last_user_acquired_d: str = field(init=False, default="-")
+
+  @property
+  def first_user_acquired_dt(self):
+    if not self.first_user_acquired:
+      return None
+    return Timestamp.fromtimestamp(self.first_user_acquired, tz=timezone.utc)
+
+  @property
+  def last_user_acquired_dt(self):
+    if not self.last_user_acquired:
+      return None
+    return Timestamp.fromtimestamp(self.last_user_acquired, tz=timezone.utc)
+
+
+  def __attrs_post_init__(self):
+    if self.first_user:
+      self.first_user_mention = f"<@{self.first_user}>"
+
+    if self.last_user:
+      self.last_user_mention = f"<@{self.last_user}>"
+
+    if self.first_user_acquired:
+      self.first_user_acquired_f = self.first_user_acquired_dt.format("f")
+      self.first_user_acquired_d = self.first_user_acquired_dt.format("D")
+
+    if self.last_user_acquired:
+      self.last_user_acquired_f = self.last_user_acquired_dt.format("f")
+      self.last_user_acquired_d = self.last_user_acquired_dt.format("D")
+
+    self.linked_name = f"[{escape_text(self.name)}]({self.image})" if self.image else self.name
+
+
+  @classmethod
+  async def search(
+    cls,
+    key: str,
+    *,
+    user: Optional[Union[BaseUser, Snowflake]] = None,
+    limit: Optional[int] = None,
+    unobtained: bool = False,
+  ):
+    # 1. Fetch names
+    statement = (
+      select(schema.Card.id.distinct(), schema.Card.name)
+      .join(schema.Roll, schema.Roll.card == schema.Card.id, isouter=unobtained)
+    )
+
+    if user:
+      if isinstance(user, BaseUser):
+        user = user.id
+      elif not isinstance(user, int):
+        # Snowflake is an instance of int
+        raise TypeError("Cannot read user object of unsupported type")
+      statement = statement.where(schema.Roll.user == user)
+
+    async with new_session() as session:
+      matches = (await session.execute(statement)).all()
+
+    # 2. Match search
+    results = Search.process(matches, key, cutoff=60.0, limit=limit)
+    card_ids = [result.id for result in results]
+  
+    # 3. Return cards
+    subq_rolls = (
+      select(
+        schema.Roll.card,
+        func.count(schema.Roll.user.distinct()).label("users"),
+        func.count(schema.Roll.user).label("rolled"),
+        func.min(schema.Roll.time).label("first_user_acquired"),
+        func.max(schema.Roll.time).label("last_user_acquired"),
+      )
+      .group_by(schema.Roll.card)
+      .subquery("subq_rolls")
+    )
+    subq_first = (
+      select(subq_rolls, schema.Roll.user.label("first_user"))
+      .where(subq_rolls.c.first_user_acquired == schema.Roll.time)
+      .subquery("subq_first")
+    )
+    subq_last = (
+      select(subq_rolls, schema.Roll.user.label("last_user"))
+      .where(subq_rolls.c.last_user_acquired == schema.Roll.time)
+      .subquery("subq_last")
+    )
+    statement = (
+      select(
+        schema.Card,
+        schema.Settings,
+        func.coalesce(subq_rolls.c.users, 0).label("users"),
+        func.coalesce(subq_rolls.c.rolled, 0).label("rolled"),  
+        subq_first.c.first_user_acquired.label("first_user_acquired"),
+        subq_first.c.first_user.label("first_user"),
+        subq_last.c.last_user_acquired.label("last_user_acquired"),
+        subq_last.c.last_user.label("last_user"),
+      )
+      .join(schema.Settings, schema.Settings.rarity == schema.Card.rarity)
+      .join(subq_rolls, subq_rolls.c.card == schema.Card.id, isouter=unobtained)
+      .join(subq_first, schema.Card.id == subq_first.c.card, isouter=unobtained)
+      .join(subq_last, schema.Card.id == subq_last.c.card, isouter=unobtained)
+      .where(schema.Card.unlisted == False)
+      .where(schema.Card.id.in_(card_ids))
+      .order_by(
+        case(
+          {item: idx for idx, item in enumerate(card_ids)},
+          value=schema.Card.id
+        )
+      )
+    )
+
+    async with new_session() as session:
+      results = (await session.execute(statement)).all()
+
+    return [
+      cls(
+        users=result.users,
+        rolled=result.rolled,
+        first_user_acquired=result.first_user_acquired,
+        last_user_acquired=result.last_user_acquired,
+        first_user=result.first_user,
+        last_user=result.last_user,
         **(result.Card.asdict() | result.Settings.asdict())
       )
       for result in results
