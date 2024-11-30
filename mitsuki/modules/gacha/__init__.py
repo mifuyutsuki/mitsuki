@@ -33,6 +33,7 @@ from interactions import (
   listen,
   cooldown,
   Buckets,
+  ContextType,
 )
 from interactions.api.events import Startup
 from typing import Optional
@@ -56,9 +57,17 @@ class GachaModule(Extension):
   @slash_command(
     name="gacha",
     description="Roll your favorite characters and memories",
-    dm_permission=False
+    contexts=[ContextType.GUILD],
   )
   async def gacha_cmd(self, ctx: SlashContext):
+    pass
+
+  @slash_command(
+    name="g-admin",
+    description="Admin functions for gacha, requires bot owner",
+    contexts=[ContextType.BOT_DM],
+  )
+  async def g_admin_cmd(self, ctx: SlashContext):
     pass
 
   gacha_admin_cmd = gacha_cmd.group(
@@ -290,7 +299,7 @@ class GachaModule(Extension):
   # ===========================================================================
   # ===========================================================================
 
-  @gacha_admin_cmd.subcommand(
+  @g_admin_cmd.subcommand(
     sub_cmd_name="give",
     sub_cmd_description="Give Shards to another user"
   )
@@ -308,7 +317,7 @@ class GachaModule(Extension):
     min_value=1
   )
   @auto_defer(ephemeral=True)
-  async def system_give_cmd(
+  async def g_admin_give_cmd(
     self,
     ctx: SlashContext,
     target: BaseUser,
@@ -320,22 +329,23 @@ class GachaModule(Extension):
   # ===========================================================================
   # ===========================================================================
 
-  @gacha_admin_cmd.subcommand(
+  @g_admin_cmd.subcommand(
     sub_cmd_name="reload",
     sub_cmd_description="Reload gacha configuration files"
   )
   @auto_defer(ephemeral=True)
-  async def system_reload_cmd(self, ctx: SlashContext):
+  async def g_admin_reload_cmd(self, ctx: SlashContext):
     await commands.ReloadAdmin.create(ctx).run()
 
 
   # ===========================================================================
   # ===========================================================================
 
-  @gacha_admin_cmd.subcommand(
+
+  @g_admin_cmd.subcommand(
     sub_cmd_name="cards",
     sub_cmd_description="View the card roster"
   )
   @auto_defer(ephemeral=True)
-  async def system_cards_cmd(self, ctx: SlashContext):
+  async def g_admin_cards_cmd(self, ctx: SlashContext):
     await commands.ViewAdmin.create(ctx).run(sort="id")

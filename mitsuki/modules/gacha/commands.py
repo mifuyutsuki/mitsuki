@@ -41,9 +41,9 @@ from mitsuki.lib.commands import (
   AutocompleteMixin,
   SelectionMixin,
 )
-from mitsuki.lib.checks import is_caller, assert_user_permissions
+from mitsuki.lib.checks import is_caller, assert_user_permissions, assert_bot_owner
 
-from . import userdata
+from . import userdata, api
 from .schema import UserCard, StatsCard, RosterCard
 from .gachaman import gacha, daily_reset_time
 
@@ -850,7 +850,7 @@ class ViewAdmin(MultifieldMixin, ReaderCommand):
 
 
   async def run(self, sort: Optional[str] = None):
-    await assert_user_permissions(self.ctx, Permissions.ADMINISTRATOR, "Server admin")
+    await assert_bot_owner(self.ctx)
     await self.defer(ephemeral=True, suppress_error=True)
 
     self.field_data = await userdata.cards_stats(unobtained=True, sort=sort)
@@ -875,7 +875,7 @@ class ReloadAdmin(ReaderCommand):
 
   async def run(self):
     global gacha
-    await assert_user_permissions(self.ctx, Permissions.ADMINISTRATOR, "Server admin")
+    await assert_bot_owner(self.ctx)
     await self.defer(ephemeral=True, suppress_error=True)
 
     gacha.reload()
