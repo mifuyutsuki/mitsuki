@@ -728,7 +728,8 @@ async def add_card(session: AsyncSession, card: SourceCard):
       rarity=card.rarity,
       type=card.type,
       series=card.series,
-      image=card.image
+      image=card.image,
+      group=card.group, # Placeholder v5 required field
     )
     .on_conflict_do_update(
       index_elements=['id'],
@@ -737,7 +738,8 @@ async def add_card(session: AsyncSession, card: SourceCard):
         rarity=card.rarity,
         type=card.type,
         series=card.series,
-        image=card.image
+        image=card.image,
+        group=card.group, # Placeholder v5 required field
       )
     )
   )

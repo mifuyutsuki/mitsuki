@@ -175,8 +175,10 @@ class Gachaman:
     self.series_map = {}
 
     for id, data in _data.items():
+      if not isinstance(id, str):
+        continue
+
       try:
-        # Mandatory fields
         name = data["name"]
         rarity = data["rarity"]
         type = data["type"]
@@ -185,7 +187,13 @@ class Gachaman:
         continue
 
       image = data.get("image")
-      self.cards[id] = SourceCard(id, name, rarity, type, series, image)
+
+      # Mandatory in v5, but currently optional and defaults to type
+      group = data.get("group", type)
+
+      self.cards[id] = SourceCard(
+        id=id, name=name, rarity=rarity, type=type, series=series, image=image, group=group
+      )
 
       if rarity not in self.rarity_map.keys():
         self.rarity_map[rarity] = []

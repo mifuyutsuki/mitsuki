@@ -324,8 +324,13 @@ class SourceCard:
   rarity: int
   type: str
   series: str
+  group: str = field(default="-")
 
   image: Optional[str] = field(default=None)
+
+  def __attrs_post_init__(self):
+    if self.group == "-":
+      self.group = self.type
 
   def asdict(self):
     return _asdict(self)
