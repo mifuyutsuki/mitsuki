@@ -657,6 +657,46 @@ class Roll(BaseRoll, BaseCard, BaseRarity):
 class Card(BaseCard, BaseRarity):
   """Mitsuki gacha card."""
 
+
+  @classmethod
+  def parse_all(
+    cls,
+    data: Dict[str, Dict[str, Any]],
+    *,
+    rarity_data: Optional["Rarity"] = None,
+    ignore_error: bool = False,
+  ):
+    li = []
+    for id, card in data.items():
+      try:
+        li.append(cls(
+          id=id,
+          name=card["name"],
+          rarity=int(card["rarity"]),
+          type=card["type"],
+          series=card["series"],
+          image=card.get("image"),
+          group=card.get("group", card["type"]),
+          limited=bool(card.get("limited")),
+          locked=bool(card.get("locked")),
+          unlisted=bool(card.get("unlisted")),
+          tags=card.get("tags"),
+
+          rate=rarity_data.rate if rarity_data else 0.0,
+          pity=rarity_data.pity if rarity_data else 0,
+          dupe_shards=rarity_data.dupe_shards if rarity_data else 0,
+          color=rarity_data.color if rarity_data else 0,
+          stars=rarity_data.stars if rarity_data else "-",
+        ))
+      except (KeyError, ValueError):
+        if ignore_error:
+          continue
+        else:
+          raise
+
+    return li
+
+
   @classmethod
   async def fetch(cls, id: str):
     """
@@ -757,6 +797,21 @@ class Card(BaseCard, BaseRarity):
       .values(user=user, card=self.id, time=time)
     )
     await session.execute(statement)
+
+
+  @staticmethod
+  async def count(*, unlisted: bool = False, unobtained: bool = False):
+    statement = (
+      select(func.count(schema.Card.id.distinct()))
+      .join(schema.Settings, schema.Settings.rarity == schema.Card.rarity)
+    )
+    if not unobtained:
+      statement = statement.join(schema.Roll, schema.Roll.card == schema.Card.id)
+    if not unlisted:
+      statement = statement.where(schema.Card.unlisted == False)
+
+    async with new_session() as session:
+      return await session.scalar(statement) or 0
 
 
 @define(kw_only=True, slots=False)
@@ -1106,6 +1161,10 @@ class Arona:
     configuration.rarities = rarities
 
     return configuration
+
+
+  def reload(self, filename: Optional[str] = None):
+    self = self.load(filename)
 
 
   async def roll(
