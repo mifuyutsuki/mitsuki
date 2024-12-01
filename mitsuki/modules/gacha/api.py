@@ -1400,7 +1400,9 @@ class Arona:
         break
 
     # Fetch card ids with correct rarity (and banner) properties
-    choices = await Card.fetch_all(rarity=rarity_get, banner=banner.id if banner else None)
+    choices = await Card.fetch_all(
+      rarity=rarity_get, banner=banner.id if banner else None, rollable_only=True,
+    )
 
     return self.random.choice(choices)
 
