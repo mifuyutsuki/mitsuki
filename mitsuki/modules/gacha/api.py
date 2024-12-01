@@ -658,6 +658,24 @@ class Card(BaseCard, BaseRarity):
   """Mitsuki gacha card."""
 
 
+  def __eq__(self, value: object) -> bool:
+    if not isinstance(value, Card):
+      raise TypeError(f"'=' not supported between instances of Card and '{type(value)}'")
+    return (
+      self.id == value.id
+      and self.name == value.name
+      and self.rarity == value.rarity
+      and self.type == value.type
+      and self.series == value.series
+      and self.group == value.group
+      and self.image == value.image
+      and self.tags == value.tags
+      and self.limited == value.limited
+      and self.locked == value.locked
+      and self.unlisted == value.unlisted
+    )
+
+
   @classmethod
   def parse_all(
     cls,
@@ -665,7 +683,7 @@ class Card(BaseCard, BaseRarity):
     *,
     rarity_data: Optional["Rarity"] = None,
     ignore_error: bool = False,
-  ):
+  ) -> List["Card"]:
     li = []
     for id, card in data.items():
       try:
@@ -675,8 +693,8 @@ class Card(BaseCard, BaseRarity):
           rarity=int(card["rarity"]),
           type=card["type"],
           series=card["series"],
-          image=card.get("image"),
           group=card.get("group", card["type"]),
+          image=card.get("image"),
           limited=bool(card.get("limited")),
           locked=bool(card.get("locked")),
           unlisted=bool(card.get("unlisted")),
@@ -698,7 +716,7 @@ class Card(BaseCard, BaseRarity):
 
 
   @classmethod
-  async def fetch(cls, id: str):
+  async def fetch(cls, id: str) -> Optional["Card"]:
     """
     Fetch a card by its ID.
 
@@ -725,7 +743,7 @@ class Card(BaseCard, BaseRarity):
     banner: Optional[str] = None,
     rollable_only: bool = False,
     unlisted: bool = False,
-  ):
+  ) -> List["Card"]:
     """
     Fetch card IDs of a given rarity and banner, if provided.
 
@@ -795,6 +813,41 @@ class Card(BaseCard, BaseRarity):
     statement = (
       insert(schema.Roll)
       .values(user=user, card=self.id, time=time)
+    )
+    await session.execute(statement)
+
+
+  async def add(self, session: AsyncSession):
+    statement = (
+      insert(schema.Card)
+      .values(
+        id=self.id,
+        name=self.name,
+        rarity=self.rarity,
+        type=self.type,
+        series=self.series,
+        group=self.group,
+        image=self.image,
+        tags=self.tags,
+        limited=self.limited,
+        locked=self.locked,
+        unlisted=self.unlisted,
+      )
+      .on_conflict_do_update(
+        index_elements=['id'],
+        set_=dict(
+          name=self.name,
+          rarity=self.rarity,
+          type=self.type,
+          series=self.series,
+          group=self.group,
+          image=self.image,
+          tags=self.tags,
+          limited=self.limited,
+          locked=self.locked,
+          unlisted=self.unlisted,
+        )
+      )
     )
     await session.execute(statement)
 
