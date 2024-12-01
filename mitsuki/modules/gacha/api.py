@@ -1106,20 +1106,26 @@ class CardStats(BaseCard, BaseRarity):
     ]
 
 
-@define(kw_only=True)
-class Banner(AsDict):
-  id: str
-  name: str
-  active: bool = field(default=False)
-  start_time: Optional[float] = field(default=None)
-  end_time: Optional[float] = field(default=None)
-  rate: float = field(default=0.0)
-  min_rarity: Optional[int] = field(default=None)
-  max_rarity: Optional[int] = field(default=None)
-
+@define(kw_only=True, slots=False)
+class Banner(BaseBanner):
+  """Gacha banner."""
 
   @classmethod
-  async def fetch_current(cls, time: float, rarity: Optional[int] = None):
+  async def fetch_current(
+    cls,
+    *,
+    time: Optional[Union[Timestamp, datetime, int, float]] = None,
+    rarity: Optional[int] = None
+  ):
+    time = time or datetime.now(tz=timezone.utc).timestamp()
+    if isinstance(time, datetime):
+      # Timestamp is an instance of datetime
+      time = time.timestamp()
+    elif isinstance(time, int):
+      time = float(time)
+    elif not isinstance(time, float):
+      raise TypeError("Cannot read time of unsupported type")
+
     statement = (
       select(schema.Banner)
       .where(schema.Banner.active == True)
@@ -1132,6 +1138,16 @@ class Banner(AsDict):
         .where(schema.Banner.min_rarity <= rarity)
         .where(schema.Banner.max_rarity >= rarity)
       )
+
+    async with new_session() as session:
+      results = (await session.scalars(statement)).all()
+
+    return [cls(**result.asdict()) for result in results]
+
+
+  @classmethod
+  async def fetch_all(cls):
+    statement = select(schema.Banner).order_by(schema.Banner.start_time.desc())
 
     async with new_session() as session:
       results = (await session.scalars(statement)).all()
