@@ -1253,6 +1253,42 @@ class Banner(BaseBanner):
     return [cls(**result.asdict()) for result in results]
 
 
+  @staticmethod
+  async def count(
+    *,
+    current_on: Optional[Union[Timestamp, datetime, int, float]] = None,
+    rarity: Optional[int] = None,
+  ):
+    current_on = current_on or datetime.now(tz=timezone.utc).timestamp()
+    if isinstance(current_on, datetime):
+      # Timestamp is an instance of datetime
+      current_on = current_on.timestamp()
+    elif isinstance(current_on, int):
+      current_on = float(current_on)
+    elif not isinstance(current_on, float):
+      raise TypeError("Cannot read time of unsupported type")
+
+    statement = (
+      select(func.count(schema.Banner.id))
+    )
+    if current_on:
+      statement = (
+        statement
+        .where(schema.Banner.active == True)
+        .where(schema.Banner.start_time <= current_on)
+        .where(schema.Banner.end_time > current_on)
+      )
+    if rarity:
+      statement = (
+        statement
+        .where(schema.Banner.min_rarity <= rarity)
+        .where(schema.Banner.max_rarity >= rarity)
+      )
+    
+    async with new_session() as session:
+      return await session.scalar(statement) or 0
+
+
 @define(kw_only=True)
 class Arona:
   random: SystemRandom
