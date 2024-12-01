@@ -1228,7 +1228,7 @@ class Arona:
       arona_value -= rate
       rarity_get   = rarity
 
-      if rarity < min_rarity:
+      if min_rarity and rarity < min_rarity:
         continue
       if arona_value < 0.0:
         break
@@ -1250,7 +1250,7 @@ class Arona:
         break
 
     # Fetch card ids with correct rarity (and banner) properties
-    choices = await Card.fetch_all(rarity=rarity_get, banner=banner.id)
+    choices = await Card.fetch_all(rarity=rarity_get, banner=banner.id if banner else None)
 
     return self.random.choice(choices)
 
