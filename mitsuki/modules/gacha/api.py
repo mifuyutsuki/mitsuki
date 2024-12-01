@@ -743,6 +743,9 @@ class Card(BaseCard, BaseRarity):
     banner: Optional[str] = None,
     rollable_only: bool = False,
     unlisted: bool = False,
+    unobtained: bool = True,
+    limit: Optional[int] = None,
+    offset: Optional[int] = None,
   ) -> List["Card"]:
     """
     Fetch card IDs of a given rarity and banner, if provided.
@@ -760,6 +763,64 @@ class Card(BaseCard, BaseRarity):
       select(schema.Card, schema.Settings)
       .join(schema.Settings, schema.Settings.rarity == schema.Card.rarity)
     )
+
+    if not unobtained:
+      subq_roll = select(schema.Roll.card.distinct().label("card")).subquery("subq_roll")
+      statement = statement.join(subq_roll, subq_roll.c.card == schema.Card.id)
+
+    if banner:
+      statement = (
+        statement
+        .join(schema.BannerCard, schema.BannerCard.card == schema.Card.id)
+        .join(schema.Banner, schema.Banner.id == schema.BannerCard.banner)
+        .where(schema.Banner.id == banner)
+      )
+    elif rollable_only: # and not banner
+      statement = statement.where(schema.Card.limited == False)
+
+    if rollable_only:
+      statement = (
+        statement
+        .where(schema.Card.locked == False)
+        .where(schema.Card.unlisted == False)
+      )
+    elif not unlisted:
+      statement = (
+        statement
+        .where(schema.Card.unlisted == False)
+      )
+
+    if rarity:
+      statement = statement.where(schema.Card.rarity == rarity)
+
+    if limit:
+      statement = statement.limit(limit)
+      if offset:
+        statement = statement.offset(offset)
+
+    async with new_session() as session:
+      results = (await session.execute(statement)).all()
+    return [cls(**(result.Card.asdict() | result.Settings.asdict())) for result in results]
+
+
+  @staticmethod
+  async def count(
+    *,
+    rarity: Optional[int] = None,
+    banner: Optional[str] = None,
+    rollable_only: bool = False,
+    unlisted: bool = False,
+    unobtained: bool = False,
+  ):
+    statement = (
+      select(func.count(schema.Card.id.distinct()))
+      .join(schema.Settings, schema.Settings.rarity == schema.Card.rarity)
+    )
+
+    if not unobtained:
+      subq_roll = select(schema.Roll.card.distinct().label("card")).subquery("subq_roll")
+      statement = statement.join(subq_roll, subq_roll.c.card == schema.Card.id)
+
     if banner:
       statement = (
         statement
@@ -786,8 +847,7 @@ class Card(BaseCard, BaseRarity):
       statement = statement.where(schema.Card.rarity == rarity)
 
     async with new_session() as session:
-      results = (await session.execute(statement)).all()
-    return [cls(**(result.Card.asdict() | result.Settings.asdict())) for result in results]
+      return await session.scalar(statement) or 0
 
 
   async def submit_roll(
@@ -850,21 +910,6 @@ class Card(BaseCard, BaseRarity):
       )
     )
     await session.execute(statement)
-
-
-  @staticmethod
-  async def count(*, unlisted: bool = False, unobtained: bool = False):
-    statement = (
-      select(func.count(schema.Card.id.distinct()))
-      .join(schema.Settings, schema.Settings.rarity == schema.Card.rarity)
-    )
-    if not unobtained:
-      statement = statement.join(schema.Roll, schema.Roll.card == schema.Card.id)
-    if not unlisted:
-      statement = statement.where(schema.Card.unlisted == False)
-
-    async with new_session() as session:
-      return await session.scalar(statement) or 0
 
 
 @define(kw_only=True, slots=False)
