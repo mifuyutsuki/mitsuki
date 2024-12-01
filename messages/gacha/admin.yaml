@@ -34,13 +34,13 @@ upload_prompt:
     Found `${count}` card(s) in roster file:
 
 
-    * `${count_add}` cards **added**
+    * `${count_added}` cards **added**
 
-    * `${count_remove}` cards **removed**
+    * `${count_removed}` cards **removed**
     
-    * `${count_change}` cards **changed**
+    * `${count_changed}` cards **changed**
 
-    * `${count_unaffected}` cards unaffected
+    * `${count_unchanged}` cards unchanged
 
 
     Press "Update" to update the roster, or dismiss this message to cancel.

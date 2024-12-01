@@ -28,6 +28,8 @@ from interactions import (
   StringSelectOption,
   Permissions,
   Attachment,
+  Modal,
+  ShortText,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 import aiohttp
@@ -135,6 +137,9 @@ class CustomIDs:
 
   RELOAD = CustomID("gacha_reload")
   """Reload the current roster. (no args; confirm)"""
+
+  BANNER = CustomID("gacha_banner_admin")
+  """Manage banners. (id: page; modal)"""
 
 
 class Errors(CurrencyMixin, ReaderCommand):
@@ -911,7 +916,94 @@ class UploadAdmin(WriterCommand):
           )
           return
 
-    cards = api.Card.parse_all(data, ignore_error=True)
-    # TODO: Diff cards
+    new_cards = api.Card.parse_all(data, ignore_error=True)
 
-    await self.send(self.States.PROMPT, other_data={"count": len(cards)})
+    # TODO: Diff cards
+    count_old = await api.Card.count(unlisted=True, unobtained=True)
+    count_added = 0
+    count_changed = 0
+    count_unchanged = 0
+
+    for new_card in new_cards:
+      old_card = await api.Card.fetch(new_card.id)
+      if old_card is None:
+        count_add += 1
+      elif new_card == old_card:
+        count_unchanged += 1
+      else:
+        count_changed += 1
+    count_removed = count_old - count_changed - count_unchanged
+
+    await self.send(
+      self.States.PROMPT,
+      other_data={
+        "count": len(new_cards),
+        "count_added": count_added,
+        "count_removed": count_removed,
+        "count_changed": count_changed,
+        "count_unchanged": count_unchanged,
+      }
+    )
+
+
+class BannerAdmin(ReaderCommand):
+  class States(StrEnum):
+    VIEW = "gacha_admin_banner_view"
+    VIEW_EMPTY = "gacha_admin_banner_view_empty"
+
+    CREATE_ERROR = "gacha_admin_banner_create_error"
+    CREATE_SUCCESS = "gacha_admin_banner_create_success"
+
+
+  async def view(self, page: Optional[int] = None):
+    banners = await api.Banner.fetch_all()
+    current = await api.Banner.count(current_on=self.ctx.id.created_at)
+    if len(banners) <= 0:
+      await self.send(
+        self.States.VIEW_EMPTY,
+        components=[
+
+        ]
+      )
+      return
+
+    page = min(page, len(banners)) if page else 1
+
+    await self.send(
+      self.States.VIEW,
+      other_data={
+        "count": len(banners),
+        "count_active": len([banner for banner in banners if banner.active]),
+        "count_current": current
+      } | banners[page - 1].asdict(),
+      components=[
+
+      ]
+    )
+
+
+  async def prompt(self):
+    return await self.ctx.send_modal(
+      modal=Modal(
+        ShortText(
+          label="Banner Name",
+          custom_id="name",
+          placeholder="e.g. \"Summer\"",
+          required=True,
+        ),
+        ShortText(
+          label="Start Time (UTC+0)",
+          custom_id="start_time_s",
+          placeholder="e.g. 2024-06-01 00:00:00",
+          required=True,
+        ),
+        ShortText(
+          label="End Time (UTC+0)",
+          custom_id="end_time_s",
+          placeholder="e.g. 2024-09-30 00:00:00",
+          required=True,
+        ),
+        title="Create Banner",
+        custom_id=CustomIDs.BANNER.response()
+      )
+    )
