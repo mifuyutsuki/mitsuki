@@ -371,6 +371,7 @@ class MultifieldMixin:
     template_kwargs: Optional[dict] = None,
     timeout: int = 0,
     extra_components: Optional[List[BaseComponent]] = None,
+    page_index: Optional[int] = None,
     **kwargs
   ):
     if not template:
@@ -383,6 +384,10 @@ class MultifieldMixin:
     message = self.message_multifield(template, other_data, **template_kwargs)
     paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
     paginator.show_select_menu = True
+    if page_index:
+      if not (0 <= page_index < len(paginator.pages)):
+        raise IndexError("Specified page index out of range")
+      paginator.page_index = page_index
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
 
@@ -421,6 +426,7 @@ class MultifieldMixin:
     template_kwargs: Optional[dict] = None,
     timeout: int = 0,
     extra_components: Optional[List[BaseComponent]] = None,
+    page_index: Optional[int] = None,
     **kwargs
   ):
     if not template:
@@ -433,6 +439,10 @@ class MultifieldMixin:
     message = self.message_multipage(template, other_data, **template_kwargs)
     paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
     paginator.show_select_menu = True
+    if page_index:
+      if not (0 <= page_index < len(paginator.pages)):
+        raise IndexError("Specified page index out of range")
+      paginator.page_index = page_index
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
 
