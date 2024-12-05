@@ -657,6 +657,9 @@ class Roll(BaseRoll, BaseCard, BaseRarity):
 class Card(BaseCard, BaseRarity):
   """Mitsuki gacha card."""
 
+  roll_pity: Optional[int] = field(default=None)
+  roll_banner: Optional["Banner"] = field(default=None)
+
 
   def __eq__(self, value: object) -> bool:
     if not isinstance(value, Card):
@@ -1414,7 +1417,11 @@ class Arona:
       rarity=rarity_get, banner=banner.id if banner else None, rollable_only=True,
     )
 
-    return self.random.choice(choices)
+    card = self.random.choice(choices)
+    card.roll_pity = min_rarity
+    if banner:
+      card.roll_banner = banner
+    return card
 
 
   @classmethod
