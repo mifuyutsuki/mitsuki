@@ -1377,7 +1377,7 @@ class Arona:
 
       pity_counters = await Pity.fetch(user)
       for pity_counter in pity_counters:
-        if pity_counter.count >= self.rarities:
+        if pity_counter.pity and pity_counter.count + 1 >= pity_counter.pity:
           min_rarity = max(pity_counter.rarity, min_rarity) if min_rarity else pity_counter.rarity
 
     # Rarity calculation
@@ -1396,7 +1396,7 @@ class Arona:
     # Banner calculation
     available_banners = await Banner.fetch_current(time=time, rarity=rarity_get)
 
-    banner_rates = [available_banner.weight for available_banner in available_banners]
+    banner_rates = [available_banner.rate for available_banner in available_banners]
     if sum(banner_rates) >= 1.0:
       banner_rates /= sum(banner_rates)
 
