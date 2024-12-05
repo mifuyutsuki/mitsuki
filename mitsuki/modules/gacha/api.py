@@ -15,7 +15,7 @@
 from sqlalchemy import select, insert, update, delete, Row
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import func
-from sqlalchemy.sql.expression import case, literal_column
+from sqlalchemy.sql.expression import case, literal_column, or_
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.dialects.postgresql import insert as postgres_insert
 
@@ -1233,8 +1233,18 @@ class Banner(BaseBanner):
     if rarity:
       statement = (
         statement
-        .where(schema.Banner.min_rarity <= rarity)
-        .where(schema.Banner.max_rarity >= rarity)
+        .where(
+          or_(
+            schema.Banner.min_rarity <= rarity,
+            schema.Banner.min_rarity == None
+          )
+        )
+        .where(
+          or_(
+            schema.Banner.max_rarity >= rarity,
+            schema.Banner.max_rarity == None
+          )
+        )
       )
 
     async with new_session() as session:
