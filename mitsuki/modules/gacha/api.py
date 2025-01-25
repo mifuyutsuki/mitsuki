@@ -1417,6 +1417,15 @@ class Arona:
       rarity=rarity_get, banner=banner.id if banner else None, rollable_only=True,
     )
 
+    # If no choices (due to unassigned banners), fall back to non-banner roll
+    if len(choices) == 0:
+      banner  = None
+      choices = await Card.fetch_all(rarity=rarity_get, banner=None, rollable_only=True)
+  
+    # If no choices (due to no cards to roll), raise
+    if len(choices) == 0:
+      raise RuntimeError("No cards available to roll")
+
     card = self.random.choice(choices)
     card.roll_pity = min_rarity
     if banner:
