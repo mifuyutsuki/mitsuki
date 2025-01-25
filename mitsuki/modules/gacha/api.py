@@ -163,243 +163,6 @@ class Rarity(BaseRarity):
 
 
 @define(kw_only=True, slots=False)
-class GachaUser(BaseGachaUser):
-  """Gacha player, including their shards and daily records."""
-
-  last_daily_f: str = field(init=False)
-  last_daily_d: str = field(init=False)
-  first_daily_f: str = field(init=False)
-  first_daily_d: str = field(init=False)
-
-  def __attrs_post_init__(self):
-    self.last_daily_f = self.last_daily_dt.format("f") if self.last_daily else "-"
-    self.last_daily_d = self.last_daily_dt.format("D") if self.last_daily else "-"
-    self.first_daily_f = self.first_daily_dt.format("f") if self.first_daily else "-"
-    self.first_daily_d = self.first_daily_dt.format("D") if self.first_daily else "-"
-
-
-  @property
-  def last_daily_dt(self):
-    if not self.last_daily:
-      return None
-    return Timestamp.fromtimestamp(self.last_daily, tz=timezone.utc)
-
-
-  @property
-  def first_daily_dt(self):
-    if not self.first_daily:
-      return None
-    return Timestamp.fromtimestamp(self.first_daily, tz=timezone.utc)
-
-
-  @classmethod
-  async def fetch(cls, user: Union[BaseUser, Snowflake]):
-    """
-    Fetch gacha data for a given user, including shards count, last daily time, and first daily time.
-
-    Args:
-      user: User object or user ID
-    """
-
-    if isinstance(user, BaseUser):
-      user = user.id
-    elif not isinstance(user, int):
-      # Snowflake is an instance of int
-      raise TypeError("Cannot read user object of unsupported type")
-    
-    statement = (
-      select(schema.Currency)
-      .where(schema.Currency.user == user)
-    )
-
-    async with new_session() as session:
-      result = await session.scalar(statement)
-
-    if not result:
-      return None
-    return cls(**result.asdict())
-
-
-  @staticmethod
-  async def exists(user: Union[BaseUser, Snowflake]):
-    """
-    Check if a gacha user exists by checking the Currency data.
-
-    Args:
-      user: User object or user ID
-    """
-
-    if isinstance(user, BaseUser):
-      user = user.id
-    elif not isinstance(user, int):
-      # Snowflake is an instance of int
-      raise TypeError("Cannot read user object of unsupported type")
-    
-    statement = select(schema.Currency.user).where(schema.Currency.user == user)
-    async with new_session() as session:
-      return await session.scalar(statement) is not None
-
-
-  @classmethod
-  async def new(cls, session: AsyncSession, user: Union[BaseUser, Snowflake], init_shards: Optional[int] = None):
-    """
-    Create a new gacha user.
-
-    Args:
-      user: User object or user ID
-      init_shards: Amount of initial shards to give to user
-    """
-
-    if isinstance(user, BaseUser):
-      user = user.id
-    elif not isinstance(user, int):
-      # Snowflake is an instance of int
-      raise TypeError("Cannot read user object of unsupported type")
-
-    # 1. Currency
-    statement = (
-      insert(schema.Currency)
-      .values(user=user, amount=init_shards or 0)
-    )
-    await session.execute(statement)
-
-    # 2. Pity counter
-    await Pity.new(session, user)
-
-    return cls(user=user, amount=init_shards or 0)
-
-
-  @staticmethod
-  def next_daily(
-    from_time: Optional[Union[Timestamp, datetime, float]] = None,
-    reset_time: Optional[datetime] = None
-  ):
-    from_time = from_time or datetime.now(tz=timezone.utc).timestamp()
-    if isinstance(from_time, float):
-      from_time = datetime.fromtimestamp(from_time, tz=timezone.utc)
-    elif not isinstance(from_time, datetime):
-      # Timestamp is an instance of datetime
-      raise TypeError("Cannot read roll time of unsupported type")
-
-    reset_time = reset_time or settings.mitsuki.daily_reset_dt
-    next_daily = from_time.replace(
-      hour=reset_time.hour, minute=reset_time.minute, second=0, microsecond=0
-    )
-    if from_time > next_daily:
-      next_daily = next_daily + timedelta(days=1)
-    return next_daily
-
-
-  def is_daily(
-    self,
-    time: Optional[Union[Timestamp, datetime, float]] = None,
-    reset_time: Optional[datetime] = None
-  ):
-    if self.last_daily is None:
-      return True
-
-    time = time or datetime.now(tz=timezone.utc).timestamp()
-    if isinstance(time, float):
-      time = datetime.fromtimestamp(time, tz=timezone.utc)
-    elif not isinstance(time, datetime):
-      # Timestamp is an instance of datetime
-      raise TypeError("Cannot read roll time of unsupported type")
-
-    return time >= self.next_daily(self.last_daily, reset_time)
-
-
-  def is_first_daily(self):
-    return self.first_daily is None
-
-
-  async def exchange(self, session: AsyncSession, target_user: Union[BaseUser, Snowflake], shards: int):
-    """
-    Exchange a given amount of shards from this user to a target user.
-
-    This should be executed from a gacha user obtained using fetch().
-
-    Args:
-      session: Database write session
-      target_user: Target user object or user ID
-      shards: Amount of shards to give to target user
-    """
-
-    if isinstance(target_user, BaseUser):
-      target_user = target_user.id
-    elif not isinstance(target_user, int):
-      # Snowflake is an instance of int
-      raise TypeError("Cannot read user object of unsupported type")
-
-    if not await self.exists(self.user):
-      self = await self.new(session, self.user)
-    if not await self.exists(target_user):
-      await self.new(session, target_user)
-
-    statement = (
-      update(schema.Currency)
-      .where(schema.Currency.user == self.user)
-      .values(amount=schema.Currency.__table__.c.amount - shards)
-      .returning(schema.Currency.amount)
-    )
-    new_shards = await session.scalar(statement)
-
-    statement = (
-      update(schema.Currency)
-      .where(schema.Currency.user == target_user)
-      .values(amount=schema.Currency.__table__.c.amount + shards)
-    )
-    await session.execute(statement)
-
-    self.amount = new_shards or self.amount - shards
-
-
-  async def give(
-    self,
-    session: AsyncSession,
-    shards: int,
-    daily_time: Optional[Union[Timestamp, datetime, float]] = None
-  ):
-    """
-    Give a given amount of shards to this user.
-
-    For daily shards, provide the timestamp in daily_time.
-
-    Args:
-      session: Database write session
-      shards: Amount of shards to give to this user
-      daily_time: Daily claim time, if this is a daily
-    """
-
-    if isinstance(daily_time, datetime):
-      # Timestamp is an instance of datetime
-      daily_time = daily_time.timestamp()
-    elif daily_time is not None and not isinstance(daily_time, float):
-      raise TypeError("Cannot read roll time of unsupported type")
-
-    if not await self.exists(self.user):
-      self = await self.new(session, self.user)
-
-    statement = (
-      update(schema.Currency)
-      .where(schema.Currency.user == self.user)
-    )
-    updates = {"amount": schema.Currency.__table__.c.amount + shards}
-    if daily_time:
-      updates |= {"last_daily": daily_time}
-      if self.first_daily is None:
-        updates |= {"first_daily": daily_time}
-
-    statement = statement.values(updates).returning(schema.Currency.amount)
-    new_shards = await session.scalar(statement)
-
-    self.amount = new_shards or self.amount + shards
-    if daily_time:
-      self.last_daily = daily_time
-      if self.first_daily is None:
-        self.first_daily = daily_time
-
-
-@define(kw_only=True, slots=False)
 class Pity(BaseGachaUser, BasePity, Rarity):
   """Gacha user's pity counter for a given rarity."""
 
@@ -494,72 +257,6 @@ class Pity(BaseGachaUser, BasePity, Rarity):
         )
       )
       await session.execute(statement)
-
-
-@define(kw_only=True)
-class UserStats(BasePity, BaseRarity):
-  """Gacha user's roll statistics for a given rarity, including first rolls and number of rolls."""
-
-  count: Optional[int] = field(default=None)
-
-  first_roll: Optional[float] = field(default=None)
-  last_roll: Optional[float] = field(default=None)
-  cards_unique: int = field(default=0)
-  cards_rolled: int = field(default=0)
-
-  @classmethod
-  async def fetch(cls, user: Union[BaseUser, Snowflake]):
-    if isinstance(user, BaseUser):
-      user = user.id
-    elif not isinstance(user, int):
-      # Snowflake is an instance of int
-      raise TypeError("Cannot read user object of unsupported type")
-
-    if not await GachaUser.exists(user):
-      return []
-
-    subq_cards = (
-      select(
-        schema.Card.rarity,
-        func.count(schema.Roll.card.distinct()).label("cards"),
-        func.sum(schema.Roll.card).label("rolled"),
-        func.min(schema.Roll.time).label("first_roll"),
-        func.max(schema.Roll.time).label("last_roll")
-      )
-      .join(schema.Roll, schema.Roll.card == schema.Card.id)
-      .where(schema.Roll.user == user)
-      .where(schema.Card.unlisted == False)
-      .group_by(schema.Card.rarity)
-      .subquery("subq_cards")
-    )
-    subq_pity = (
-      select(schema.Pity)
-      .where(schema.Pity.user == user)
-      .subquery("subq_pity")
-    )
-    query = (
-      select(
-        schema.Settings,
-        subq_pity,
-        func.coalesce(subq_cards.c.cards, 0).label("cards"),
-        func.coalesce(subq_cards.c.rolled, 0).label("rolled"),
-      )
-      .join(subq_pity, subq_pity.c.rarity == schema.Settings.rarity, isouter=True)
-      .join(subq_cards, subq_cards.c.rarity == schema.Settings.rarity, isouter=True)
-    )
-
-    async with new_session() as session:
-      results = (await session.execute(query)).all()
-
-    return [cls(
-      user=user,
-      first_roll=result.first_roll,
-      last_roll=result.last_roll,
-      cards_unique=result.cards,
-      cards_rolled=result.rolled,
-      count=result.count,
-      **result.Settings.asdict()
-    ) for result in results]
 
 
 @define(kw_only=True, slots=False)
@@ -913,6 +610,309 @@ class Card(BaseCard, BaseRarity):
       )
     )
     await session.execute(statement)
+
+
+@define(kw_only=True, slots=False)
+class GachaUser(BaseGachaUser):
+  """Gacha player, including their shards and daily records."""
+
+  last_daily_f: str = field(init=False)
+  last_daily_d: str = field(init=False)
+  first_daily_f: str = field(init=False)
+  first_daily_d: str = field(init=False)
+
+  def __attrs_post_init__(self):
+    self.last_daily_f = self.last_daily_dt.format("f") if self.last_daily else "-"
+    self.last_daily_d = self.last_daily_dt.format("D") if self.last_daily else "-"
+    self.first_daily_f = self.first_daily_dt.format("f") if self.first_daily else "-"
+    self.first_daily_d = self.first_daily_dt.format("D") if self.first_daily else "-"
+
+
+  @property
+  def last_daily_dt(self):
+    if not self.last_daily:
+      return None
+    return Timestamp.fromtimestamp(self.last_daily, tz=timezone.utc)
+
+
+  @property
+  def first_daily_dt(self):
+    if not self.first_daily:
+      return None
+    return Timestamp.fromtimestamp(self.first_daily, tz=timezone.utc)
+
+
+  @classmethod
+  async def fetch(cls, user: Union[BaseUser, Snowflake]):
+    """
+    Fetch gacha data for a given user, including shards count, last daily time, and first daily time.
+
+    Args:
+      user: User object or user ID
+    """
+
+    if isinstance(user, BaseUser):
+      user = user.id
+    elif not isinstance(user, int):
+      # Snowflake is an instance of int
+      raise TypeError("Cannot read user object of unsupported type")
+    
+    statement = (
+      select(schema.Currency)
+      .where(schema.Currency.user == user)
+    )
+
+    async with new_session() as session:
+      result = await session.scalar(statement)
+
+    if not result:
+      return None
+    return cls(**result.asdict())
+
+
+  @staticmethod
+  async def exists(user: Union[BaseUser, Snowflake]):
+    """
+    Check if a gacha user exists by checking the Currency data.
+
+    Args:
+      user: User object or user ID
+    """
+
+    if isinstance(user, BaseUser):
+      user = user.id
+    elif not isinstance(user, int):
+      # Snowflake is an instance of int
+      raise TypeError("Cannot read user object of unsupported type")
+    
+    statement = select(schema.Currency.user).where(schema.Currency.user == user)
+    async with new_session() as session:
+      return await session.scalar(statement) is not None
+
+
+  @classmethod
+  async def new(cls, session: AsyncSession, user: Union[BaseUser, Snowflake], init_shards: Optional[int] = None):
+    """
+    Create a new gacha user.
+
+    Args:
+      user: User object or user ID
+      init_shards: Amount of initial shards to give to user
+    """
+
+    if isinstance(user, BaseUser):
+      user = user.id
+    elif not isinstance(user, int):
+      # Snowflake is an instance of int
+      raise TypeError("Cannot read user object of unsupported type")
+
+    # 1. Currency
+    statement = (
+      insert(schema.Currency)
+      .values(user=user, amount=init_shards or 0)
+    )
+    await session.execute(statement)
+
+    # 2. Pity counter
+    await Pity.new(session, user)
+
+    return cls(user=user, amount=init_shards or 0)
+
+
+  @staticmethod
+  def next_daily(
+    from_time: Optional[Union[Timestamp, datetime, float]] = None,
+    reset_time: Optional[datetime] = None
+  ):
+    from_time = from_time or datetime.now(tz=timezone.utc).timestamp()
+    if isinstance(from_time, float):
+      from_time = datetime.fromtimestamp(from_time, tz=timezone.utc)
+    elif not isinstance(from_time, datetime):
+      # Timestamp is an instance of datetime
+      raise TypeError("Cannot read roll time of unsupported type")
+
+    reset_time = reset_time or settings.mitsuki.daily_reset_dt
+    next_daily = from_time.replace(
+      hour=reset_time.hour, minute=reset_time.minute, second=0, microsecond=0
+    )
+    if from_time > next_daily:
+      next_daily = next_daily + timedelta(days=1)
+    return next_daily
+
+
+  def is_daily(
+    self,
+    time: Optional[Union[Timestamp, datetime, float]] = None,
+    reset_time: Optional[datetime] = None
+  ):
+    if self.last_daily is None:
+      return True
+
+    time = time or datetime.now(tz=timezone.utc).timestamp()
+    if isinstance(time, float):
+      time = datetime.fromtimestamp(time, tz=timezone.utc)
+    elif not isinstance(time, datetime):
+      # Timestamp is an instance of datetime
+      raise TypeError("Cannot read roll time of unsupported type")
+
+    return time >= self.next_daily(self.last_daily, reset_time)
+
+
+  def is_first_daily(self):
+    return self.first_daily is None
+
+
+  async def exchange(self, session: AsyncSession, target_user: Union[BaseUser, Snowflake], shards: int):
+    """
+    Exchange a given amount of shards from this user to a target user.
+
+    This should be executed from a gacha user obtained using fetch().
+
+    Args:
+      session: Database write session
+      target_user: Target user object or user ID
+      shards: Amount of shards to give to target user
+    """
+
+    if isinstance(target_user, BaseUser):
+      target_user = target_user.id
+    elif not isinstance(target_user, int):
+      # Snowflake is an instance of int
+      raise TypeError("Cannot read user object of unsupported type")
+
+    if not await self.exists(self.user):
+      self = await self.new(session, self.user)
+    if not await self.exists(target_user):
+      await self.new(session, target_user)
+
+    statement = (
+      update(schema.Currency)
+      .where(schema.Currency.user == self.user)
+      .values(amount=schema.Currency.__table__.c.amount - shards)
+      .returning(schema.Currency.amount)
+    )
+    new_shards = await session.scalar(statement)
+
+    statement = (
+      update(schema.Currency)
+      .where(schema.Currency.user == target_user)
+      .values(amount=schema.Currency.__table__.c.amount + shards)
+    )
+    await session.execute(statement)
+
+    self.amount = new_shards or self.amount - shards
+
+
+  async def give(
+    self,
+    session: AsyncSession,
+    shards: int,
+    daily_time: Optional[Union[Timestamp, datetime, float]] = None
+  ):
+    """
+    Give a given amount of shards to this user.
+
+    For daily shards, provide the timestamp in daily_time.
+
+    Args:
+      session: Database write session
+      shards: Amount of shards to give to this user
+      daily_time: Daily claim time, if this is a daily
+    """
+
+    if isinstance(daily_time, datetime):
+      # Timestamp is an instance of datetime
+      daily_time = daily_time.timestamp()
+    elif daily_time is not None and not isinstance(daily_time, float):
+      raise TypeError("Cannot read roll time of unsupported type")
+
+    if not await self.exists(self.user):
+      self = await self.new(session, self.user)
+
+    statement = (
+      update(schema.Currency)
+      .where(schema.Currency.user == self.user)
+    )
+    updates = {"amount": schema.Currency.__table__.c.amount + shards}
+    if daily_time:
+      updates |= {"last_daily": daily_time}
+      if self.first_daily is None:
+        updates |= {"first_daily": daily_time}
+
+    statement = statement.values(updates).returning(schema.Currency.amount)
+    new_shards = await session.scalar(statement)
+
+    self.amount = new_shards or self.amount + shards
+    if daily_time:
+      self.last_daily = daily_time
+      if self.first_daily is None:
+        self.first_daily = daily_time
+
+
+@define(kw_only=True)
+class UserStats(BasePity, BaseRarity):
+  """Gacha user's roll statistics for a given rarity, including first rolls and number of rolls."""
+
+  count: Optional[int] = field(default=None)
+
+  first_roll: Optional[float] = field(default=None)
+  last_roll: Optional[float] = field(default=None)
+  cards_unique: int = field(default=0)
+  cards_rolled: int = field(default=0)
+
+  @classmethod
+  async def fetch(cls, user: Union[BaseUser, Snowflake]):
+    if isinstance(user, BaseUser):
+      user = user.id
+    elif not isinstance(user, int):
+      # Snowflake is an instance of int
+      raise TypeError("Cannot read user object of unsupported type")
+
+    if not await GachaUser.exists(user):
+      return []
+
+    subq_cards = (
+      select(
+        schema.Card.rarity,
+        func.count(schema.Roll.card.distinct()).label("cards"),
+        func.sum(schema.Roll.card).label("rolled"),
+        func.min(schema.Roll.time).label("first_roll"),
+        func.max(schema.Roll.time).label("last_roll")
+      )
+      .join(schema.Roll, schema.Roll.card == schema.Card.id)
+      .where(schema.Roll.user == user)
+      .where(schema.Card.unlisted == False)
+      .group_by(schema.Card.rarity)
+      .subquery("subq_cards")
+    )
+    subq_pity = (
+      select(schema.Pity)
+      .where(schema.Pity.user == user)
+      .subquery("subq_pity")
+    )
+    query = (
+      select(
+        schema.Settings,
+        subq_pity,
+        func.coalesce(subq_cards.c.cards, 0).label("cards"),
+        func.coalesce(subq_cards.c.rolled, 0).label("rolled"),
+      )
+      .join(subq_pity, subq_pity.c.rarity == schema.Settings.rarity, isouter=True)
+      .join(subq_cards, subq_cards.c.rarity == schema.Settings.rarity, isouter=True)
+    )
+
+    async with new_session() as session:
+      results = (await session.execute(query)).all()
+
+    return [cls(
+      user=user,
+      first_roll=result.first_roll,
+      last_roll=result.last_roll,
+      cards_unique=result.cards,
+      cards_rolled=result.rolled,
+      count=result.count,
+      **result.Settings.asdict()
+    ) for result in results]
 
 
 @define(kw_only=True, slots=False)
