@@ -60,6 +60,11 @@ class Search:
     return li
 
 
+# =================================================================================================
+# Base objects
+# =================================================================================================
+
+
 @define(kw_only=True, slots=False)
 class BaseRarity(AsDict):
   rarity: int
@@ -127,6 +132,11 @@ class BaseGachaUser(AsDict):
   amount: int
   last_daily: Optional[float] = field(default=None)
   first_daily: Optional[float] = field(default=None)
+
+
+# =================================================================================================
+# Non-base objects
+# =================================================================================================
 
 
 @define(kw_only=True, slots=False)
@@ -1218,6 +1228,18 @@ class Banner(BaseBanner):
     time: Optional[Union[Timestamp, datetime, int, float]] = None,
     rarity: Optional[int] = None
   ):
+    """
+    Fetch currently active banners as of a given time.
+    
+    Args:
+      time: Reference current time
+      rarity: Target card rarity, or any rarity if none
+
+    Returns:
+      List of current banner information
+    """
+
+    # Convert time arg to timestamp
     time = time or datetime.now(tz=timezone.utc).timestamp()
     if isinstance(time, datetime):
       # Timestamp is an instance of datetime
@@ -1258,6 +1280,13 @@ class Banner(BaseBanner):
 
   @classmethod
   async def fetch_all(cls):
+    """
+    Fetch all banners.
+    
+    Returns:
+      List of banner information
+    """
+
     statement = select(schema.Banner).order_by(schema.Banner.start_time.desc())
 
     async with new_session() as session:
@@ -1272,6 +1301,17 @@ class Banner(BaseBanner):
     current_on: Optional[Union[Timestamp, datetime, int, float]] = None,
     rarity: Optional[int] = None,
   ):
+    """
+    Obtain the count of all banners.
+
+    Args:
+      current_on: Reference current time, or all banners if none
+      rarity: Target card rarity, or any rarity if none
+    
+    Returns:
+      Banner count
+    """
+
     current_on = current_on or datetime.now(tz=timezone.utc).timestamp()
     if isinstance(current_on, datetime):
       # Timestamp is an instance of datetime
@@ -1297,7 +1337,7 @@ class Banner(BaseBanner):
         .where(schema.Banner.min_rarity <= rarity)
         .where(schema.Banner.max_rarity >= rarity)
       )
-    
+
     async with new_session() as session:
       return await session.scalar(statement) or 0
 
@@ -1362,6 +1402,24 @@ class Arona:
     time: Optional[Union[Timestamp, datetime, float]] = None,
     user: Optional[Union[BaseUser, Snowflake]] = None
   ):
+    """
+    Roll a gacha card.
+    
+    If time is specified, may roll from banners current to that time.
+    If user is specified, uses the user's pity counter if available.
+
+    Args:
+      time: Roll time, used for banner calculation
+      user: Roll user, used for pity calculation
+    
+    Returns:
+      Rolled card object
+    """
+
+    # ---------------------------------------------------------------------------------------------
+    # Argument handling
+
+    # Convert time arg to timestamp
     time = time or datetime.now(tz=timezone.utc).timestamp()
     if isinstance(time, datetime):
       # Timestamp is an instance of datetime
@@ -1372,18 +1430,22 @@ class Arona:
     # If user is specified, check for pity
     min_rarity = None
     if user:
+      # Convert user arg if specified to user id
       if isinstance(user, BaseUser):
         user = user.id
       elif not isinstance(user, int):
         # Snowflake is an instance of int
         raise TypeError("Cannot read user object of unsupported type")
 
+      # Obtain user pity
       pity_counters = await Pity.fetch(user)
       for pity_counter in pity_counters:
         if pity_counter.pity and pity_counter.count + 1 >= pity_counter.pity:
           min_rarity = max(pity_counter.rarity, min_rarity) if min_rarity else pity_counter.rarity
 
+    # ---------------------------------------------------------------------------------------------
     # Rarity calculation
+
     arona_value = self.random.random()
     rarity_get = min(self.rates.items())
 
@@ -1396,7 +1458,9 @@ class Arona:
       if arona_value < 0.0:
         break
 
+    # ---------------------------------------------------------------------------------------------
     # Banner calculation
+
     available_banners = await Banner.fetch_current(time=time, rarity=rarity_get)
 
     banner_rates = [available_banner.rate for available_banner in available_banners]
@@ -1411,6 +1475,9 @@ class Arona:
       if arona_value < 0.0:
         banner = available_banners[idx]
         break
+
+    # ---------------------------------------------------------------------------------------------
+    # Card rolling
 
     # Fetch card ids with correct rarity (and banner) properties
     choices = await Card.fetch_all(
