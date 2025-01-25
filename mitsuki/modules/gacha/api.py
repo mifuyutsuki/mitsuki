@@ -364,7 +364,8 @@ class Roll(BaseRoll, BaseCard, BaseRarity):
 class Card(BaseCard, BaseRarity):
   """Mitsuki gacha card."""
 
-  roll_pity: Optional[int] = field(default=None)
+  roll_pity_counter: Optional[int] = field(default=None)
+  roll_pity_at: Optional[int] = field(default=None)
   roll_banner: Optional["Banner"] = field(default=None)
 
 
@@ -387,40 +388,76 @@ class Card(BaseCard, BaseRarity):
 
 
   @classmethod
+  def create(
+    cls,
+    id: str,
+    name: str,
+    rarity: int,
+    type: str,
+    series: str,
+    group: str,
+    image: Optional[str] = None,
+    tags: Optional[str] = None,
+    limited: bool = False,
+    locked: bool = False,
+    unlisted: bool = False,
+  ):
+    return cls(
+      id=id,
+      name=name,
+      rarity=rarity,
+      type=type,
+      series=series,
+      group=group,
+      image=image,
+      tags=tags,
+      limited=limited,
+      locked=locked,
+      unlisted=unlisted,
+      # Stub values
+      rate=0.0,
+      color=0,
+      stars="",
+    )
+
+
+  @classmethod
   def parse_all(
     cls,
     data: Dict[str, Dict[str, Any]],
     *,
-    rarity_data: Optional["Rarity"] = None,
+    rarities: Optional[List[int]] = None,
     ignore_error: bool = False,
   ) -> List["Card"]:
     li = []
-    for id, card in data.items():
+    for id, card_data in data.items():
       try:
-        li.append(cls(
+        card = cls.create(
           id=id,
-          name=card["name"],
-          rarity=int(card["rarity"]),
-          type=card["type"],
-          series=card["series"],
-          group=card.get("group", card["type"]),
-          image=card.get("image"),
-          limited=bool(card.get("limited")),
-          locked=bool(card.get("locked")),
-          unlisted=bool(card.get("unlisted")),
-          tags=card.get("tags"),
-
-          rate=rarity_data.rate if rarity_data else 0.0,
-          pity=rarity_data.pity if rarity_data else 0,
-          dupe_shards=rarity_data.dupe_shards if rarity_data else 0,
-          color=rarity_data.color if rarity_data else 0,
-          stars=rarity_data.stars if rarity_data else "-",
-        ))
+          name=card_data["name"],
+          rarity=int(card_data["rarity"]),
+          type=card_data["type"],
+          series=card_data["series"],
+          group=card_data.get("group", card_data["type"]),
+          image=card_data.get("image"),
+          limited=bool(card_data.get("limited")),
+          locked=bool(card_data.get("locked")),
+          unlisted=bool(card_data.get("unlisted")),
+          tags=card_data.get("tags"),
+        )
       except (KeyError, ValueError):
         if ignore_error:
           continue
         else:
           raise
+
+      if rarities and card.rarity not in rarities:
+        if ignore_error:
+          continue
+        else:
+          raise ValueError(f"Unexpected rarity '{card.rarity}' while parsing '{card.id}'")
+      
+      li.append(card)
 
     return li
 
@@ -619,6 +656,11 @@ class Card(BaseCard, BaseRarity):
         )
       )
     )
+    await session.execute(statement)
+  
+  
+  async def unlist(self, session: AsyncSession):
+    statement = update(schema.Card).values(unlisted=True)
     await session.execute(statement)
 
 
@@ -1355,6 +1397,8 @@ class Arona:
 
   rarities: Dict[int, Rarity] = field(factory=dict)
 
+  _cards: Dict[str, Card] = field(factory=dict)
+
   @property
   def currency(self):
     return f"{self.currency_icon} {self.currency_name}".strip()
@@ -1395,6 +1439,80 @@ class Arona:
 
   def reload(self, filename: Optional[str] = None):
     self = self.load(filename)
+
+
+  async def load_roster(self, filename: Optional[str] = None):
+    filename = filename or settings.gacha.roster
+    with open(filename, encoding='UTF-8') as f:
+      data = safe_load(f)
+
+    if not isinstance(data, dict):
+      raise TypeError("Cannot read roster file")
+
+    # Roster fetching
+    # If a required field is missing, skip entry
+    cards = {
+      card.id: card for card in Card.parse_all(
+        data, rarities=self.rarities.keys(), ignore_error=True
+      )
+    }
+
+    # For logging purposes
+    # error_count = len(data) - len(cards)
+
+    self._cards = cards
+
+
+  async def sync_roster(self):
+    if len(self._cards) == 0:
+      raise ValueError("No cards to sync, load roster file to continue")
+
+    old_cards: Dict[str, Card] = {card.id: card for card in await Card.fetch_all(unlisted=True, unobtained=True)}
+    new_cards: Dict[str, Card] = self._cards
+
+    upsert_cards: List[Card] = []
+    delete_cards: List[Card] = []
+
+    for id, new_card in new_cards.items():
+      # Existing card
+      if old_card := old_cards.get(id):
+        del old_cards[id]
+
+        # No updates
+        if old_card == new_card:
+          continue
+        # Has updates
+        upsert_cards.append(new_card)
+
+      # New card
+      else:
+        upsert_cards.append(new_card)
+
+    # Delete cards (sets unlisted)
+    delete_cards.extend(old_cards.values())
+  
+    # Process cards
+    async with new_session() as session:
+      try:
+        for card in upsert_cards:
+          await card.add(session)
+        for card in delete_cards:
+          await card.unlist(session)
+      except Exception:
+        await session.rollback()
+        raise
+      await session.commit()
+
+
+  async def fetch_card(self, id: str, force: bool = False):
+    # Fetch from cache, unless force == True
+    if (card := self._cards.get(id)) and not force:
+      return card
+
+    # If not in cache, or force == True, fetch from db
+    if card := await Card.fetch(id):
+      self._cards[id] = card
+    return card
 
 
   async def roll(
@@ -1494,7 +1612,8 @@ class Arona:
       raise RuntimeError("No cards available to roll")
 
     card = self.random.choice(choices)
-    card.roll_pity = min_rarity
+    card.roll_pity_counter = min_rarity
+    card.roll_pity_at = self.rarities[card.rarity].pity
     if banner:
       card.roll_banner = banner
     return card
