@@ -226,6 +226,9 @@ class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
     total_rolled: int
 
   async def run(self, target: Optional[BaseUser] = None):
+    # Arona API TODO:
+    # - UserStats.fetch(user)
+
     self.set_target(target or self.caller_user)
     await self.defer(suppress_error=True)
 
@@ -391,6 +394,16 @@ class Daily(CurrencyMixin, WriterCommand):
     return self.data.shards
 
   async def run(self):
+    # Arona API TODO:
+    #   Instead of separate calls to daily_check() and shards(),
+    #   simply fetch the gacha user, and use GachaUser methods.
+    #   
+    #   Daily time can be taken from call time, ctx.id.created_at, as ctx.id is a snowflake containing its time.
+    #   
+    #   - GachaUser.fetch(user.id)
+    #   - GachaUser.is_daily(call_time)
+    #   - GachaUser.give(session, arona.daily_shards, daily_time=call_time)
+
     user = self.caller_user
     available      = await userdata.daily_check(user.id)
     current_shards = await userdata.shards(user.id)
@@ -454,6 +467,25 @@ class Roll(CurrencyMixin, WriterCommand):
 
 
   async def roll(self):
+    # Arona API TODO:
+    #   User is still fetched for sufficient shards using GachaUser.fetch().
+    #   
+    #   Instead of separate calls to pity_get() and roll(),
+    #   the new arona.roll() takes in user id, which allows Arona to use the user's pity counters.
+    #   
+    #   Roll time can be taken from call time, ctx.id.created_at, as ctx.id is a snowflake containing its time.
+    #   
+    #   Reads:
+    #   - GachaUser.has_shards(arona.daily_shards)
+    #   - Arona.roll(time=call_time, user=user)
+    #   - UserInventory.has_card(user, card)
+    #   
+    #   Writes:
+    #   - GachaUser.give(session, self.dupe_shards - arona.daily_shards)
+    #   - Roll.add(session, card, call_time)
+    #   - UserInventory.give(session, card)
+    #   - UserPity.increment(session, user, card.rarity)
+
     user_shards = await userdata.shards(self.caller_id)
     roll_cost   = gacha.cost
 
