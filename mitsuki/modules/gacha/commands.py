@@ -30,6 +30,7 @@ from interactions import (
   Attachment,
   Modal,
   ShortText,
+  ActionRow,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 import aiohttp
@@ -138,8 +139,11 @@ class CustomIDs:
   RELOAD = CustomID("gacha_reload")
   """Reload the current roster. (no args; confirm)"""
 
-  BANNER = CustomID("gacha_banner_admin")
-  """Manage banners. (id: page; modal)"""
+  BANNER = CustomID("gacha_banner")
+  """Manage banners. (modal)"""
+
+  BANNER_CONFIGURE = CustomID("gacha_banner_configure")
+  """Configure a banner. (id: Banner ID)"""
 
 
 class Errors(CurrencyMixin, ReaderCommand):
@@ -978,39 +982,57 @@ class UploadAdmin(WriterCommand):
     )
 
 
-class BannerAdmin(ReaderCommand):
+class BannerAdmin(SelectionMixin, ReaderCommand):
   class States(StrEnum):
+    LIST = "gacha_admin_banner_list"
+    LIST_EMPTY = "gacha_admin_banner_list"
+
     VIEW = "gacha_admin_banner_view"
-    VIEW_EMPTY = "gacha_admin_banner_view_empty"
 
     CREATE_ERROR = "gacha_admin_banner_create_error"
     CREATE_SUCCESS = "gacha_admin_banner_create_success"
 
 
-  async def view(self, page: Optional[int] = None):
+  async def list(self):
     banners = await api.Banner.fetch_all()
     current = await api.Banner.count(current_on=self.ctx.id.created_at)
-    if len(banners) <= 0:
-      await self.send(
-        self.States.VIEW_EMPTY,
-        components=[
-
-        ]
+    components = [
+      ActionRow(
+        Button(
+          style=ButtonStyle.GREEN,
+          label="Add...",
+          custom_id=CustomIDs.BANNER.prompt()
+        ),
+        Button(
+          style=ButtonStyle.GRAY,
+          label="Refresh",
+          custom_id=CustomIDs.BANNER
+        )
       )
+    ]
+
+    if len(banners) <= 0:
+      await self.send(self.States.LIST_EMPTY, components=components)
       return
 
-    page = min(page, len(banners)) if page else 1
+    self.field_data = banners
+    self.selection_values = [
+      StringSelectOption(
+        label=banner.name,
+        value=banner.id,
+      )
+      for banner in banners
+    ]
+    self.selection_placeholder = "Banner to configure..."
 
-    await self.send(
-      self.States.VIEW,
+    await self.send_selection(
+      self.States.LIST,
       other_data={
         "count": len(banners),
         "count_active": len([banner for banner in banners if banner.active]),
         "count_current": current
-      } | banners[page - 1].asdict(),
-      components=[
-
-      ]
+      },
+      extra_components=components
     )
 
 
