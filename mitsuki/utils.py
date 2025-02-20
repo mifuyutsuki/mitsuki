@@ -25,6 +25,7 @@ import regex as re
 
 __all__ = (
   "ratio",
+  "substring_ratio",
   "escape_text",
   "process_text",
   "remove_accents",
@@ -45,6 +46,12 @@ def ratio(s1: str, s2: str, processor=None):
     + (0.35 * fuzz.ratio(s1, s2, processor=processor))
     + (0.10 * fuzz.partial_ratio(s1, s2, processor=processor))
   )
+
+
+def substring_ratio(s1: str, s2: str, processor=None):
+  _s1 = processor(s1)
+  _s2 = processor(s2)
+  return 1.0 if (_s1 in _s2 or _s2 in _s1) else 0.0
 
 
 def escape_text(text: str):
