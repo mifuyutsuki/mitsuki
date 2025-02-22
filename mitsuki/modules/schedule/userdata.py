@@ -582,6 +582,7 @@ class Message(AsDict):
     sort: Optional[str] = None,
     limit: Optional[int] = None,
     offset: Optional[int] = None,
+    ascending: bool = False,
   ):
     query = (
       select(
@@ -609,11 +610,11 @@ class Message(AsDict):
     sort = sort or "number"
     match sort:
       case "number":
-        query = query.order_by(schema.Message.number.desc())
+        query = query.order_by(schema.Message.number if ascending else schema.Message.number.desc())
       case "created":
-        query = query.order_by(schema.Message.date_created.desc())
+        query = query.order_by(schema.Message.date_created if ascending else schema.Message.date_created.desc())
       case "modified":
-        query = query.order_by(schema.Message.date_modified.desc())
+        query = query.order_by(schema.Message.date_modified if ascending else schema.Message.date_modified.desc())
       case _:
         raise ValueError(f"Unknown sort option '{sort}'")
 
