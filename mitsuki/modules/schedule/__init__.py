@@ -171,6 +171,14 @@ class ScheduleModule(Extension):
   async def message_manage_btn(self, ctx: ComponentContext):
     return await ManageMessages.create(ctx).list_from_button()
 
+  @component_callback(CustomIDs.MESSAGE_LIST_BACKLOG.string_id_pattern())
+  async def message_manage_backlog_btn(self, ctx: ComponentContext):
+    return await ManageMessages.create(ctx).list_backlog_from_button()
+
+  @component_callback(CustomIDs.MESSAGE_LIST_POSTED.string_id_pattern())
+  async def message_manage_posted_btn(self, ctx: ComponentContext):
+    return await ManageMessages.create(ctx).list_posted_from_button()
+
   @component_callback(CustomIDs.MESSAGE_VIEW.string_id_pattern())
   async def message_manage_view_btn(self, ctx: ComponentContext):
     return await ManageMessages.create(ctx).view_from_button()

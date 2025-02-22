@@ -1,5 +1,6 @@
 _namespace: schedule_message
 
+
 # [Multifield/Selection]
 list:
   title: >-
@@ -15,6 +16,62 @@ list:
 
       ${long_partial_message}
     inline : false
+
+
+# [Multifield/Selection]
+list_backlog:
+  title: >-
+    Backlog for "${schedule_title}" (${page}/${pages})
+  description: >-
+    `${list_messages}`/`${total_messages}` available - sorted from up next
+  thumbnail: >-
+    ${guild_icon}
+  field:
+    name   : ${posted_mark} (ID-${id}) ${schedule_title} \#${number_s}
+    value  : >-
+      `${tags}`
+
+      ${long_partial_message}
+    inline : false
+
+
+list_backlog_empty:
+  title: >-
+    Backlog for for "${schedule_title}"
+  description: >-
+    `${list_messages}`/`${total_messages}` available - sorted from up next
+
+    No messages in the backlog. Press the `Add` button to add a new message
+  thumbnail: >-
+    ${guild_icon}
+
+
+# [Multifield/Selection]
+list_posted:
+  title: >-
+    Posted for "${schedule_title}" (${page}/${pages})
+  description: >-
+    `${list_messages}`/`${total_messages}` available - sorted from most recent
+  thumbnail: >-
+    ${guild_icon}
+  field:
+    name   : ${posted_mark} (ID-${id}) ${schedule_title} \#${number_s}
+    value  : >-
+      `${tags}`
+
+      ${long_partial_message}
+    inline : false
+
+
+list_posted_empty:
+  title: >-
+    Posted for for "${schedule_title}"
+  description: >-
+    `${list_messages}`/`${total_messages}` available - sorted from most recent
+
+    No messages yet to be posted.
+  thumbnail: >-
+    ${guild_icon}
 
 
 list_empty:

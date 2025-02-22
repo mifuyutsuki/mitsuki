@@ -58,7 +58,13 @@ class CustomIDs:
   """Add a message to a Schedule. (id: Schedule ID/key; modal)"""
 
   MESSAGE_LIST = CustomID("schedule_message_list")
-  """View list of messages in a Schedule. (id: Schedule ID/key)"""
+  """View list of all messages in a Schedule. (id: Schedule ID/key)"""
+
+  MESSAGE_LIST_BACKLOG = CustomID("schedule_message_list_backlog")
+  """View list of backlogged messages in a Schedule. (id: Schedule ID/key)"""
+
+  MESSAGE_LIST_POSTED = CustomID("schedule_message_list_posted")
+  """View list of posted messages in a Schedule. (id: Schedule ID/key)"""
 
   MESSAGE_VIEW = CustomID("schedule_message_view")
   """View a message in a Schedule. (id: Message ID; select)"""

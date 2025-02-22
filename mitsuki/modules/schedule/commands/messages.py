@@ -95,21 +95,36 @@ from ..customids import CustomIDs
 class ManageMessages(SelectionMixin, ReaderCommand):
   data: "ManageMessages.Data"
 
-  @define(slots=False)
+  @define(kw_only=True, slots=False)
   class Data(AsDict):
     total_messages: int
+    list_messages: int = field(default=0)
 
   class Templates(StrEnum):
-    LIST           = "schedule_message_list"
-    LIST_EMPTY     = "schedule_message_list_empty"
-    VIEW           = "schedule_message_view"
+    LIST         = "schedule_message_list"
+    LIST_EMPTY   = "schedule_message_list_empty"
+    VIEW         = "schedule_message_view"
+
+    # New
+    LIST_BACKLOG       = "schedule_message_list_backlog"
+    LIST_BACKLOG_EMPTY = "schedule_message_list_backlog_empty"
+    LIST_POSTED        = "schedule_message_list_posted"
+    LIST_POSTED_EMPTY  = "schedule_message_list_posted_empty"
 
 
   async def list_from_button(self):
     return await self.list(CustomID.get_id_from(self.ctx))
 
 
-  async def list(self, schedule_key: str):
+  async def list_backlog_from_button(self):
+    return await self.list(CustomID.get_id_from(self.ctx), backlog=True)
+
+
+  async def list_posted_from_button(self):
+    return await self.list(CustomID.get_id_from(self.ctx), backlog=False)
+
+
+  async def list(self, schedule_key: str, backlog: Optional[bool] = None):
     # TODO: Break out list to list-backlog and list-posted
     await assert_in_guild(self.ctx)
 
@@ -117,8 +132,11 @@ class ManageMessages(SelectionMixin, ReaderCommand):
     await self.defer(ephemeral=True)
 
     schedule = await check_fetch_schedule(self.ctx, schedule_key)
-    messages = await ScheduleMessage.fetch_by_schedule(self.ctx.guild.id, schedule.title)
-    self.data = self.Data(total_messages=len(messages))
+    messages = await ScheduleMessage.fetch_by_schedule(
+      self.ctx.guild.id, schedule.title, backlog=backlog, ascending=backlog == True,
+    )
+
+    self.data = self.Data(total_messages=schedule.current_number, list_messages=len(messages))
 
     buttons = [
       Button(
@@ -129,7 +147,11 @@ class ManageMessages(SelectionMixin, ReaderCommand):
       Button(
         style=ButtonStyle.GRAY,
         label="Refresh",
-        custom_id=CustomIDs.MESSAGE_LIST.id(schedule.id),
+        custom_id=(
+          CustomIDs.MESSAGE_LIST_BACKLOG if backlog == True
+          else CustomIDs.MESSAGE_LIST_POSTED if backlog == False
+          else CustomIDs.MESSAGE_LIST
+        ).id(schedule.id),
       ),
       Button(
         style=ButtonStyle.GRAY,
@@ -140,7 +162,9 @@ class ManageMessages(SelectionMixin, ReaderCommand):
 
     if len(messages) <= 0:
       await self.send(
-        self.Templates.LIST_EMPTY,
+        self.Templates.LIST_BACKLOG_EMPTY if backlog == True else # backlog (ascending)
+        self.Templates.LIST_POSTED_EMPTY if backlog == False else # posted (descending)
+        self.Templates.LIST_EMPTY,                                # all messages - deprecated
         other_data={"schedule_title": schedule.title},
         components=buttons
       )
@@ -158,7 +182,9 @@ class ManageMessages(SelectionMixin, ReaderCommand):
     ]
     self.selection_placeholder = "Message to view or edit..."
     await self.send_selection(
-      self.Templates.LIST,
+      self.Templates.LIST_BACKLOG if backlog == True else # backlog (ascending)
+      self.Templates.LIST_POSTED if backlog == False else # posted (descending)
+      self.Templates.LIST,                                # all messages - deprecated
       other_data={"schedule_title": schedule.title},
       extra_components=buttons
     )

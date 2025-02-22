@@ -192,8 +192,15 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
           ),
           Button(
             style=ButtonStyle.BLURPLE,
-            label="Messages",
-            custom_id=CustomIDs.MESSAGE_LIST.id(schedule.id)
+            label="View Backlog",
+            custom_id=CustomIDs.MESSAGE_LIST_BACKLOG.id(schedule.id),
+            disabled=schedule.backlog_number == 0
+          ),
+          Button(
+            style=ButtonStyle.BLURPLE,
+            label="View Posted",
+            custom_id=CustomIDs.MESSAGE_LIST_POSTED.id(schedule.id),
+            disabled=schedule.posted_number == 0
           ),
           Button(
             style=ButtonStyle.BLURPLE,
