@@ -546,36 +546,41 @@ class MessageMan:
 # =============================================================================
 
 
-def _defined(s: Optional[str]):
-  return s is not None and len(s.strip()) > 0
-
 BASE_MESSAGES_YAML = settings.mitsuki.messages_default
 CUSTOM_MESSAGES_YAML = settings.mitsuki.messages
 BASE_MESSAGES_DIR = settings.mitsuki.messages_dir
 CUSTOM_MESSAGES_DIR = settings.mitsuki.messages_custom_dir
 
-root = MessageMan()
 
-if _defined(BASE_MESSAGES_DIR):
-  # messages_dir specified
-  root.load_dir(BASE_MESSAGES_DIR)
-  if _defined(CUSTOM_MESSAGES_DIR):
-    root.load_dir(CUSTOM_MESSAGES_DIR, modify=True)
+def _defined(s: Optional[str]):
+  return s is not None and len(s.strip()) > 0
 
-elif _defined(BASE_MESSAGES_YAML):
-  # messages_dir unspecified, messages_default specified
-  root.load(BASE_MESSAGES_YAML)
-  if _defined(CUSTOM_MESSAGES_YAML):
-    root.modify(CUSTOM_MESSAGES_YAML)
 
-elif _defined(CUSTOM_MESSAGES_YAML):
-  # messages_dir and messages_default unspecified, messages specified
-  root.load(CUSTOM_MESSAGES_YAML)
+def load_templates():
+  new_root = MessageMan()
 
-else:
-  logger.warning(
-    "Message template settings not set, initializing root MessageMan with no templates"
-  )
+  if _defined(BASE_MESSAGES_DIR):
+    # messages_dir specified
+    new_root.load_dir(BASE_MESSAGES_DIR)
+    if _defined(CUSTOM_MESSAGES_DIR):
+      new_root.load_dir(CUSTOM_MESSAGES_DIR, modify=True)
+
+  elif _defined(BASE_MESSAGES_YAML):
+    # messages_dir unspecified, messages_default specified
+    new_root.load(BASE_MESSAGES_YAML)
+    if _defined(CUSTOM_MESSAGES_YAML):
+      new_root.modify(CUSTOM_MESSAGES_YAML)
+
+  elif _defined(CUSTOM_MESSAGES_YAML):
+    # messages_dir and messages_default unspecified, messages specified
+    new_root.load(CUSTOM_MESSAGES_YAML)
+
+  else:
+    logger.error("Message template settings not set")
+
+  return new_root
+
+templates = load_templates()
 
 
 # =============================================================================
@@ -616,7 +621,7 @@ def load_message(
   Raises:
       ValueError: Message template 'name' does not exist in loaded file.
   """
-  return root.message(
+  return templates.message(
     template_name=template_name,
     data=data,
     user=user,
@@ -662,7 +667,7 @@ def load_multipage(
   Raises:
       ValueError: Message template 'name' does not exist.
   """
-  return root.multipage(
+  return templates.multipage(
     template_name=template_name,
     pages_data=pages_data,
     base_data=base_data,
@@ -711,7 +716,7 @@ def load_multifield(
   Raises:
       ValueError: Message template 'name' does not exist.
   """
-  return root.multifield(
+  return templates.multifield(
     template_name=template_name,
     fields_data=fields_data,
     base_data=base_data,
@@ -734,7 +739,7 @@ def load_multiline(
   use_string_templates: List[str] = [],
   **template_kwargs
 ):
-  return root.multiline(
+  return templates.multiline(
     template_name=template_name,
     lines_data=lines_data,
     base_data=base_data,
