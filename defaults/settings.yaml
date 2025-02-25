@@ -1,51 +1,57 @@
 # Mitsuki bot settings file.
-#   To modify these settings for your Mitsuki bot, copy this file to a
-#   gitignored path, such as ./assets and ./settings. This ensures a smooth
-#   update process from the Mitsuki repository.
+# 
+# To modify these settings for your Mitsuki bot, copy this file to a
+# gitignored path, such as ./assets and ./settings. This ensures a smooth
+# update process from the Mitsuki repository.
 
 
 mitsuki:
-  # Path to default (base) messages file.
-  #   To avoid issues when updating Mitsuki from repository, avoid modifying
-  #   the defaults file directly. Instead, create another messages.yaml file
-  #   in a gitignored path, such as ./assets and ./settings.
+  # [DEPRECATED] Path to default (base) messages file.
+  # 
+  # To avoid issues when updating Mitsuki from repository, avoid modifying
+  # the defaults file directly. Instead, create another messages.yaml file
+  # in a gitignored path, such as ./assets and ./settings.
   #
-  #   [BETA] Superseded by messages_dir. If specified, Mitsuki will load from
-  #   messages_dir and messages_custom_dir instead of messages_default and
-  #   messages.
+  # Superseded by messages_dir. If specified, Mitsuki will load from
+  # messages_dir and messages_custom_dir instead of messages_default and
+  # messages.
   messages_default: "defaults/messages.yaml"
 
-  # Path to custom messages file.
-  #   Templates in this file will overwrite defaults in messages_default.
-  #
-  #   [BETA] Superseded by messages_custom_dir. If messages_dir is specified,
-  #   Mitsuki will not load the file under this setting.
+  # [DEPRECATED] Path to custom messages file.
+  # 
+  # Templates in this file will overwrite defaults in messages_default.
+  # 
+  # Superseded by messages_custom_dir. If messages_dir is specified,
+  # Mitsuki will not load the file under this setting.
   messages: 
 
   # Path to messages directory.
-  #   This directory is recursively checked for all .yaml and .yml (YAML) files
-  #   to be loaded as message templates. Supersedes messages_default.
+  # 
+  # This directory is recursively checked for all .yaml and .yml (YAML) files
+  # to be loaded as message templates. Supersedes messages_default.
   #
-  #   The directory must contain a defaults.yaml or messages.yaml for use as
-  #   the default or base message templates file.
+  # The directory must contain a defaults.yaml or messages.yaml for use as
+  # the default or base message templates file.
   messages_dir: "messages"
 
   # Path to custom messages directory.
-  #   This directory is recursively checked for all .yaml and .yml (YAML) files
-  #   to be loaded as message templates.
-  #
-  #   Templates defined by template files in this directory overwrite templates
-  #   defined through messages_dir.
+  # 
+  # This directory is recursively checked for all .yaml and .yml (YAML) files
+  # to be loaded as message templates.
+  # 
+  # Templates defined by template files in this directory overwrite templates
+  # defined through messages_dir.
   messages_custom_dir: 
 
   # Daily reset time.
-  #   Determines the reset time for certain functions, such as /gacha daily.
+  # 
+  # Determines the reset time for certain functions, such as /gacha daily.
   #
-  #   [FUTURE] Different modules can set their own daily reset time.
+  # [FUTURE] Different modules can set their own daily reset time.
   # 
   # Format: HH:MM+hhmm <or> HH:MM-hhmm
-  #   HH:MM   daily reset time (24-hour time)
-  #   +hhmm   daily reset timezone (+0000 for UTC)
+  # HH:MM   daily reset time (24-hour time)
+  # +hhmm   daily reset timezone (+0000 for UTC)
   daily_reset: "00:00+0000"
 
   # Status messages ("Playing ...").
@@ -53,37 +59,38 @@ mitsuki:
   - "Magical Mitsuki"
 
   # Time to cycle to next status, in seconds.
-  #   Setting this value to 0 or having only one status message disables
-  #   status cycling. For rate limit reasons, this setting has a hard minimum
-  #   of 60 seconds.
+  # 
+  # Setting this value to 0 or having only one status message disables
+  # status cycling. For ratelimit reasons, this setting has a hard minimum
+  # of 60 seconds.
   #   
-  # Note:
-  #   The cycle resets after a bot restart.
+  # The cycle resets after a bot restart.
   status_cycle: 300
   
-  # Whether the status cycle should be randomized.
+  # Whether the status messages cycling should be randomized. Otherwise, cycle
+  # the status messages sequentially.
   status_randomize: false
 
   # Type of database to use.
   # 
   # Available options:
   # - sqlite
-  # - postgresql [FUTURE]
+  # - postgresql [EXPERIMENTAL]
   db_use: "sqlite"
 
-  # Path to database.
+  # Path to SQLite database when db_use = "sqlite".
   #
-  # Notes for sqlite:
-  #   Paths are relative to Mitsuki root path.
-  #   Add an initial slash to use absolute paths.
-  #   For Windows absolute paths, use "/C:\\path\\to\\db.sqlite3".
-  # 
-  # [FUTURE] Notes for postgresql:
-  #   Include only the database host and database name:
-  #     localhost/mitsuki
-  #   Database username (DB_USERNAME) and password (DB_PASSWORD) are separately
-  #   configured in .env.
+  # Paths are relative to Mitsuki root path. To use absolute paths, add an
+  # initial slash in the field below. For Windows absolute paths, use double
+  # backslash, such as "/C:\\path\\to\\db.sqlite3".
   db_path: "data/db.sqlite3"
+
+  # [EXPERIMENTAL] Path to PostgreSQL database when db_use = "postgresql".
+  # 
+  # The format is `host:port/dbname?options`. Database username and password
+  # are configured separately in .env fields DB_USERNAME and DB_PASSWORD
+  # respectively.
+  db_pg_path: "localhost:5432/mitsuki"
 
   # Emit INFO messages.
   # 
@@ -92,14 +99,26 @@ mitsuki:
 
 
 dev:
-  # Guild ID for the dev-mode. Required to use 'run.py dev'.
+  # Guild ID for the dev-mode.
+  #
+  # If set, registers the commands in this bot for only the specified guild,
+  # which syncs instantly. Otherwise, registers the commands as global.
   scope: 
 
-  # Path to dev database.
+  # Path to SQLite dev-mode database when mitsuki.db_use = "sqlite".
   # 
-  # The type of database used follows that of mitsuki.db_use.
+  # Paths are relative to Mitsuki root path. To use absolute paths, add an
+  # initial slash in the field below. For Windows absolute paths, use double
+  # backslash, such as "/C:\\path\\to\\db.sqlite3".
   db_path: "data/db-dev.sqlite3"
-  
+
+  # [EXPERIMENTAL] Path to PostgreSQL dev-mode database when db_use = "postgresql".
+  # 
+  # The format is `host:port/dbname?options`. Database username and password
+  # are configured separately in .env fields DB_USERNAME and DB_PASSWORD
+  # respectively.
+  db_pg_path: "localhost:5432/mitsuki"
+
 
 gacha:
   # Gacha settings file, containing rates, gacha currency options, and more.

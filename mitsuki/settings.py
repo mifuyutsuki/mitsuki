@@ -50,6 +50,7 @@ class MitsukiSettings:
   daily_reset: str
   db_use: str
   db_path: str
+  db_pg_path: str
   status: List[str]
   status_cycle: int
   status_randomize: bool = field(converter=bool)
@@ -64,6 +65,7 @@ class MitsukiSettings:
 class DevSettings:
   scope: Optional[int] = field(default=None)
   db_path: Optional[str] = field(default=None)
+  db_pg_path: Optional[str] = field(default=None)
 
 
 @frozen
