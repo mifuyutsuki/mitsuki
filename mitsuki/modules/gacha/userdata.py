@@ -607,8 +607,8 @@ async def stats_user(user_id: Snowflake):
       Settings,
       subq_pity,
       subq_latest,
-      func.ifnull(subq_cards.c.cards, 0).label("cards"),
-      func.ifnull(subq_cards.c.rolled, 0).label("rolled"),
+      func.coalesce(subq_cards.c.cards, 0).label("cards"),
+      func.coalesce(subq_cards.c.rolled, 0).label("rolled"),
     )
     .join(subq_pity, subq_pity.c.rarity == Settings.rarity, isouter=True)
     .join(subq_latest, subq_latest.c.rarity == Settings.rarity, isouter=True)
