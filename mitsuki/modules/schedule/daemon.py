@@ -21,6 +21,7 @@ from typing import Dict, List, Optional, Union
 from datetime import datetime
 
 from mitsuki import bot, logger
+from mitsuki.lib.autopost import autosend
 from mitsuki.lib.userdata import new_session
 from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes, timestamp_now
 
@@ -121,7 +122,7 @@ class DaemonTask:
     # Execution: Post current message
     posted_message = None
     if is_ready and formatted_message:
-      posted_message = await channel.send(formatted_message)
+      posted_message = await autosend(channel, formatted_message)
       if schedule.pin and posted_message:
         try:
           await posted_message.pin()
