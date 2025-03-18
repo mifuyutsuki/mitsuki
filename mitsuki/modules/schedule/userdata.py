@@ -35,7 +35,7 @@ from . import schema
 from mitsuki import bot
 from mitsuki.lib.checks import has_bot_channel_permissions
 from mitsuki.lib.userdata import new_session, AsDict
-from mitsuki.utils import process_text, ratio
+from mitsuki.utils import process_text, ratio, escape_like_text
 
 
 # =================================================================================================
@@ -506,9 +506,11 @@ class Message(AsDict):
 
     search_query = (
       select(
-        schema.Message.id,
-        schema.Message.number,
-        schema.Message.message
+        schema.Message,
+        schema.Schedule.guild,
+        schema.Schedule.title,
+        schema.Schedule.post_channel,
+        schema.Schedule.type,
       )
       .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule_id)
     )
@@ -516,26 +518,28 @@ class Message(AsDict):
       search_query = search_query.where(schema.Schedule.guild == guild)
     if public:
       search_query = search_query.where(schema.Schedule.discoverable == True).where(schema.Message.message_id != None)
+    if search_key:
+      processed_search_key = escape_like_text(search_key)
+      search_query = search_query.where(func.lower(schema.Message.message).like(f"%{processed_search_key}%", escape="\\"))
     if tags:
-      processed_tags = cls.process_tags(tags).replace("/", "//").replace("%", "/%")
-      search_query = search_query.where(schema.Message.tags.like(f"%{processed_tags}%", escape="/"))
+      processed_tags = re.escape(cls.process_tags(" ".join(tags))).replace(" ", r"\b.*\b")
+      search_query = search_query.where(schema.Message.tags.regexp_match(r"(\b" + processed_tags + r"\b)"))
+    if limit:
+      search_query = search_query.limit(limit)
 
     async with new_session() as session:
       results = (await session.execute(search_query)).all()
 
-    if search_key:
-      matches = [
-        (
-          result.id,
-          ratio(search_key, result.message, processor=process_text)
-        )
-        for result in results
-      ]
-    else:
-      matches = [(result.id, result.number) for result in results]
-    matches.sort(key=lambda r: r[-1], reverse=True)
-
-    return [await cls.fetch(match[0], guild=guild) for match in (matches[:limit] if limit else matches)]
+    return [
+      cls(
+        **result.Message.asdict(),
+        schedule_guild=result.guild,
+        schedule_title=result.title,
+        schedule_channel=result.post_channel,
+        schedule_type=result.type,
+      )
+      for result in results
+    ]
 
 
   @classmethod
