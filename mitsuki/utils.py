@@ -20,6 +20,7 @@ from interactions.api.events import Component
 from rapidfuzz.utils import default_process
 from rapidfuzz import fuzz
 
+from typing import Optional
 import unicodedata
 import regex as re
 
@@ -37,6 +38,7 @@ __all__ = (
 
 
 _escape_text_re = re.compile(r"[*_`.+(){}!#|:@<>~\-\[\]\\\/]")
+_escape_like_text_re = re.compile(r"[%_]")
 _remove_accents_re = re.compile(r"\p{Mn}")
 
 
@@ -68,6 +70,22 @@ def escape_text(text: str):
   """
   global _escape_text_re
   return _escape_text_re.sub(r"\\\g<0>", text)
+
+
+def escape_like_text(text: str):
+  """
+  Escape SQL LIKE special characters `%` and `_` in a text with `\\`.
+
+  For example, `100%` is converted into `100\\%`.
+
+  Args:
+      text: String to be escaped
+  
+  Returns;
+      SQL LIKE-escaped string
+  """
+  global _escape_like_text_re
+  return _escape_like_text_re.sub(r"\\\g<0>", text)
 
 
 def process_text(text: str):
