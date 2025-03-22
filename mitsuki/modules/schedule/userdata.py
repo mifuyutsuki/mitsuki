@@ -485,7 +485,7 @@ class Message(AsDict):
     # Convert commas to spaces; remove redundant whitespace
     processed = re.sub(r"[\s]+", " ", tags.replace(",", " ")).strip().lower()
     # Remove redundant items; sort alphabetically
-    return " ".join(sorted(set(processed.split(" "))))
+    return " ".join(sorted(set(processed.split())))
 
 
   def set_tags(self, tags: str):
@@ -496,13 +496,17 @@ class Message(AsDict):
   async def search(
     cls,
     search_key: Optional[str] = None,
-    tags: Optional[List[str]] = None,
+    tags: Optional[Union[str, List[str]]] = None,
     guild: Optional[Snowflake] = None,
     public: bool = True,
     limit: Optional[int] = None
   ):
     if not search_key and not tags:
       raise ValueError("Search key and tags cannot be both empty")
+    if isinstance(tags, list):
+      tags = cls.process_tags(" ".join(tags))
+    elif isinstance(tags, str):
+      tags = cls.process_tags(tags)
 
     search_query = (
       select(
@@ -520,9 +524,11 @@ class Message(AsDict):
       search_query = search_query.where(schema.Schedule.discoverable == True).where(schema.Message.message_id != None)
     if search_key:
       processed_search_key = escape_like_text(search_key)
-      search_query = search_query.where(func.lower(schema.Message.message).like(f"%{processed_search_key}%", escape="\\"))
+      search_query = search_query.where(
+        func.lower(schema.Message.message).like(f"%{processed_search_key}%", escape="\\")
+      )
     if tags:
-      processed_tags = re.escape(cls.process_tags(" ".join(tags))).replace(" ", r"\b.*\b")
+      processed_tags = re.escape(tags).replace("\\ ", r"\b.*\b")
       search_query = search_query.where(schema.Message.tags.regexp_match(r"(\b" + processed_tags + r"\b)"))
     if limit:
       search_query = search_query.limit(limit)
