@@ -556,7 +556,7 @@ def _defined(s: Optional[str]):
   return s is not None and len(s.strip()) > 0
 
 
-def load_templates():
+def load_templates(raise_on_error: bool = False):
   new_root = MessageMan()
 
   if _defined(BASE_MESSAGES_DIR):
@@ -577,10 +577,18 @@ def load_templates():
 
   else:
     logger.error("Message template settings not set")
+    if raise_on_error:
+      raise ValueError("No path to message templates specified in settings.yaml")
 
   return new_root
 
+
 templates = load_templates()
+
+
+def set_templates(template: MessageMan):
+  global templates
+  templates = template
 
 
 # =============================================================================
