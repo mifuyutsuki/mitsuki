@@ -24,6 +24,7 @@ from interactions import (
   ComponentCommand,
 )
 
+from mitsuki import settings
 from attrs import define, field
 from typing import Union, List, Optional, Callable, Coroutine
 
@@ -43,9 +44,17 @@ class Paginator(_Paginator):
 
   def __attrs_post_init__(self):
     super().__attrs_post_init__()
+
+    if settings.emoji:
+      self.first_button_emoji = settings.emoji.page_first
+      self.back_button_emoji = settings.emoji.page_previous
+      self.next_button_emoji = settings.emoji.page_next
+      self.last_button_emoji = settings.emoji.page_last
+
     if len(self.pages) > 3:
       self.callback = self.callback_cmd
       self.show_callback_button = True
+      self.callback_button_emoji = settings.emoji.page_goto
 
   def create_components(self, disable: bool = False):
     if disable and self._timeout_task:
@@ -77,7 +86,7 @@ class Paginator(_Paginator):
       modal_ctx = await ctx.bot.wait_for_modal(m)
     except TimeoutError:
       return
-    
+
     if self._timeout_task:
       # Exit if paginator times out
       if not self._timeout_task.run:
