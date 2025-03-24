@@ -139,9 +139,17 @@ class SelectionPaginator(Paginator):
         ],
       )
     )
+
+    if settings.emoji:
+      self.first_button_emoji = settings.emoji.page_first
+      self.back_button_emoji = settings.emoji.page_previous
+      self.next_button_emoji = settings.emoji.page_next
+      self.last_button_emoji = settings.emoji.page_last
+
     if len(self.pages) > 3:
       self.callback = self.callback_cmd
       self.show_callback_button = True
+      self.callback_button_emoji = settings.emoji.page_goto
 
 
   def create_components(self, disable: bool = False):
