@@ -42,7 +42,7 @@ from interactions import (
 from interactions.client.errors import Forbidden, NotFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mitsuki import bot
+from mitsuki import settings
 from mitsuki.utils import escape_text, is_caller, get_member_color_value
 from mitsuki.lib.commands import (
   CustomID,
@@ -142,11 +142,13 @@ class ManageMessages(SelectionMixin, ReaderCommand):
       Button(
         style=ButtonStyle.GREEN,
         label="Add...",
+        emoji=settings.emoji.new,
         custom_id=CustomIDs.MESSAGE_ADD.prompt().id(schedule.id)
       ),
       Button(
         style=ButtonStyle.GRAY,
         label="Refresh",
+        emoji=settings.emoji.refresh,
         custom_id=(
           CustomIDs.MESSAGE_LIST_BACKLOG if backlog == True
           else CustomIDs.MESSAGE_LIST_POSTED if backlog == False
@@ -156,6 +158,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
       Button(
         style=ButtonStyle.GRAY,
         label="Back to Schedule",
+        emoji=settings.emoji.back,
         custom_id=CustomIDs.SCHEDULE_VIEW.id(schedule.id),      
       ),
     ]
@@ -233,22 +236,26 @@ class ManageMessages(SelectionMixin, ReaderCommand):
         Button(
           style=ButtonStyle.BLURPLE,
           label="Edit...",
+          emoji=settings.emoji.edit,
           custom_id=CustomIDs.MESSAGE_EDIT.prompt().id(message_id)
         ),
         Button(
           style=ButtonStyle.BLURPLE,
           label="Reorder...",
+          emoji=settings.emoji.page_goto,
           custom_id=CustomIDs.MESSAGE_REORDER.id(message_id),
           disabled=message.date_posted is not None or schedule.backlog_number < 2
         ),
         Button(
           style=ButtonStyle.RED,
           label="Delete",
+          emoji=settings.emoji.delete,
           custom_id=CustomIDs.MESSAGE_DELETE.confirm().id(message_id)
         ),
         Button(
           style=ButtonStyle.GRAY,
           label="Refresh",
+          emoji=settings.emoji.refresh,
           custom_id=CustomIDs.MESSAGE_VIEW.id(message_id)
         )
       ]

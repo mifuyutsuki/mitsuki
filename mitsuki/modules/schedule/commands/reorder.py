@@ -42,7 +42,7 @@ from interactions import (
 from interactions.client.errors import Forbidden, NotFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mitsuki import bot
+from mitsuki import settings
 from mitsuki.utils import escape_text, is_caller, get_member_color_value
 from mitsuki.lib.commands import (
   CustomID,
@@ -138,18 +138,21 @@ class ReorderMessage(WriterCommand):
         Button(
           style=ButtonStyle.BLURPLE,
           label="To Front",
+          emoji=settings.emoji.page_first,
           custom_id=CustomIDs.MESSAGE_REORDER_FRONT.id(message_id),
           disabled=message.number <= schedule.posted_number + 1
         ),
         Button(
           style=ButtonStyle.BLURPLE,
           label="Custom...",
+          emoji=settings.emoji.page_goto,
           custom_id=CustomIDs.MESSAGE_REORDER.prompt().id(message_id),
           disabled=schedule.backlog_number < 2
         ),
         Button(
           style=ButtonStyle.BLURPLE,
           label="To Back",
+          emoji=settings.emoji.page_last,
           custom_id=CustomIDs.MESSAGE_REORDER_BACK.id(message_id),
           disabled=message.number == schedule.current_number
         )
@@ -158,6 +161,7 @@ class ReorderMessage(WriterCommand):
         Button(
           style=ButtonStyle.GRAY,
           label="Back to Message",
+          emoji=settings.emoji.back,
           custom_id=CustomIDs.MESSAGE_VIEW.id(message_id),
         )
       )
@@ -177,11 +181,13 @@ class ReorderMessage(WriterCommand):
             Button(
               style=ButtonStyle.GRAY,
               label="Refresh",
+              emoji=settings.emoji.refresh,
               custom_id=CustomIDs.MESSAGE_REORDER.id(message_id),
             ),
             Button(
               style=ButtonStyle.GRAY,
               label="Back to Message",
+              emoji=settings.emoji.back,
               custom_id=CustomIDs.MESSAGE_VIEW.id(message_id),
             )
           )
@@ -215,6 +221,7 @@ class ReorderMessage(WriterCommand):
         Button(
           style=ButtonStyle.GRAY,
           label="Back to Message",
+          emoji=settings.emoji.back,
           custom_id=CustomIDs.MESSAGE_VIEW.id(message_id),
         )
       ]
@@ -248,6 +255,7 @@ class ReorderMessage(WriterCommand):
         Button(
           style=ButtonStyle.GRAY,
           label="Back to Message",
+          emoji=settings.emoji.back,
           custom_id=CustomIDs.MESSAGE_VIEW.id(message_id),
         )
       ]

@@ -42,7 +42,7 @@ from interactions import (
 from interactions.client.errors import Forbidden, NotFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mitsuki import bot
+from mitsuki import settings
 from mitsuki.utils import escape_text, is_caller, get_member_color_value
 from mitsuki.lib.commands import (
   CustomID,
@@ -183,11 +183,13 @@ class ConfigureSchedule(WriterCommand):
           Button(
             style=ButtonStyle.GRAY,
             label="Refresh",
+            emoji=settings.emoji.refresh,
             custom_id=CustomIDs.CONFIGURE.id(schedule_id)
           ),
           Button(
             style=ButtonStyle.GRAY,
             label="Back to Schedule",
+            emoji=settings.emoji.back,
             custom_id=CustomIDs.SCHEDULE_VIEW.id(schedule_id)
           ),
         ),
@@ -582,11 +584,13 @@ class ConfigureSchedule(WriterCommand):
           Button(
             style=ButtonStyle.RED,
             label="Clear Roles",
+            emoji=settings.emoji.delete,
             custom_id=CustomIDs.CONFIGURE_ROLES_CLEAR.id(schedule_id)
           ),
           Button(
             style=ButtonStyle.RED,
             label="Cancel",
+            emoji=settings.emoji.no,
             custom_id=CustomIDs.CONFIGURE.id(schedule_id)
           ),
         ),

@@ -42,7 +42,7 @@ from interactions import (
 from interactions.client.errors import Forbidden, NotFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mitsuki import bot
+from mitsuki import settings
 from mitsuki.utils import escape_text, is_caller, get_member_color_value
 from mitsuki.lib.commands import (
   CustomID,
@@ -118,11 +118,13 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
         style=ButtonStyle.GREEN,
         label="Create...",
         custom_id=CustomIDs.SCHEDULE_CREATE.prompt(),
+        emoji=settings.emoji.new,
         disabled=not can_create
       ),
       Button(
         style=ButtonStyle.GRAY,
         label="Refresh",
+        emoji=settings.emoji.refresh,
         custom_id=CustomIDs.SCHEDULE_MANAGE,
       ),
     ]
@@ -188,23 +190,27 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
           Button(
             style=ButtonStyle.GREEN,
             label="Add...",
+            emoji=settings.emoji.new,
             custom_id=CustomIDs.MESSAGE_ADD.prompt().id(schedule.id)
           ),
           Button(
             style=ButtonStyle.BLURPLE,
             label="View Backlog",
+            emoji=settings.emoji.list,
             custom_id=CustomIDs.MESSAGE_LIST_BACKLOG.id(schedule.id),
             disabled=schedule.backlog_number == 0
           ),
           Button(
             style=ButtonStyle.BLURPLE,
             label="View Posted",
+            emoji=settings.emoji.list,
             custom_id=CustomIDs.MESSAGE_LIST_POSTED.id(schedule.id),
             disabled=schedule.posted_number == 0
           ),
           Button(
             style=ButtonStyle.BLURPLE,
             label="Configure",
+            emoji=settings.emoji.configure,
             custom_id=CustomIDs.CONFIGURE.id(schedule.id),
             disabled=not can_configure
           ),
@@ -213,11 +219,13 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
           Button(
             style=ButtonStyle.GRAY,
             label="Refresh",
+            emoji=settings.emoji.refresh,
             custom_id=CustomIDs.SCHEDULE_VIEW.id(schedule.id),
           ),
           Button(
             style=ButtonStyle.GRAY,
             label="Back to Schedules",
+            emoji=settings.emoji.back,
             custom_id=CustomIDs.SCHEDULE_MANAGE,
           ),
         )
