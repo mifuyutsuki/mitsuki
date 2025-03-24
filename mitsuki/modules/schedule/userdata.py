@@ -357,7 +357,7 @@ class Schedule(AsDict):
       return await session.scalar(query) is not None
 
 
-  async def is_valid(self):
+  async def is_valid(self, server_list: Optional[List[Snowflake]] = None):
     if (
       not self.post_channel
       or len(self.format.strip()) <= 0
@@ -372,6 +372,8 @@ class Schedule(AsDict):
         Permissions.VIEW_CHANNEL,         # for fetching previous pin
         Permissions.READ_MESSAGE_HISTORY, # for fetching previous pin
       ])
+    if server_list and self.guild not in server_list:
+      return False
     if not await has_bot_channel_permissions(bot, self.post_channel, required_permissions):
       return False
 
