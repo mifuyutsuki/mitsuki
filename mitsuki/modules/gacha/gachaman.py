@@ -14,6 +14,7 @@ from yaml import safe_load
 from typing import Dict, List, Optional, Any, Callable, TypeVar
 from random import SystemRandom
 from datetime import datetime, timedelta
+from interactions import PartialEmoji
 
 from mitsuki import settings
 
@@ -55,6 +56,11 @@ class Gachaman:
   _roster_yaml: str
 
   arona: SystemRandom = SystemRandom()
+
+
+  @property
+  def currency_icon_emoji(self):
+    return PartialEmoji.from_str(self.currency_icon)
 
 
   def __init__(self, settings_yaml: str, roster_yaml: str):
