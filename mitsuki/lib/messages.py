@@ -791,11 +791,17 @@ def _assign_data(
 
   DEPTH = 3
 
-  escaped_data = data.copy()
+  # Process data:
+  # - Escape values in the escapes key list
+  # - Convert boolean values to yes/no emoji
+  processed_data = data.copy()
   for key, value in data.items():
     if key in escapes and isinstance(value, str):
-      escaped_data[key] = escape_text(value)
+      processed_data[key] = escape_text(value)
+    if isinstance(value, bool):
+      processed_data[key] = str(settings.emoji.yes) if value else str(settings.emoji.no)
 
+  # Recursive assignment of data to the template in ${} placeholders
   def _recurse_assign(temp: Any, recursions: int = 0):
     is_dict = isinstance(temp, Dict)
     is_list = isinstance(temp, List)
@@ -817,7 +823,7 @@ def _assign_data(
       if isinstance(value, (Dict, List)) and recursions < DEPTH:
         assigned_value = _recurse_assign(value, recursions+1)
       elif isinstance(value, str):
-        assigned_value = Template(value).safe_substitute(**escaped_data).strip()
+        assigned_value = Template(value).safe_substitute(**processed_data).strip()
       else:
         assigned_value = value
 
