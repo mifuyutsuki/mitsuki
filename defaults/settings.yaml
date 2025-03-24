@@ -120,6 +120,79 @@ dev:
   db_pg_path: "localhost:5432/mitsuki"
 
 
+emoji:
+  # Emoji for use in buttons and other parts of the message.
+  # 
+  # Supported formats follow that of interactions.py's PartialEmoji.from_str():
+  # - ✅
+  # - :emoji:1234567890
+  # - <:emoji:1234567890>
+  # - a:animated_emoji:1234567890
+  # - <a:animated_emoji:1234567890>
+  
+  # Some keys are quoted due to YAML conversion (yes, no, on, off)
+
+  # Yes, true, checked
+  "yes": "✅"
+
+  # No, false, unchecked
+  "no": "❌"
+
+  # On, active
+  "on": "☀"
+
+  # Off, inactive
+  "off": "🌑"
+
+  # New, add, create
+  new: "*️⃣"
+
+  # Edit, modify
+  edit: "✏"
+
+  # Delete, remove
+  delete: "🗑"
+
+  # View list, e.g. gacha cards, schedule messages
+  list: "🗒"
+
+  # View gallery, e.g. gacha gallery
+  gallery: "🖼"
+
+  # Configure, settings
+  configure: "⚙"
+
+  # Refresh
+  refresh: "🔄"
+
+  # Back, return to previous menu
+  back: "↩"
+
+  # Text field
+  text: "📝"
+
+  # Time field
+  time: "🕗"
+
+  # Date field
+  date: "📅"
+
+  # Paginator first page
+  page_first: "⏪"
+
+  # Paginator previous page
+  page_previous: "◀"
+
+  # Paginator next page
+  page_next: "▶"
+
+  # Paginator last page
+  page_last: "⏩"
+
+  # Paginator go to page
+  page_goto: "#️⃣"
+
+
 gacha:
   # Gacha settings file, containing rates, gacha currency options, and more.
   settings: "exampleassets/gacha_settings.yaml"
