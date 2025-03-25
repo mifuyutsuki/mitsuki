@@ -525,7 +525,7 @@ class Message(AsDict):
     if public:
       search_query = search_query.where(schema.Schedule.discoverable == True).where(schema.Message.message_id != None)
     if search_key:
-      processed_search_key = escape_like_text(search_key)
+      processed_search_key = escape_like_text(search_key.lower())
       search_query = search_query.where(
         func.lower(schema.Message.message).like(f"%{processed_search_key}%", escape="\\")
       )
