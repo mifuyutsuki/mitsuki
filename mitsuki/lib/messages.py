@@ -586,6 +586,11 @@ def load_templates(raise_on_error: bool = False):
 templates = load_templates()
 
 
+def get_templates():
+  global templates
+  return templates
+
+
 def set_templates(template: MessageMan):
   global templates
   templates = template

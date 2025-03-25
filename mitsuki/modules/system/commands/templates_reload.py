@@ -16,7 +16,7 @@ from attrs import define, field
 from enum import StrEnum
 from typing import Optional, Union
 
-from mitsuki.lib.messages import load_templates, set_templates, templates
+from mitsuki.lib.messages import load_templates, set_templates, get_templates
 from mitsuki.lib.commands import AsDict, ReaderCommand
 from mitsuki.lib.checks import assert_user_owner
 
@@ -38,10 +38,10 @@ class ReloadTemplates(ReaderCommand):
         color=BrandColors.RED,
       ))
       return
+  
+    old_templates = get_templates()
 
-    old_templates = templates
-
-    # Compare 1: Templates 
+    # Compare 1: Templates
     tmps_del_count = 0
     tmps_mod_count = 0
 
