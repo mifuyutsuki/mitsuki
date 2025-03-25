@@ -14,13 +14,13 @@ from mitsuki.lib.commands import CustomID
 
 
 class CustomIDs:
-  SCHEDULE_MANAGE = CustomID("schedule_manage")
+  SCHEDULE_MANAGE_LIST = CustomID("schedule_manage")
   """Manage Schedules. (no args)"""
 
   SCHEDULE_CREATE = CustomID("schedule_create")
   """Create a Schedule. (no args; modal)"""
 
-  SCHEDULE_VIEW = CustomID("schedule_view")
+  SCHEDULE_MANAGE_VIEW = CustomID("schedule_manage_view")
   """View a Schedule. (id: Schedule ID/key; select)"""
 
   CONFIGURE = CustomID("schedule_configure")
@@ -83,3 +83,6 @@ class CustomIDs:
   
   MESSAGE_REORDER_BACK = CustomID("schedule_message_reorder|back")
   """Reorder a message to back of a queue-type Schedule. (id: Message ID)"""
+
+  SCHEDULE_VIEW = CustomID("schedule_view")
+  """View a Schedule message. (id: Message ID; select)"""

@@ -125,7 +125,7 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
         style=ButtonStyle.GRAY,
         label="Refresh",
         emoji=settings.emoji.refresh,
-        custom_id=CustomIDs.SCHEDULE_MANAGE,
+        custom_id=CustomIDs.SCHEDULE_MANAGE_LIST,
       ),
     ]
 
@@ -231,13 +231,13 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
             style=ButtonStyle.GRAY,
             label="Refresh",
             emoji=settings.emoji.refresh,
-            custom_id=CustomIDs.SCHEDULE_VIEW.id(schedule.id),
+            custom_id=CustomIDs.SCHEDULE_MANAGE_VIEW.id(schedule.id),
           ),
           Button(
             style=ButtonStyle.GRAY,
             label="Back to Schedules",
             emoji=settings.emoji.back,
-            custom_id=CustomIDs.SCHEDULE_MANAGE,
+            custom_id=CustomIDs.SCHEDULE_MANAGE_LIST,
           ),
         )
       ]

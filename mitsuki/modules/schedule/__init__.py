@@ -65,6 +65,30 @@ class ScheduleModule(Extension):
     pass
 
   # ===========================================================================
+  # View Schedule Message
+  # ===========================================================================
+
+  @schedule_cmd.subcommand(
+    sub_cmd_name="view",
+    sub_cmd_description="Search and view posted Schedule messages"
+  )
+  @slash_option(
+    name="key",
+    description="Part of message content to search",
+    opt_type=OptionType.STRING,
+    required=True,
+    autocomplete=False,
+    min_length=3,
+    max_length=100,
+  )
+  async def schedule_view_cmd(self, ctx: SlashContext, key: str):
+    return await ViewSchedule.create(ctx).search(key)
+
+  @component_callback(CustomIDs.SCHEDULE_VIEW.select())
+  async def schedule_view_select(self, ctx: ComponentContext):
+    return await ViewSchedule.create(ctx).view(ctx.values[0])
+
+  # ===========================================================================
   # Manage Schedule
   # ===========================================================================
 
@@ -75,15 +99,15 @@ class ScheduleModule(Extension):
   async def schedule_manage_cmd(self, ctx: SlashContext):
     return await ManageSchedules.create(ctx).list()
 
-  @component_callback(CustomIDs.SCHEDULE_MANAGE)
+  @component_callback(CustomIDs.SCHEDULE_MANAGE_LIST)
   async def schedule_manage_btn(self, ctx: ComponentContext):
     return await ManageSchedules.create(ctx).list()
 
-  @component_callback(CustomIDs.SCHEDULE_VIEW.select())
-  async def schedule_view_select(self, ctx: ComponentContext):
+  @component_callback(CustomIDs.SCHEDULE_MANAGE_VIEW.select())
+  async def schedule_manage_view_select(self, ctx: ComponentContext):
     return await ManageSchedules.create(ctx).view(ctx.values[0])
 
-  @component_callback(CustomIDs.SCHEDULE_VIEW.string_id_pattern())
+  @component_callback(CustomIDs.SCHEDULE_MANAGE_VIEW.string_id_pattern())
   async def schedule_view_btn(self, ctx: ComponentContext):
     return await ManageSchedules.create(ctx).view_from_button()
 

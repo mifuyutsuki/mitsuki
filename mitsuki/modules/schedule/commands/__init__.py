@@ -18,6 +18,7 @@ from .add import AddMessage
 from .reorder import ReorderMessage
 from .edit import EditMessage
 from .delete import DeleteMessage
+from .view import ViewSchedule
 
 
 __all__ = (
@@ -29,4 +30,5 @@ __all__ = (
   "ReorderMessage",
   "EditMessage",
   "DeleteMessage",
+  "ViewSchedule",
 )

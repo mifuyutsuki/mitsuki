@@ -193,7 +193,7 @@ class ConfigureSchedule(WriterCommand):
             style=ButtonStyle.GRAY,
             label="Back to Schedule",
             emoji=settings.emoji.back,
-            custom_id=CustomIDs.SCHEDULE_VIEW.id(schedule_id)
+            custom_id=CustomIDs.SCHEDULE_MANAGE_VIEW.id(schedule_id)
           ),
         ),
       ]
