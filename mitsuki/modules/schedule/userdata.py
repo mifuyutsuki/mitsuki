@@ -555,6 +555,7 @@ class Message(AsDict):
     cls,
     message_id: int,
     guild: Optional[Snowflake] = None,
+    public: bool = False,
   ):
     query = (
       select(
@@ -569,6 +570,10 @@ class Message(AsDict):
     )
     if guild:
       query = query.where(schema.Schedule.guild == guild)
+    if public:
+      query = query.where(schema.Schedule.discoverable == True).where(schema.Message.message_id != None)
+
+    query = query.order_by(schema.Message.date_posted.desc())
 
     async with new_session() as session:
       result = (await session.execute(query)).first()
