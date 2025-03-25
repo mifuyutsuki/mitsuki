@@ -42,6 +42,11 @@ view:
     ${title}
   description: >-
     Schedule for **${guild_name}**
+
+
+    ${schedule_manage_view_active_s}    
+    ${schedule_manage_view_pin_s}    
+    ${schedule_manage_view_discoverable_s}
   thumbnail: >-
     ${guild_icon}
   fields:
@@ -49,7 +54,7 @@ view:
     value  : >-
       ${post_channel_mention}
     inline : false
-  - name   : Backlog \#
+  - name   : Backlog
     value  : >-
       **${backlog_number}**
     inline : true
@@ -60,18 +65,6 @@ view:
   - name   : Total \#
     value  : >-
       **${current_number}**
-    inline : true
-  - name   : Active
-    value  : >-
-      **${active}**
-    inline : true
-  - name   : Pin Message
-    value  : >-
-      **${pin}**
-    inline : true
-  - name   : Discoverable
-    value  : >-
-      **${discoverable}**
     inline : true
   - name   : Next in
     value  : >-
@@ -89,6 +82,17 @@ view:
     value  : >-
       ${manager_role_mentions}
     inline : false
+
+
+view_active_s:
+  "${active} Active\n"
+
+view_pin_s:
+  "${pin} Pin Enabled\n"
+
+view_discoverable_s:
+  "${discoverable} Searchable in `/schedule view`\n"
+
 
 create_already_exists:
   base_template: admin

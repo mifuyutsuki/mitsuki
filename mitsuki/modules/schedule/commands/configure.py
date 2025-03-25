@@ -162,20 +162,23 @@ class ConfigureSchedule(WriterCommand):
         ),
         ActionRow(
           Button(
-            style=ButtonStyle.RED if schedule.active else ButtonStyle.GREEN,
-            label="Deactivate" if schedule.active else "Activate",
+            style=ButtonStyle.GREEN if schedule.active else ButtonStyle.RED,
+            label="Active" if schedule.active else "Inactive",
+            emoji=settings.emoji.on if schedule.active else settings.emoji.off,
             custom_id=CustomIDs.CONFIGURE_ACTIVE.id(schedule_id),
             disabled=not schedule.active and not await schedule.is_valid()
           ),
           Button(
-            style=ButtonStyle.RED if schedule.pin else ButtonStyle.GREEN,
-            label="Disable Pin" if schedule.pin else "Enable Pin",
+            style=ButtonStyle.GREEN if schedule.pin else ButtonStyle.RED,
+            label="Pin On" if schedule.pin else "Pin Off",
+            emoji=settings.emoji.on if schedule.pin else settings.emoji.off,
             custom_id=CustomIDs.CONFIGURE_PIN.id(schedule_id),
             disabled=schedule.post_channel is None
           ),
           Button(
-            style=ButtonStyle.RED if schedule.discoverable else ButtonStyle.GREEN,
-            label="Disable Discovery" if schedule.discoverable else "Enable Discovery",
+            style=ButtonStyle.GREEN if schedule.discoverable else ButtonStyle.RED,
+            label="Searchable" if schedule.discoverable else "Hidden",
+            emoji=settings.emoji.on if schedule.discoverable else settings.emoji.off,
             custom_id=CustomIDs.CONFIGURE_DISCOVERABLE.id(schedule_id)
           ),
         ),
@@ -588,7 +591,7 @@ class ConfigureSchedule(WriterCommand):
             custom_id=CustomIDs.CONFIGURE_ROLES_CLEAR.id(schedule_id)
           ),
           Button(
-            style=ButtonStyle.RED,
+            style=ButtonStyle.GRAY,
             label="Cancel",
             emoji=settings.emoji.no,
             custom_id=CustomIDs.CONFIGURE.id(schedule_id)

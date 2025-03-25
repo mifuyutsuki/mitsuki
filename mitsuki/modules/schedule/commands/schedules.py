@@ -179,12 +179,23 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
     else:
       await self.defer(ephemeral=True)
 
+    string_templates = []
+    if schedule.active:
+      string_templates.append("schedule_manage_view_active_s")
+    if schedule.pin:
+      string_templates.append("schedule_manage_view_pin_s")
+    if schedule.discoverable:
+      string_templates.append("schedule_manage_view_discoverable_s")
+
     self.data = self.Data(
       total_schedules=0
     )
     await self.send(
       self.Templates.VIEW,
       other_data=schedule.asdict(),
+      template_kwargs={
+        "use_string_templates": string_templates
+      },
       components=[
         ActionRow(
           Button(
@@ -195,14 +206,14 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
           ),
           Button(
             style=ButtonStyle.BLURPLE,
-            label="View Backlog",
+            label="Backlog",
             emoji=settings.emoji.list,
             custom_id=CustomIDs.MESSAGE_LIST_BACKLOG.id(schedule.id),
             disabled=schedule.backlog_number == 0
           ),
           Button(
             style=ButtonStyle.BLURPLE,
-            label="View Posted",
+            label="Posted",
             emoji=settings.emoji.list,
             custom_id=CustomIDs.MESSAGE_LIST_POSTED.id(schedule.id),
             disabled=schedule.posted_number == 0
