@@ -596,3 +596,31 @@ class ConfigureSchedule(WriterCommand):
         ),
       ]
     )
+
+
+  async def set_roles(self, roles: List[Role]):
+    await assert_in_guild(self.ctx)
+    await assert_user_permissions(
+      self.ctx, Permissions.ADMINISTRATOR,
+      "Server admin"
+    )
+
+    schedule_id = int(CustomID.get_id_from(self.ctx))
+    schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
+
+    current_roles = schedule.manager_role_objects
+    target_roles = [role.id for role in roles]
+
+    # Don't modify if there are no change in roles
+    if current_roles and (set(current_roles) == set(target_roles)):
+      return await self.main()
+
+    if len(roles) > 0:
+      schedule.manager_roles = " ".join(sorted([str(role.id) for role in roles]))
+    else:
+      schedule.manager_roles = None
+
+    async with new_session() as session:
+      await schedule.update_modify(session, self.ctx.author.id)
+      await session.commit()
+    return await self.main()
