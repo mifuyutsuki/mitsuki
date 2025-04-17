@@ -22,6 +22,8 @@ from interactions import (
   Client,
   Embed,
   ComponentCommand,
+  ModalCommand,
+  ModalContext,
 )
 
 from mitsuki import settings
@@ -42,6 +44,7 @@ class Paginator(_Paginator):
 
   extra_components: List[ActionRow] = field(repr=False, factory=list)
 
+
   def __attrs_post_init__(self):
     super().__attrs_post_init__()
 
@@ -55,11 +58,22 @@ class Paginator(_Paginator):
       self.callback = self.callback_cmd
       self.show_callback_button = True
       self.callback_button_emoji = settings.emoji.page_goto
+      self.client.add_modal_callback(
+        ModalCommand(
+          name=f"PageNo:{self._uuid}",
+          callback=self._on_pageno,
+          listeners=[
+            f"{self._uuid}|pageno",
+          ],
+        )
+      )
+
 
   def create_components(self, disable: bool = False):
     if disable and self._timeout_task:
       self._timeout_task.run = False
     return super().create_components(disable)
+
 
   def to_dict(self) -> dict:
     source = super().to_dict()
@@ -67,52 +81,52 @@ class Paginator(_Paginator):
       source["components"].extend([c.to_dict() for c in self.extra_components])
     return source
 
+
   async def callback_cmd(self, ctx: ComponentContext):
     # Reset the timeout timer
     if self._timeout_task:
       self._timeout_task.ping.set()
 
-    m = await ctx.send_modal(
+    await ctx.send_modal(
       modal=Modal(
         ShortText(
           label="Page number",
           custom_id="page_no",
           placeholder=f"Number from 1 to {len(self.pages)}",
         ),
-        title="Go to Page"
+        title="Go to Page",
+        custom_id=f"{self._uuid}|pageno",
       )
     )
-    try:
-      modal_ctx = await ctx.bot.wait_for_modal(m)
-    except TimeoutError:
-      return
 
+
+  async def _on_pageno(self, ctx: ModalContext):
     if self._timeout_task:
       # Exit if paginator times out
       if not self._timeout_task.run:
-        await modal_ctx.send(f"Interaction timed out", ephemeral=True)
+        await ctx.send(f"Interaction timed out", ephemeral=True)
         return
 
       # Reset the timeout timer
       self._timeout_task.ping.set()
 
-    page_no_s = modal_ctx.responses["page_no"]
+    page_no_s = ctx.responses["page_no"].strip()
     if not page_no_s.isnumeric():
       # Response is not a number
-      await modal_ctx.send(f"Not a valid page number", ephemeral=True)
+      await ctx.send(f"Not a valid page number", ephemeral=True)
       return
     page_no = int(page_no_s)
     if not (0 < page_no <= len(self.pages)):
       # Out of range
-      await modal_ctx.send(f"Page number out of range", ephemeral=True)
+      await ctx.send(f"Page number out of range", ephemeral=True)
       return
     if page_no - 1 == self.page_index:
       # Same page
-      await modal_ctx.edit(ctx.message)
+      await ctx.edit(ctx.message)
     else:
       self.page_index = page_no - 1
-      await modal_ctx.defer(edit_origin=True)
-      await modal_ctx.edit(ctx.message, **self.to_dict())
+      await ctx.defer(edit_origin=True)
+      await ctx.edit(ctx.message, **self.to_dict())
 
 
 @define(eq=False, order=False, hash=False, kw_only=False)
@@ -150,6 +164,15 @@ class SelectionPaginator(Paginator):
       self.callback = self.callback_cmd
       self.show_callback_button = True
       self.callback_button_emoji = settings.emoji.page_goto
+      self.client.add_modal_callback(
+        ModalCommand(
+          name=f"PageNo:{self._uuid}",
+          callback=self._on_pageno,
+          listeners=[
+            f"{self._uuid}|pageno",
+          ],
+        )
+      )
 
 
   def create_components(self, disable: bool = False):
