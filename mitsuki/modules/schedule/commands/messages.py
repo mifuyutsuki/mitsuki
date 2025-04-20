@@ -146,6 +146,21 @@ class ManageMessages(SelectionMixin, ReaderCommand):
         custom_id=CustomIDs.MESSAGE_ADD.prompt().id(schedule.id)
       ),
       Button(
+        style=ButtonStyle.BLURPLE,
+        label="Posted" if backlog == True else "Backlog" if backlog == False else "All",
+        emoji=settings.emoji.list,
+        custom_id=(
+          CustomIDs.MESSAGE_LIST_POSTED if backlog == True
+          else CustomIDs.MESSAGE_LIST_BACKLOG if backlog == False
+          else CustomIDs.MESSAGE_LIST
+        ).id(schedule.id),
+        disabled=(
+          schedule.posted_number == 0 if backlog == True
+          else schedule.backlog_number == 0 if backlog == False
+          else backlog is None
+        ),
+      ),
+      Button(
         style=ButtonStyle.GRAY,
         label="Refresh",
         emoji=settings.emoji.refresh,
