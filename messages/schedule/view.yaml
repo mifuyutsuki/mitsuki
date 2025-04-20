@@ -11,7 +11,7 @@ _:
   fields:
   - name   : Tags
     value  : >-
-      `${tags}`
+      ${tags_s}
     inline : false
   - name   : Post Date
     value  : >-

@@ -423,6 +423,7 @@ class Schedule(AsDict):
 # Schedule Message
 
 MESSAGE_COLUMNS = schema.Message().columns.copy()
+_tags_s_re = re.compile(r"[^\s]+")
 
 @define
 class Message(AsDict):
@@ -447,6 +448,7 @@ class Message(AsDict):
   schedule_type: Optional[int] = field(default=None)
 
   number_s: str = field(init=False)
+  tags_s: str = field(init=False)
   partial_message: str = field(init=False)
   long_partial_message: str = field(init=False)
   posted_mark: str = field(init=False)
@@ -467,6 +469,11 @@ class Message(AsDict):
       )
     else:
       self.message_link = "-"
+
+    if self.tags:
+      self.tags_s = _tags_s_re.sub("`\g<0>`", self.tags)
+    else:
+      self.tags_s = "-"
 
     self.number_s = str(self.number) if self.number else "???"
     self.partial_message = self.message if len(self.message) < 100 else self.message[:97].strip() + "..."
