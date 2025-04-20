@@ -482,6 +482,11 @@ class Message(AsDict):
     self.date_posted_f = f"<t:{int(self.date_posted)}:f>" if self.date_posted else "-"
 
 
+  @property
+  def is_posted(self):
+    return self.message_id is not None
+
+
   @staticmethod
   def process_tags(tags: str):
     # Convert commas to spaces; remove redundant whitespace

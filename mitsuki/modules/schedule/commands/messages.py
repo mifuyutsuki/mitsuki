@@ -218,21 +218,18 @@ class ManageMessages(SelectionMixin, ReaderCommand):
     schedule = await check_fetch_schedule(self.ctx, f"@{message.schedule_id}")
 
     string_templates = []
-    if message.message_id:
+    if message.is_posted:
       string_templates.append("schedule_message_message_link")
-    if not schedule.active:
+    elif not schedule.active: # implies not message.is_posted
       string_templates.append("schedule_message_schedule_inactive")
 
     other_data = {}
-    if schedule.type == ScheduleTypes.QUEUE and not message.date_posted:
+    if schedule.type == ScheduleTypes.QUEUE and not message.is_posted:
       other_data |= {"target_post_time_f": f"<t:{int(schedule.post_time_of(message))}:f>"}
       string_templates.append("schedule_message_target_post_time")
 
-    await self.send(
-      self.Templates.VIEW,
-      other_data=message.asdict() | other_data,
-      template_kwargs=dict(use_string_templates=string_templates),
-      components=[
+    components = [
+      ActionRow(
         Button(
           style=ButtonStyle.BLURPLE,
           label="Edit...",
@@ -252,11 +249,28 @@ class ManageMessages(SelectionMixin, ReaderCommand):
           emoji=settings.emoji.delete,
           custom_id=CustomIDs.MESSAGE_DELETE.confirm().id(message_id)
         ),
+      ),
+      ActionRow(
         Button(
           style=ButtonStyle.GRAY,
           label="Refresh",
           emoji=settings.emoji.refresh,
           custom_id=CustomIDs.MESSAGE_VIEW.id(message_id)
+        ),
+      ),
+    ]
+    if message.is_posted:
+      components[1].add_component(
+        Button(
+          style=ButtonStyle.LINK,
+          label="Posted Message",
+          url=message.message_link
         )
-      ]
+      )
+
+    await self.send(
+      self.Templates.VIEW,
+      other_data=message.asdict() | other_data,
+      template_kwargs=dict(use_string_templates=string_templates),
+      components=components,
     )
