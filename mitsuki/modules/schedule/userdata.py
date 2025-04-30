@@ -392,6 +392,15 @@ class Schedule(AsDict):
     return Message.create(author, self, message)
 
 
+  def create_tag(
+    self,
+    author: Snowflake,
+    name: str,
+    description: Optional[str] = None,
+  ):
+    return ScheduleTag.create(author, self, name, description)
+
+
   async def add_message(self, session: AsyncSession, author: Snowflake, message: Union["Message", str]):
     if isinstance(message, str):
       message = Message.create(author, self, message)
@@ -425,6 +434,193 @@ class Schedule(AsDict):
     )
     await session.execute(statement)
     self.__attrs_post_init__()
+
+
+# =================================================================================================
+# Schedule Tag
+
+
+SCHEDULE_TAG_COLUMNS = schema.ScheduleTag().columns.copy()
+
+
+@define(kw_only=True)
+class ScheduleTag(AsDict):
+  id: Optional[int] = field(default=None)
+  schedule_id: int
+  name: str
+  description: Optional[str] = field(default=None)
+
+  created_by: Snowflake = field(converter=Snowflake)
+  modified_by: Snowflake = field(converter=Snowflake)
+  date_created: float
+  date_modified: float
+
+  schedule_guild: Optional[Snowflake] = field(default=None)
+  schedule_title: Optional[str] = field(default=None)
+  schedule_channel: Optional[Snowflake] = field(default=None)
+  schedule_type: Optional[int] = field(default=None)
+
+  description_s: str = field(init=False)
+  partial_description: str = field(init=False)
+  created_by_mention: str = field(init=False)
+  modified_by_mention: str = field(init=False)
+  date_created_f: str = field(init=False)
+  date_modified_f: str = field(init=False)
+
+
+  def __attrs_post_init__(self):
+    if self.description:
+      self.description_s = self.description
+      self.partial_description = truncate(self.description, 50)
+    else:
+      self.description_s = "*No description set*"
+      self.partial_description = "*No description set*"
+
+    self.created_by_mention = f"<@{self.created_by}>"
+    self.modified_by_mention = f"<@{self.modified_by}"
+    self.date_created_f = f"<t:{int(self.date_created)}:f>"
+    self.date_modified_f = f"<t:{int(self.date_modified)}:f>"
+
+
+  def asdbdict(self):
+    return {k: v for k, v in self.asdict().items() if k in SCHEDULE_TAG_COLUMNS}
+
+
+  @classmethod
+  def create(
+    cls,
+    author: Snowflake,
+    schedule: Union[Schedule, int],
+    name: str,
+    description: Optional[str] = None,
+    date_created: Optional[float] = None,
+  ):
+    date_created = date_created or timestamp_now()
+    schedule_id = schedule.id if isinstance(schedule, Schedule) else schedule
+
+    return cls(
+      schedule_id=schedule_id,
+      name=name,
+      description=description,
+      created_by=author,
+      modified_by=author,
+      date_created=date_created,
+      date_modified=date_created,
+    )
+
+
+  @classmethod
+  def create_bulk(
+    cls,
+    author: Snowflake,
+    schedule: Union[Schedule, int],
+    tags: str,
+    date_created: Optional[float] = None,
+  ):
+    date_created = date_created or timestamp_now()
+    return [
+      cls.create(author, schedule, tag, date_created=date_created)
+      for tag in Message.process_tags(tags).split()
+    ]
+
+
+  @classmethod
+  async def fetch(
+    cls,
+    tag_id: int,
+    guild: Optional[Snowflake] = None,
+    public: bool = True,
+  ):
+    query = (
+      select(
+        schema.ScheduleTag,
+        schema.Schedule.guild,
+        schema.Schedule.title,
+        schema.Schedule.post_channel,
+        schema.Schedule.type,
+      )
+      .join(schema.Schedule, schema.Schedule.id == schema.ScheduleTag.schedule_id)
+      .where(schema.ScheduleTag.id == tag_id)
+    )
+    if guild:
+      query = query.where(schema.Schedule.guild == guild)
+    if public:
+      query = query.where(schema.Schedule.discoverable == True)
+
+    query = query.order_by(schema.ScheduleTag.name)
+
+    async with new_session() as session:
+      result = (await session.execute(query)).first()
+
+    if not result:
+      return None
+    return cls(
+      **result.ScheduleTag.asdict(),
+      schedule_guild=result.guild,
+      schedule_title=result.title,
+      schedule_channel=result.post_channel,
+      schedule_type=result.type,
+    )
+
+
+  @classmethod
+  async def fetch_all(
+    cls,
+    schedule: Union[Schedule, int],
+    guild: Optional[Snowflake] = None,
+    public: bool = True,
+  ):
+    schedule_id = schedule.id if isinstance(schedule, Schedule) else schedule
+
+    query = (
+      select(
+        schema.ScheduleTag,
+        schema.Schedule.guild,
+        schema.Schedule.title,
+        schema.Schedule.post_channel,
+        schema.Schedule.type,
+      )
+      .join(schema.Schedule, schema.Schedule.id == schema.ScheduleTag.schedule_id)
+      .where(schema.ScheduleTag.schedule_id == schedule_id)
+    )
+    if guild:
+      query = query.where(schema.Schedule.guild == guild)
+    if public:
+      query = query.where(schema.Schedule.discoverable == True)
+
+    async with new_session() as session:
+      results = (await session.execute(query)).all()
+
+    return [cls(
+      **result.ScheduleTag.asdict(),
+      schedule_guild=result.guild,
+      schedule_title=result.title,
+      schedule_channel=result.post_channel,
+      schedule_type=result.type,
+    ) for result in results]
+
+
+  async def add(self, session: AsyncSession):
+    values = self.asdbdict()
+    for key in ["id"]:
+      values.pop(key)
+
+    statement = insert(schema.ScheduleTag).values(values).returning(schema.ScheduleTag.id)
+    result    = (await session.execute(statement)).first()
+    self.id   = result.id if result else None
+
+
+  async def delete(self, session: AsyncSession):
+    if not self.id:
+      raise ValueError("Cannot delete an unadded ScheduleTag to the database.")
+
+    await session.execute(
+      delete(schema.ScheduleTag)
+      .where(schema.ScheduleTag.id == self.id)
+    )
+
+    # Clear the ScheduleTag ID of this object
+    self.id = None
 
 
 # =================================================================================================
