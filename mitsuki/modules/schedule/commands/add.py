@@ -163,6 +163,7 @@ class AddMessage(WriterCommand):
         Button(
           style=ButtonStyle.GRAY,
           label="Go to Message",
+          emoji=settings.emoji.page_next,
           custom_id=CustomIDs.MESSAGE_VIEW.id(self.schedule_message.id)
         ),
         Button(
