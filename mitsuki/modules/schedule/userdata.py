@@ -481,7 +481,7 @@ class Message(AsDict):
       self.message_link = "-"
 
     if self.tags:
-      self.tags_s = _tags_s_re.sub("`\g<0>`", self.tags)
+      self.tags_s = _tags_s_re.sub(r"`\g<0>`", self.tags)
     else:
       self.tags_s = "-"
 
@@ -514,6 +514,7 @@ class Message(AsDict):
 
   def set_tags(self, tags: str):
     self.tags = self.process_tags(tags)
+    self.tags_s = _tags_s_re.sub(r"`\g<0>`", self.tags)
 
 
   @classmethod
