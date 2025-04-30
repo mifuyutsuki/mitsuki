@@ -35,27 +35,33 @@ from . import schema
 from mitsuki import bot
 from mitsuki.lib.checks import has_bot_channel_permissions
 from mitsuki.lib.userdata import new_session, AsDict
-from mitsuki.utils import process_text, ratio, escape_like_text
+from mitsuki.utils import process_text, ratio, escape_like_text, truncate
 
 
 # =================================================================================================
 # Utility functions
 
+
 T = TypeVar("T")
+
 
 def separated_list(type: Callable[[str], T], separator: str = ","):
   def wrapper(ls: Optional[str] = None):
     return [type(li) for li in ls.split(separator)] if ls else None
   return wrapper
 
+
 def option(type: Callable[[Any], T]):
   return lambda s: type(s) if s else None
+
 
 def timestamp_now():
   return datetime.now(tz=timezone.utc).timestamp()
 
+
 # =================================================================================================
 # Utility functions
+
 
 class ScheduleTypes(IntEnum):
   QUEUE = 0
@@ -67,7 +73,9 @@ class ScheduleTypes(IntEnum):
 # =================================================================================================
 # Schedule
 
+
 SCHEDULE_COLUMNS = schema.Schedule().columns.copy()
+
 
 @define
 class Schedule(AsDict):
@@ -422,8 +430,10 @@ class Schedule(AsDict):
 # =================================================================================================
 # Schedule Message
 
+
 MESSAGE_COLUMNS = schema.Message().columns.copy()
 _tags_s_re = re.compile(r"[^\s]+")
+
 
 @define
 class Message(AsDict):
@@ -476,8 +486,8 @@ class Message(AsDict):
       self.tags_s = "-"
 
     self.number_s = str(self.number) if self.number else "???"
-    self.partial_message = self.message if len(self.message) < 100 else self.message[:97].strip() + "..."
-    self.long_partial_message = self.message if len(self.message) < 1024 else self.message[:1022].strip() + "..."
+    self.partial_message = truncate(self.message, 100)
+    self.long_partial_message = truncate(self.message, 1024)
     self.posted_mark = "✅" if self.message_link != "-" else "🕗"
 
     self.schedule_channel_mention = f"<#{self.schedule_channel}>" if self.schedule_channel else "-"

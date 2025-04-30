@@ -43,7 +43,7 @@ from interactions.client.errors import Forbidden, NotFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mitsuki import settings
-from mitsuki.utils import escape_text, is_caller, get_member_color_value
+from mitsuki.utils import escape_text, is_caller, get_member_color_value, truncate
 from mitsuki.lib.commands import (
   CustomID,
   AsDict,
@@ -109,7 +109,7 @@ class AddMessage(WriterCommand):
 
     schedule = await check_fetch_schedule(self.ctx, schedule_key)
   
-    schedule_title = schedule.title if len(schedule.title) <= 32 else schedule.title[:30].strip() + "..."
+    schedule_title = truncate(schedule.title, 32)
     return await self.ctx.send_modal(
       modal=Modal(
         ParagraphText(
