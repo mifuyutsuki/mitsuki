@@ -555,6 +555,8 @@ class Message(AsDict):
     if tags:
       processed_tags = re.escape(tags).replace("\\ ", r"\b.*\b")
       search_query = search_query.where(schema.Message.tags.regexp_match(r"(\b" + processed_tags + r"\b)"))
+    
+    search_query = search_query.order_by(schema.Message.number.desc(), schema.Message.message)
     if limit:
       search_query = search_query.limit(limit)
 
