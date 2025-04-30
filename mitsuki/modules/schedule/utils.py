@@ -49,7 +49,7 @@ async def fetch_schedule(ctx: InteractionContext, schedule_key: str) -> Optional
   return schedule
 
 
-async def check_fetch_schedule(ctx: InteractionContext, schedule_key: str) -> Schedule:
+async def check_fetch_schedule(ctx: InteractionContext, schedule_key: str, hide: bool = False) -> Schedule:
   """
   Fetch a Schedule by key, and raise an error on failure.
   
@@ -59,9 +59,11 @@ async def check_fetch_schedule(ctx: InteractionContext, schedule_key: str) -> Sc
   # Search
   schedule = await fetch_schedule(ctx, schedule_key)
 
-  # Deny if no role and no admin
+  # Deny if no role and no admin, unless hide is set, in which case throw Not Found
   if not await has_schedule_permissions(ctx, schedule):
-    raise UserDenied(requires="Server admin or Schedule manager role(s)")
+    if not hide:
+      raise UserDenied(requires="Server admin or Schedule manager role(s)")
+    raise ScheduleNotFound(schedule_key=schedule_key)
 
   # Throw error on no Schedule
   if not schedule:
