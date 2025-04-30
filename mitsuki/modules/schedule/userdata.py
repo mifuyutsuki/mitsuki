@@ -488,7 +488,7 @@ class Message(AsDict):
     self.number_s = str(self.number) if self.number else "???"
     self.partial_message = truncate(self.message, 100)
     self.long_partial_message = truncate(self.message, 1024)
-    self.posted_mark = "✅" if self.message_link != "-" else "🕗"
+    self.posted_mark = f"{settings.emoji.yes}" if self.message_link != "-" else f"{settings.emoji.time}"
 
     self.schedule_channel_mention = f"<#{self.schedule_channel}>" if self.schedule_channel else "-"
     self.created_by_mention = f"<@{self.created_by}>"
