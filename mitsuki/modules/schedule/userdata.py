@@ -32,7 +32,7 @@ import re
 
 from . import schema
 
-from mitsuki import bot
+from mitsuki import bot, settings
 from mitsuki.lib.checks import has_bot_channel_permissions
 from mitsuki.lib.userdata import new_session, AsDict
 from mitsuki.utils import process_text, ratio, escape_like_text, truncate
@@ -117,7 +117,7 @@ class Schedule(AsDict):
     self.backlog_number         = self.current_number - self.posted_number
     self.front_number           = self.posted_number + 1 if self.current_number > 0 else 0
     self.back_number            = self.current_number
-    self.active_mark            = "✅ Active" if self.active else "⏸️ Inactive"
+    self.active_mark            = f"{settings.emoji.on} Active" if self.active else f"{settings.emoji.off} Inactive"
     self.post_channel_mention   = f"<#{self.post_channel}>" if self.post_channel else "No channel selected"
     self.created_by_mention     = f"<@{self.created_by}>"
     self.modified_by_mention    = f"<@{self.modified_by}>"
