@@ -816,6 +816,9 @@ class Message(AsDict):
 
 
   async def delete(self, session: AsyncSession):
+    if not self.id:
+      raise ValueError("Cannot delete an unadded ScheduleMessage to the database.")
+
     await session.execute(
       delete(schema.Message)
       .where(schema.Message.id == self.id)
@@ -847,6 +850,9 @@ class Message(AsDict):
           .where(schema.Message.number > self.number)
           .values(number=schema.Message.__table__.c.number - 1)
         )
+
+    # Clear the ScheduleMessage ID of this object
+    self.id = None
 
 
   async def update_modify(self, session: AsyncSession, modified_by: Snowflake):
