@@ -761,8 +761,8 @@ class Message(AsDict):
     schedule: Optional[Union[Schedule, int]] = None,
     limit: Optional[int] = None
   ):
-    if not search_key and not tags:
-      raise ValueError("Search key and tags cannot be both empty")
+    # if not search_key and not tags:
+    #   raise ValueError("Search key and tags cannot be both empty")
     if isinstance(tags, list):
       tags = cls.process_tags(" ".join(tags))
     elif isinstance(tags, str):
