@@ -59,7 +59,7 @@ class Message:
 
 
 class MessageMan:
-  _templates: Dict[str, Dict[str, Any]] = {}
+  _templates: Dict[str, Union[Dict[str, Any], List[Dict[str, Any]]]] = {}
   _strings: Dict[str, str] = {}
   _strings_blanks: Dict[str, str] = {}
   _default: Optional[Dict[str, Any]] = None
@@ -180,6 +180,7 @@ class MessageMan:
     data: Optional[dict] = None,
     user: Optional[BaseUser] = None,
     target_user: Optional[BaseUser] = None,
+    lines_data: Optional[Dict[str, List[Dict[str, Any]]]] = None,
     escape_data_values: List[str] = [],
     use_string_templates: List[str] = [],
     **template_kwargs
@@ -213,11 +214,11 @@ class MessageMan:
     string_data  = self._strings_blanks.copy()
     string_data |= {k: v for k, v in self._strings.items() if k in use_string_templates}
 
-    data = data or {}
+    base_data = data or {}
     if user:
-      data |= user_data(user)
+      base_data |= user_data(user)
     if target_user:
-      data |= target_user_data(target_user)
+      base_data |= target_user_data(target_user)
 
     loaded_templates = self._load_template(template_name)
     if not isinstance(loaded_templates, list):
@@ -233,7 +234,50 @@ class MessageMan:
 
       template  = default | loaded
       template  = _assign_data(template, string_data)
-      template  = _assign_data(template, data, escapes=escape_data_values)
+      template  = _assign_data(template, base_data, escapes=escape_data_values)
+
+      # message_template = {
+      #   ...,
+      #   multiline: [
+      #     {id: m_1, value: "this string"},
+      #     {id: m_2, value: "this_string"}
+      #   ]
+      # }
+
+      # lines_data = {
+      #   m_1: [
+      #     {a: 1, b: 1},
+      #     {a: 2, b: 3}
+      #   ],
+      #   m_2: ...
+      # }
+
+      if multiline_settings := template.get("multiline"):
+        multiline_assigned = {m["id"]: "" for m in multiline_settings if m.get("id")}
+        for m in multiline_settings:
+          m_id = m.get("id")
+          m_value = m.get("value")
+          if m_id not in multiline_assigned.keys():
+            continue
+          if m_id not in lines_data.keys():
+            continue
+          if not isinstance(m_value, str):
+            continue
+
+          multiline_assigns = [
+            _assign_string(_assign_string(m_value, string_data), base_data | line_data, escapes=escape_data_values)
+            for line_data in lines_data[m_id]
+          ]
+          if len(multiline_assigns) > 0:
+            if m.get("inline") and m.get("separator"):
+              multiline_assigned[m_id] = m["separator"].join(multiline_assigns)
+            else:
+              multiline_assigned[m_id] = (" " if m.get("inline") else "\n").join(multiline_assigns)
+          elif value_ifnone := m.get("value_ifnone"):
+              multiline_assigned[m_id] = value_ifnone
+
+        template  = _assign_data(template, multiline_assigned)
+
       template |= template_kwargs
 
       content = content or template.get("content")
@@ -397,7 +441,7 @@ class MessageMan:
       fields = []
       for field_data in fields_data[cursor : cursor + fields_per_page]:
         field_data = base_data | field_data
-        fields.append(_assign_data(field_template, field_data, escapes=escape_data_values))     
+        fields.append(_assign_data(field_template, field_data, escapes=escape_data_values))
 
       page_template = _assign_data(
         page_template | {"fields": fields},
@@ -420,10 +464,11 @@ class MessageMan:
   def multiline(
     self,
     template_name: str,
-    lines_data: Dict[str, List[Dict[str, Any]]],
+    lines_data: Dict[str, Any],
     base_data: Optional[dict] = None,
     user: Optional[BaseUser] = None,
     target_user: Optional[BaseUser] = None,
+    lines_per_page: Optional[int] = None,
     escape_data_values: List[str] = [],
     use_string_templates: List[str] = [],
     **template_kwargs
@@ -431,6 +476,7 @@ class MessageMan:
     if template_name not in self._templates.keys():
       raise ValueError(f"Message template '{template_name}' is invalid or does not exist")
 
+    lines_per_page = lines_per_page or 6
     string_data  = self._strings_blanks.copy()
     string_data |= {k: v for k, v in self._strings.items() if k in use_string_templates}
 
@@ -440,68 +486,43 @@ class MessageMan:
     if target_user:
       base_data |= target_user_data(target_user)
 
-    loaded_templates = self._load_template(template_name)
-    if not isinstance(loaded_templates, list):
-      loaded_templates = [loaded_templates]
+    loaded = self._load_template(template_name)
+    if isinstance(loaded.get("base_template"), str):
+      default = self._load_template(loaded["base_template"], copy=True)
+    else:
+      default = self._load_template("default", copy=True)
 
-    content   = None
-    embeds    = []
-    for loaded in loaded_templates:
-      if isinstance(loaded.get("base_template"), str):
-        default = self._load_template(loaded["base_template"], copy=True)
-      else:
-        default = self._load_template("default", copy=True)
+    base_template = default | loaded
+    base_template = _assign_data(base_template, string_data)
+    base_template = _assign_data(base_template, base_data, escapes=escape_data_values)
 
-      template  = default | loaded
-      template  = _assign_data(template, string_data)
-      template  = _assign_data(template, base_data, escapes=escape_data_values)
+    content = base_template.get("content")
+    embeds  = []
 
-      # message_template = {
-      #   ...,
-      #   multiline: [
-      #     {id: m_1, value: "this string"},
-      #     {id: m_2, value: "this_string"}
-      #   ]
-      # }
+    cursor, page = 0, 1
+    pages = (max(0, len(lines_data) - 1) // lines_per_page) + 1
 
-      # lines_data = {
-      #   m_1: [
-      #     {a: 1, b: 1},
-      #     {a: 2, b: 3}
-      #   ],
-      #   m_2: ...
-      # }
+    while cursor < len(lines_data):
+      page_template = deepcopy(base_template)
 
-      multiline_settings = template.get("multiline")
-      multiline_assigned = {m["id"]: "" for m in multiline_settings if m.get("id")}
-      for m in multiline_settings:
-        m_id = m.get("id")
-        m_value = m.get("value")
-        if m_id not in multiline_assigned.keys():
-          continue
-        if m_id not in lines_data.keys():
-          continue
-        if not isinstance(m_value, str):
-          continue
+      if line_format := base_template.get("multiline2"):
+        line_content = ""
+        lines        = []
+        for line_data in lines_data[cursor : cursor + lines_per_page]:
+          stringed_data = _assign_string(line_format, string_data)
+          lines.append(_assign_string(stringed_data, base_data | line_data, escapes=escape_data_values))
 
-        multiline_assigns = [
-          _assign_string(_assign_string(m_value, string_data), base_data | line_data, escapes=escape_data_values)
-          for line_data in lines_data[m_id]
-        ]
-        if len(multiline_assigns) > 0:
-          if m.get("inline") and m.get("separator"):
-            multiline_assigned[m_id] = m["separator"].join(multiline_assigns)
-          else:
-            multiline_assigned[m_id] = (" " if m.get("inline") else "\n").join(multiline_assigns)
-        elif value_ifnone := m.get("value_ifnone"):
-            multiline_assigned[m_id] = value_ifnone
+        if len(lines) > 0:
+          line_content = "\n".join(lines)
+        page_template = _assign_data(page_template, {"multiline2": line_content, "page": page, "pages": pages})
 
-      template  = _assign_data(template, multiline_assigned)
-      template |= template_kwargs
+      page_template |= template_kwargs
 
-      content = content or template.get("content")
-      if em := _create_embed(template, color_data=self.colors):
+      if em := _create_embed(page_template, color_data=self.colors):
         embeds.append(em)
+
+      cursor += lines_per_page
+      page += 1
 
     return Message(
       content=str(content) if content else None,
@@ -528,7 +549,7 @@ class MessageMan:
     return templates
 
 
-  def _load_template(self, name: str, copy: bool = False):
+  def _load_template(self, name: str, copy: bool = False) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
     get = self._templates.get(name)
     if copy:
       return deepcopy(get) if get else {}
@@ -604,6 +625,7 @@ def load_message(
   data: Optional[dict] = None,
   user: Optional[BaseUser] = None,
   target_user: Optional[BaseUser] = None,
+  lines_data: Optional[Dict[str, List[Dict[str, Any]]]] = None,
   escape_data_values: List[str] = [],
   use_string_templates: List[str] = [],
   **template_kwargs
@@ -639,6 +661,7 @@ def load_message(
     data=data,
     user=user,
     target_user=target_user,
+    lines_data=lines_data,
     escape_data_values=escape_data_values,
     use_string_templates=use_string_templates,
     **template_kwargs
@@ -744,10 +767,11 @@ def load_multifield(
 
 def load_multiline(
   template_name: str,
-  lines_data: Dict[str, List[Dict[str, Any]]],
+  lines_data: Dict[str, Any],
   base_data: Optional[dict] = None,
   user: Optional[BaseUser] = None,
   target_user: Optional[BaseUser] = None,
+  lines_per_page: int = 10,
   escape_data_values: List[str] = [],
   use_string_templates: List[str] = [],
   **template_kwargs
@@ -758,6 +782,7 @@ def load_multiline(
     base_data=base_data,
     user=user,
     target_user=target_user,
+    lines_per_page=lines_per_page,
     escape_data_values=escape_data_values,
     use_string_templates=use_string_templates,
     **template_kwargs
