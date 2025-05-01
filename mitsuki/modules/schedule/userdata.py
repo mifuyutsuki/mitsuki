@@ -227,6 +227,7 @@ class Schedule(AsDict):
     cls,
     guild: Optional[Snowflake] = None,
     active: Optional[bool] = None,
+    discoverable: Optional[bool] = None,
     sort: Optional[str] = None
   ):
     query = select(schema.Schedule)
@@ -234,6 +235,8 @@ class Schedule(AsDict):
       query = query.where(schema.Schedule.guild == guild)
     if active is not None:
       query = query.where(schema.Schedule.active == active)
+    if discoverable is not None:
+      query = query.where(schema.Schedule.discoverable == discoverable)
 
     sort = sort or "name"
     match sort.lower():
