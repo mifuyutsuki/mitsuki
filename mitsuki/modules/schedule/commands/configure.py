@@ -81,6 +81,7 @@ from ..daemon import daemon
 from ..errors import (
   ScheduleException,
   ScheduleNotFound,
+  ScheduleAlreadyExists,
   MessageNotFound,
   MessageTooLong,
 )
@@ -250,7 +251,7 @@ class ConfigureSchedule(WriterCommand):
     # Duplicate check
     guild_schedules = await Schedule.fetch_many(guild=self.ctx.guild.id)
     if title in (s.title for s in guild_schedules):
-      return await self.send(self.Templates.ERROR_TITLE_ALREADY_EXISTS)
+      raise ScheduleAlreadyExists(title)
 
     schedule.title = title
 
