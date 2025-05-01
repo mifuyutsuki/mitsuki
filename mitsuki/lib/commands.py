@@ -36,7 +36,8 @@ from interactions import (
   StringSelectOption,
   ActionRow,
   BaseComponent,
-  spread_to_rows
+  spread_to_rows,
+  MessageFlags,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 import re
@@ -200,6 +201,12 @@ class Command:
 
   def set_state(self, state: StrEnum):
     self.state = state
+
+  @property
+  def is_ephemeral(self):
+    if not self.ctx.message:
+      return False
+    return MessageFlags.EPHEMERAL in self.ctx.message.flags
 
   @property
   def has_origin(self):
