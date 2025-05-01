@@ -599,6 +599,8 @@ class ScheduleTag(AsDict):
     if public:
       query = query.where(schema.Schedule.discoverable == True)
 
+    query = query.order_by(schema.ScheduleTag.name)
+
     async with new_session() as session:
       results = (await session.execute(query)).all()
 
