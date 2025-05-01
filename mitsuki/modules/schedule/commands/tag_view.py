@@ -120,7 +120,7 @@ class ViewTag(SelectionMixin, ReaderCommand):
     await assert_in_guild(self.ctx)
 
     # This fetch implies the schedule exists due to inner join, otherwise throwing Tag Not Found
-    tag = await ScheduleTag.fetch(tag_id, guild=self.ctx.guild.id, public=self.is_ephemeral)
+    tag = await ScheduleTag.fetch(tag_id, guild=self.ctx.guild.id, public=not self.is_ephemeral)
     if not tag:
       raise TagNotFound()
 
