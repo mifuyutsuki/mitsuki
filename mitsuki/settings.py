@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -14,6 +14,7 @@ from yaml import safe_load
 from typing import Optional, Dict, Any, List
 from attrs import frozen, field
 from os import environ
+from interactions import PartialEmoji
 
 from mitsuki import logger
 
@@ -24,32 +25,35 @@ __all__ = (
 )
 
 
-@frozen
+@frozen(kw_only=True)
 class BaseSettings:
   mitsuki: "MitsukiSettings"
   dev: "DevSettings"
   gacha: "GachaSettings"
+  emoji: "EmojiSettings"
 
   @classmethod
   def create(cls, filename: str):
-    with open(filename) as f:
+    with open(filename, encoding="UTF-8") as f:
       d: Dict[str, Dict[str, Any]] = safe_load(f)
 
     try:
       return cls(
         mitsuki=MitsukiSettings(**d["mitsuki"]),
         dev=DevSettings(**d["dev"]),
-        gacha=GachaSettings(**d["gacha"])
+        gacha=GachaSettings(**d["gacha"]),
+        emoji=EmojiSettings(**d["emoji"]),
       )
     except KeyError as e:
       raise KeyError(f"Missing settings tree: {str(e)}") from None
 
 
-@frozen
+@frozen(kw_only=True)
 class MitsukiSettings:
   daily_reset: str
   db_use: str
   db_path: str
+  db_pg_path: str
   status: List[str]
   status_cycle: int
   status_randomize: bool = field(converter=bool)
@@ -60,16 +64,44 @@ class MitsukiSettings:
   messages_custom_dir: Optional[str] = field(default=None)
 
 
-@frozen
+@frozen(kw_only=True)
 class DevSettings:
   scope: Optional[int] = field(default=None)
   db_path: Optional[str] = field(default=None)
+  db_pg_path: Optional[str] = field(default=None)
 
 
-@frozen
+@frozen(kw_only=True)
 class GachaSettings:
   settings: str
   roster: str
+
+
+@frozen(kw_only=True)
+class EmojiSettings:
+  yes: PartialEmoji = field(converter=PartialEmoji.from_str)
+  no: PartialEmoji = field(converter=PartialEmoji.from_str)
+  on: PartialEmoji = field(converter=PartialEmoji.from_str)
+  off: PartialEmoji = field(converter=PartialEmoji.from_str)
+
+  new: PartialEmoji = field(converter=PartialEmoji.from_str)
+  edit: PartialEmoji = field(converter=PartialEmoji.from_str)
+  delete: PartialEmoji = field(converter=PartialEmoji.from_str)
+  list: PartialEmoji = field(converter=PartialEmoji.from_str)
+  gallery: PartialEmoji = field(converter=PartialEmoji.from_str)
+  configure: PartialEmoji = field(converter=PartialEmoji.from_str)
+  refresh: PartialEmoji = field(converter=PartialEmoji.from_str)
+  back: PartialEmoji = field(converter=PartialEmoji.from_str)
+
+  text: PartialEmoji = field(converter=PartialEmoji.from_str)
+  time: PartialEmoji = field(converter=PartialEmoji.from_str)
+  date: PartialEmoji = field(converter=PartialEmoji.from_str)
+
+  page_first: PartialEmoji = field(converter=PartialEmoji.from_str)
+  page_previous: PartialEmoji = field(converter=PartialEmoji.from_str)
+  page_next: PartialEmoji = field(converter=PartialEmoji.from_str)
+  page_last: PartialEmoji = field(converter=PartialEmoji.from_str)
+  page_goto: PartialEmoji = field(converter=PartialEmoji.from_str)
 
 
 _settings_file = environ.get("SETTINGS_YAML") or ""
@@ -83,3 +115,4 @@ else:
 mitsuki = root.mitsuki if root else None
 dev = root.dev if root else None
 gacha = root.gacha if root else None
+emoji = root.emoji if root else None

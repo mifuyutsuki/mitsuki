@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -21,6 +21,7 @@ from typing import Dict, List, Optional, Union
 from datetime import datetime
 
 from mitsuki import bot, logger
+from mitsuki.lib.autopost import autosend
 from mitsuki.lib.userdata import new_session
 from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes, timestamp_now
 
@@ -90,7 +91,7 @@ class DaemonTask:
       return
 
     # Validation: schedule is valid (channel exists, perms check, etc.)
-    if not await schedule.is_valid():
+    if not await schedule.is_valid(server_list=[guild.id for guild in bot.guilds]):
       return
 
     # Validation: channel exists (also caught by is_valid())
@@ -121,7 +122,7 @@ class DaemonTask:
     # Execution: Post current message
     posted_message = None
     if is_ready and formatted_message:
-      posted_message = await channel.send(formatted_message)
+      posted_message = await autosend(channel, formatted_message)
       if schedule.pin and posted_message:
         try:
           await posted_message.pin()
@@ -161,6 +162,12 @@ class DaemonTask:
 class Daemon:
   active_schedules: Dict[int, DaemonTask] = {}
 
+
+  @property
+  def server_list(self):
+    return [guild.id for guild in self.bot.guilds]
+
+
   def __init__(self, bot: Client):
     self.bot = bot
 
@@ -171,7 +178,7 @@ class Daemon:
       return
 
     for schedule in active_schedules:
-      if not schedule.active or not await schedule.is_valid():
+      if not schedule.active or not await schedule.is_valid(server_list=self.server_list):
         continue
 
       # post unsent backlog
@@ -187,7 +194,7 @@ class Daemon:
   async def force_post(self, schedule: Union[Schedule, int]):
     if isinstance(schedule, int):
       schedule = await Schedule.fetch_by_id(schedule)
-    if not schedule or not await schedule.is_valid():
+    if not schedule or not await schedule.is_valid(server_list=self.server_list):
       raise ValueError("Schedule not ready or doesn't exist")
 
     if schedule.has_unsent():
@@ -197,7 +204,7 @@ class Daemon:
   async def activate(self, schedule: Union[Schedule, int]):
     if isinstance(schedule, int):
       schedule = await Schedule.fetch_by_id(schedule)
-    if not schedule or not await schedule.is_valid():
+    if not schedule or not await schedule.is_valid(server_list=self.server_list):
       raise ValueError("Schedule not ready or doesn't exist")
 
     if active_schedule := self.active_schedules.get(schedule.id):
@@ -221,7 +228,7 @@ class Daemon:
   async def reactivate(self, schedule: Union[Schedule, int]):
     if isinstance(schedule, int):
       schedule = await Schedule.fetch_by_id(schedule)
-    if not schedule or not await schedule.is_valid():
+    if not schedule or not await schedule.is_valid(server_list=self.server_list):
       raise ValueError("Schedule not ready or doesn't exist")
 
     if schedule_task := self.active_schedules.get(schedule.id):

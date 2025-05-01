@@ -1,0 +1,108 @@
+_namespace: schedule_tag
+
+
+# [Multiline/Selection]
+list:
+  title: >-
+    Tags for "${schedule_title}" (${page}/${pages})
+  description: >-
+    `${total_tags}` available
+
+
+    ${multiline2}
+  thumbnail: >-
+    ${guild_icon}
+  multiline2: >-
+    `${name}` - ${partial_description}
+
+
+list_empty:
+  title: >-
+    Tags for "${schedule_title}"
+  description: >-
+    `${total_tags}` available
+
+
+    No tags setup for this schedule yet.
+  thumbnail: >-
+    ${guild_icon}
+
+
+# [Multifield/Selection]
+view:
+  title: >-
+    ${name} in "${schedule_title}" (${page}/${pages})
+  description: >-  
+    `${total_messages}` messages available
+
+    ${schedule_tag_view_info_s}
+
+    > ${description_s}
+  thumbnail: >-
+    ${guild_icon}
+  field:
+    name   : ${posted_mark} ${schedule_title} \#${number_s}
+    value  : >-
+      ${tags_s}
+
+      ${long_partial_message}
+    inline : false
+
+
+view_empty:
+  title: >-
+    ${name} in ${schedule_title}
+  description: >-
+    This tag has no posted messages.
+
+    ${schedule_tag_view_info_s}
+
+    > ${description_s}
+  thumbnail: >-
+    ${guild_icon}
+
+
+view_info_s: "\
+  Created: ${date_created_f} by ${created_by_mention}\n
+  Modified: ${date_modified_f} by ${modified_by_mention}\n
+  "
+
+
+add_success:
+  title: >-
+    Tag Added to "${schedule_title}"
+  description: >-
+    `${name}`
+
+    ${description_s}
+
+
+edit_success:
+  title: >-
+    Tag Edited in "${schedule_title}"
+  description: >-
+    `${name}`
+
+    ${description_s}
+
+
+delete_confirm:
+  title: >-
+    Delete Tag?
+  description: >-
+    Are you sure to delete `${name}`?
+
+
+    Deleting a tag only delists it from `/schedule tags`, and does not remove messages.
+
+    
+    `${name}`
+    
+    ${description_s}
+
+
+delete_success:
+  title: >-
+    Deleted Tag in "${schedule_title}"
+  description: >-
+    Deleted tag `${name}`

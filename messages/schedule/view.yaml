@@ -1,0 +1,44 @@
+_namespace: schedule_view
+
+
+_:
+  title: >-
+    ${schedule_title} \#${number_s}
+  description: >-
+    ${message}
+  thumbnail: >-
+    ${guild_icon}
+  fields:
+  - name   : Tags
+    value  : >-
+      ${tags_s}
+    inline : false
+  - name   : Post Date
+    value  : >-
+      ${date_posted_f}
+    inline : false
+
+
+# Selection
+search_results:
+  title: >-
+    Search results for "${search_key}" (${page}/${pages})
+  description: >-
+    `${total_results}` results found from publicly available Schedule messages
+  thumbnail: >-
+    ${guild_icon}
+  field       :
+    name      : ${schedule_title} \#${number_s}
+    value     : >-
+      ${partial_message}
+    inline    : false
+
+
+no_results:
+  title: >-
+    No matching results for "${search_key}"
+  description: >-
+    `0` results found from publicly available Schedule messages
+  thumbnail: >-
+    ${guild_icon}
+  color: error

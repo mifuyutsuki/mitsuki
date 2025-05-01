@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -12,6 +12,7 @@
 
 from sqlalchemy import ForeignKey, Row
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import BigInteger
 from rapidfuzz import fuzz
 from typing import Optional, List, Callable
 from attrs import define, field
@@ -25,7 +26,7 @@ class Rolls(Base):
   __tablename__ = "gacha_rolls"
 
   id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-  user: Mapped[int]
+  user: Mapped[int] = mapped_column(BigInteger)
   card: Mapped[str]
   time: Mapped[float]
 
@@ -41,7 +42,7 @@ class Rolls(Base):
 class Currency(Base):
   __tablename__ = "gacha_currency"
 
-  user: Mapped[int] = mapped_column(primary_key=True)
+  user: Mapped[int] = mapped_column(BigInteger, primary_key=True)
   amount: Mapped[int]
   last_daily: Mapped[Optional[float]]
   first_daily: Mapped[Optional[float]]
@@ -56,7 +57,7 @@ class Currency(Base):
 class Inventory(Base):
   __tablename__ = "gacha_inventory"
 
-  user: Mapped[int] = mapped_column(primary_key=True)
+  user: Mapped[int] = mapped_column(BigInteger, primary_key=True)
   card: Mapped[str] = mapped_column(primary_key=True)
   count: Mapped[int]
   first_acquired: Mapped[Optional[float]]
@@ -75,7 +76,7 @@ class Inventory(Base):
 class Pity(Base):
   __tablename__ = "gacha_pity"
 
-  user: Mapped[int] = mapped_column(primary_key=True)
+  user: Mapped[int] = mapped_column(BigInteger, primary_key=True)
   counter1: Mapped[int]
   counter2: Mapped[int]
   counter3: Mapped[int]
@@ -104,7 +105,7 @@ class Pity(Base):
 class Pity2(Base):
   __tablename__ = "gacha_pity2"
 
-  user: Mapped[int] = mapped_column(primary_key=True)
+  user: Mapped[int] = mapped_column(BigInteger, primary_key=True)
   rarity: Mapped[int] = mapped_column(primary_key=True)
   count: Mapped[int]
 

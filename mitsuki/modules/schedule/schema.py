@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -69,3 +69,17 @@ class Message(Base):
   number: Mapped[Optional[int]]
   message_id: Mapped[Optional[int]] = mapped_column(BigInteger)
   date_posted: Mapped[Optional[float]]
+
+
+class ScheduleTag(Base):
+  __tablename__ = "schedule_tags"
+
+  id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+  schedule_id: Mapped[int]
+  name: Mapped[str]
+  description: Mapped[Optional[str]]
+
+  created_by: Mapped[int] = mapped_column(BigInteger)
+  modified_by: Mapped[int] = mapped_column(BigInteger)
+  date_created: Mapped[float]
+  date_modified: Mapped[float]

@@ -1,5 +1,6 @@
 _namespace: schedule_message
 
+
 # [Multifield/Selection]
 list:
   title: >-
@@ -11,10 +12,66 @@ list:
   field:
     name   : ${posted_mark} (ID-${id}) ${schedule_title} \#${number_s}
     value  : >-
-      `${tags}`
+      ${tags_s}
 
       ${long_partial_message}
     inline : false
+
+
+# [Multifield/Selection]
+list_backlog:
+  title: >-
+    Backlog for "${schedule_title}" (${page}/${pages})
+  description: >-
+    `${list_messages}`/`${total_messages}` available - sorted from up next
+  thumbnail: >-
+    ${guild_icon}
+  field:
+    name   : ${posted_mark} (ID-${id}) ${schedule_title} \#${number_s}
+    value  : >-
+      ${tags_s}
+
+      ${long_partial_message}
+    inline : false
+
+
+list_backlog_empty:
+  title: >-
+    Backlog for for "${schedule_title}"
+  description: >-
+    `${list_messages}`/`${total_messages}` available - sorted from up next
+
+    No messages in the backlog. Press the `Add` button to add a new message
+  thumbnail: >-
+    ${guild_icon}
+
+
+# [Multifield/Selection]
+list_posted:
+  title: >-
+    Posted for "${schedule_title}" (${page}/${pages})
+  description: >-
+    `${list_messages}`/`${total_messages}` available - sorted from most recent
+  thumbnail: >-
+    ${guild_icon}
+  field:
+    name   : ${posted_mark} (ID-${id}) ${schedule_title} \#${number_s}
+    value  : >-
+      ${tags_s}
+
+      ${long_partial_message}
+    inline : false
+
+
+list_posted_empty:
+  title: >-
+    Posted for for "${schedule_title}"
+  description: >-
+    `${list_messages}`/`${total_messages}` available - sorted from most recent
+
+    No messages yet to be posted.
+  thumbnail: >-
+    ${guild_icon}
 
 
 list_empty:
@@ -38,7 +95,7 @@ view:
   fields:
   - name   : Tags
     value  : >-
-      `${tags}`
+      ${tags_s}
     inline : false
   - name   : Post Date ${schedule_message_schedule_inactive}
     value  : >-
@@ -59,7 +116,7 @@ add_success:
   fields:
   - name   : ${schedule_title} \#${number_s}
     value  : >-
-      `${tags}`
+      ${tags_s}
 
       ${message}
     inline : false
@@ -75,7 +132,7 @@ edit_success:
     value  : ${message}
     inline : false
   - name   : Tags
-    value  : ${tags}
+    value  : ${tags_s}
     inline : false
 
 
@@ -91,7 +148,7 @@ reorder_select:
     inline : false
   - name   : (ID-${id}) ${schedule_title} \#${number_s}
     value  : >-
-      `${tags}`
+      ${tags_s}
 
       ${long_partial_message}
     inline : false
@@ -107,7 +164,7 @@ reorder_success:
   fields:
   - name   : (ID-${id}) ${schedule_title} \#${number_s}
     value  : >-
-      `${tags}`
+      ${tags_s}
 
       ${message}
     inline : false
@@ -124,7 +181,7 @@ delete_confirm:
   fields:
   - name   : (ID-${id}) ${schedule_title} \#${number_s}
     value  : >-
-      `${tags}`
+      ${tags_s}
 
       ${long_partial_message}
     inline : false

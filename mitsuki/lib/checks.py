@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,17 +23,34 @@ from interactions.api.events import Component
 
 from typing import Union, List, Optional
 
-from .errors import BotDenied, UserDenied
+from .errors import BotDenied, UserDenied, OutOfGuild
 
 
 __all__ = (
+  "assert_in_guild",
+  "assert_user_owner",
   "assert_user_permissions",
   "assert_bot_permissions",
   "assert_bot_channel_permissions",
+  "is_user_owner",
   "has_user_permissions",
   "has_bot_permissions",
   "has_bot_channel_permissions",
 )
+
+
+async def assert_in_guild(ctx: BaseContext):
+  if not ctx.guild:
+    raise OutOfGuild()
+
+
+async def assert_user_owner(ctx: BaseContext):
+  if not await is_user_owner(ctx):
+    raise UserDenied(requires="Bot owner")
+
+
+async def is_user_owner(ctx: BaseContext):
+  return await is_owner()(ctx)
 
 
 async def assert_user_roles(

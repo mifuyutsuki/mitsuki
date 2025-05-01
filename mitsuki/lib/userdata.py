@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -30,23 +30,18 @@ __all__ = (
   "new_session",
 )
 
-# TODO: postgresql support
-
-if environ.get("ENABLE_DEV_MODE") == "1":
-  USERDATA_PATH = settings.dev.db_path
-else:
-  USERDATA_PATH = settings.mitsuki.db_path
+_dev_mode = environ.get("ENABLE_DEV_MODE") == "1"
 
 if settings.mitsuki.db_use == "sqlite":
-  engine = create_async_engine(f"sqlite+aiosqlite:///{USERDATA_PATH}")
+  host_db = settings.dev.db_path if _dev_mode else settings.mitsuki.db_path
+  engine = create_async_engine(f"sqlite+aiosqlite:///{host_db}")
+
 elif settings.mitsuki.db_use == "postgresql":
-  raise SystemExit("PostgreSQL support is coming in a future version.")
-  # username = environ.get("DB_USERNAME")
-  # password = quote_plus(environ.get("DB_PASSWORD"))
-  # host_db  = settings.mitsuki.db_path
-  # engine = create_async_engine(
-  #   f"postgresql+asyncpg://{username}:{password}@{host_db}"
-  # )
+  host_db = settings.dev.db_pg_path if _dev_mode else settings.mitsuki.db_pg_path
+  username = environ.get("DB_USERNAME")
+  password = quote_plus(environ.get("DB_PASSWORD"))
+  engine = create_async_engine(f"postgresql+asyncpg://{username}:{password}@{host_db}")
+
 else:
   raise SystemExit(
     f"Database '{settings.mitsuki.db_use}' not recognized or supported"

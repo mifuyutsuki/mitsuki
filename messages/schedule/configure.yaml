@@ -21,23 +21,11 @@ _:
       ${format}
       ```
     inline : false
-  - name   : Active
-    value  : >-
-      **${active}**
-    inline : true
-  - name   : Pin
-    value  : >-
-      **${pin}**
-    inline : true
-  - name   : Discovery
-    value  : >-
-      **${discoverable}**
-    inline : true
-  - name   : Next if activated now in
+  - name   : Next in (if active now)
     value  : >-
       ${next_fire_f}
     inline : false
-  - name   : Schedule managers
+  - name   : Manager roles
     value  : >-
       ${manager_role_mentions}
     inline : false

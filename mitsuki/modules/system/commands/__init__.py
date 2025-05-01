@@ -10,13 +10,9 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from sys import argv
-from os import environ
+from .nickname import Nickname
+from .templates_reload import ReloadTemplates
 
-dev_mode = "dev" in argv
-environ["ENABLE_DEV_MODE"] = "1" if dev_mode else "0"
-
-from mitsuki import run
-
-if __name__ == "__main__":
-  run()
+__all__ = (
+  "Nickname",
+)

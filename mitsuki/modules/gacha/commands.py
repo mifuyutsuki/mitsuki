@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,7 +29,7 @@ from interactions import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mitsuki import bot
+from mitsuki import bot, settings
 from mitsuki.utils import escape_text, process_text, truncate, get_member_color_value, ratio
 from mitsuki.lib.commands import (
   AsDict,
@@ -282,11 +282,13 @@ class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
         Button(
           style=ButtonStyle.BLURPLE,
           label="Cards",
+          emoji=settings.emoji.list,
           custom_id=CustomIDs.CARDS.id(self.target_id),
         ),
         Button(
           style=ButtonStyle.BLURPLE,
           label="Gallery",
+          emoji=settings.emoji.gallery,
           custom_id=CustomIDs.GALLERY.id(self.target_id),
         ),
       ])
@@ -311,7 +313,7 @@ class Profile(TargetMixin, CurrencyMixin, ReaderCommand):
     active = len(nav_btns) > 0
     while active:
       try:
-        _ = await bot.wait_for_component(message, nav_btns, timeout=180)
+        _ = await self.bot.wait_for_component(message, nav_btns, timeout=180)
       except TimeoutError:
         active = False
       finally:
@@ -477,7 +479,12 @@ class Roll(CurrencyMixin, WriterCommand):
         # Roll fails due to insufficient shards
         return await Errors.from_other(self).insufficient_funds(self.data.shards, gacha.cost)
 
-      again_btn = Button(style=ButtonStyle.BLURPLE, label="Roll again", disabled=not self.again)
+      again_btn = Button(
+        style=ButtonStyle.BLURPLE,
+        label="Roll again",
+        emoji=gacha.currency_icon_emoji,
+        disabled=not self.again
+      )
       message   = await self.send_commit(
         other_data=self.card.asdict(), 
         template_kwargs=dict(escape_data_values=["name", "type", "series"]),
@@ -485,7 +492,7 @@ class Roll(CurrencyMixin, WriterCommand):
       )
 
       try:
-        again_response = await bot.wait_for_component(components=again_btn, check=is_caller(self.ctx), timeout=15)
+        again_response = await self.bot.wait_for_component(components=again_btn, check=is_caller(self.ctx), timeout=15)
       except TimeoutError:
         return
       else:
@@ -682,7 +689,7 @@ class View(CurrencyMixin, SelectionMixin, AutocompleteMixin, ReaderCommand):
     if total_results <= 0:
       return await self.send(self.States.NO_RESULTS)
 
-    escapes = ["search_key", "name", "type", "series"]
+    escapes = ["name", "type", "series"]
     self.field_data = search_results
     self.selection_values = [
       StringSelectOption(
@@ -725,7 +732,7 @@ class View(CurrencyMixin, SelectionMixin, AutocompleteMixin, ReaderCommand):
       else:
         return await Errors.create(self.ctx).card_not_found(card)
 
-    escapes = ["search_key", "name", "type", "series"]
+    escapes = ["name", "type", "series"]
 
     user_card = await userdata.card_user(self.caller_id, card.card)
     if user_card:

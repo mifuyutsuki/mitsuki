@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -32,30 +32,36 @@ import re
 
 from . import schema
 
-from mitsuki import bot
+from mitsuki import bot, settings
 from mitsuki.lib.checks import has_bot_channel_permissions
 from mitsuki.lib.userdata import new_session, AsDict
-from mitsuki.utils import process_text, ratio
+from mitsuki.utils import process_text, ratio, escape_like_text, truncate
 
 
 # =================================================================================================
 # Utility functions
 
+
 T = TypeVar("T")
+
 
 def separated_list(type: Callable[[str], T], separator: str = ","):
   def wrapper(ls: Optional[str] = None):
     return [type(li) for li in ls.split(separator)] if ls else None
   return wrapper
 
+
 def option(type: Callable[[Any], T]):
   return lambda s: type(s) if s else None
+
 
 def timestamp_now():
   return datetime.now(tz=timezone.utc).timestamp()
 
+
 # =================================================================================================
 # Utility functions
+
 
 class ScheduleTypes(IntEnum):
   QUEUE = 0
@@ -67,7 +73,9 @@ class ScheduleTypes(IntEnum):
 # =================================================================================================
 # Schedule
 
+
 SCHEDULE_COLUMNS = schema.Schedule().columns.copy()
+
 
 @define
 class Schedule(AsDict):
@@ -109,7 +117,7 @@ class Schedule(AsDict):
     self.backlog_number         = self.current_number - self.posted_number
     self.front_number           = self.posted_number + 1 if self.current_number > 0 else 0
     self.back_number            = self.current_number
-    self.active_mark            = "✅ Active" if self.active else "⏸️ Inactive"
+    self.active_mark            = f"{settings.emoji.on} Active" if self.active else f"{settings.emoji.off} Inactive"
     self.post_channel_mention   = f"<#{self.post_channel}>" if self.post_channel else "No channel selected"
     self.created_by_mention     = f"<@{self.created_by}>"
     self.modified_by_mention    = f"<@{self.modified_by}>"
@@ -219,6 +227,7 @@ class Schedule(AsDict):
     cls,
     guild: Optional[Snowflake] = None,
     active: Optional[bool] = None,
+    discoverable: Optional[bool] = None,
     sort: Optional[str] = None
   ):
     query = select(schema.Schedule)
@@ -226,6 +235,8 @@ class Schedule(AsDict):
       query = query.where(schema.Schedule.guild == guild)
     if active is not None:
       query = query.where(schema.Schedule.active == active)
+    if discoverable is not None:
+      query = query.where(schema.Schedule.discoverable == discoverable)
 
     sort = sort or "name"
     match sort.lower():
@@ -357,7 +368,7 @@ class Schedule(AsDict):
       return await session.scalar(query) is not None
 
 
-  async def is_valid(self):
+  async def is_valid(self, server_list: Optional[List[Snowflake]] = None):
     if (
       not self.post_channel
       or len(self.format.strip()) <= 0
@@ -372,6 +383,8 @@ class Schedule(AsDict):
         Permissions.VIEW_CHANNEL,         # for fetching previous pin
         Permissions.READ_MESSAGE_HISTORY, # for fetching previous pin
       ])
+    if server_list and self.guild not in server_list:
+      return False
     if not await has_bot_channel_permissions(bot, self.post_channel, required_permissions):
       return False
 
@@ -380,6 +393,15 @@ class Schedule(AsDict):
 
   def create_message(self, author: Snowflake, message: str):
     return Message.create(author, self, message)
+
+
+  def create_tag(
+    self,
+    author: Snowflake,
+    name: str,
+    description: Optional[str] = None,
+  ):
+    return ScheduleTag.create(author, self, name, description)
 
 
   async def add_message(self, session: AsyncSession, author: Snowflake, message: Union["Message", str]):
@@ -418,9 +440,234 @@ class Schedule(AsDict):
 
 
 # =================================================================================================
+# Schedule Tag
+
+
+SCHEDULE_TAG_COLUMNS = schema.ScheduleTag().columns.copy()
+
+
+@define(kw_only=True)
+class ScheduleTag(AsDict):
+  id: Optional[int] = field(default=None)
+  schedule_id: int
+  name: str
+  description: Optional[str] = field(default=None)
+
+  created_by: Snowflake = field(converter=Snowflake)
+  modified_by: Snowflake = field(converter=Snowflake)
+  date_created: float
+  date_modified: float
+
+  schedule_guild: Optional[Snowflake] = field(default=None)
+  schedule_title: Optional[str] = field(default=None)
+  schedule_channel: Optional[Snowflake] = field(default=None)
+  schedule_type: Optional[int] = field(default=None)
+
+  description_s: str = field(init=False)
+  partial_description: str = field(init=False)
+  created_by_mention: str = field(init=False)
+  modified_by_mention: str = field(init=False)
+  date_created_f: str = field(init=False)
+  date_modified_f: str = field(init=False)
+
+
+  def __attrs_post_init__(self):
+    if self.description:
+      self.description_s = self.description
+      self.partial_description = truncate(self.description, 50)
+    else:
+      self.description_s = "*No description set*"
+      self.partial_description = "*No description set*"
+
+    self.created_by_mention = f"<@{self.created_by}>"
+    self.modified_by_mention = f"<@{self.modified_by}>"
+    self.date_created_f = f"<t:{int(self.date_created)}:f>"
+    self.date_modified_f = f"<t:{int(self.date_modified)}:f>"
+
+
+  def asdbdict(self):
+    return {k: v for k, v in self.asdict().items() if k in SCHEDULE_TAG_COLUMNS}
+
+
+  @classmethod
+  def create(
+    cls,
+    author: Snowflake,
+    schedule: Union[Schedule, int],
+    name: str,
+    description: Optional[str] = None,
+    date_created: Optional[float] = None,
+  ):
+    date_created = date_created or timestamp_now()
+    schedule_id = schedule.id if isinstance(schedule, Schedule) else schedule
+
+    return cls(
+      schedule_id=schedule_id,
+      name=name,
+      description=description,
+      created_by=author,
+      modified_by=author,
+      date_created=date_created,
+      date_modified=date_created,
+    )
+
+
+  @classmethod
+  def create_bulk(
+    cls,
+    author: Snowflake,
+    schedule: Union[Schedule, int],
+    tags: str,
+    date_created: Optional[float] = None,
+  ):
+    date_created = date_created or timestamp_now()
+    return [
+      cls.create(author, schedule, tag, date_created=date_created)
+      for tag in Message.process_tags(tags).split()
+    ]
+
+
+  def set_description(self, description: Optional[str] = None):
+    self.description = description
+
+    if self.description:
+      self.description_s = self.description
+      self.partial_description = truncate(self.description, 50)
+    else:
+      self.description_s = "*No description set*"
+      self.partial_description = "*No description set*"
+
+
+  @classmethod
+  async def fetch(
+    cls,
+    tag_id: int,
+    guild: Optional[Snowflake] = None,
+    public: bool = True,
+  ):
+    query = (
+      select(
+        schema.ScheduleTag,
+        schema.Schedule.guild,
+        schema.Schedule.title,
+        schema.Schedule.post_channel,
+        schema.Schedule.type,
+      )
+      .join(schema.Schedule, schema.Schedule.id == schema.ScheduleTag.schedule_id)
+      .where(schema.ScheduleTag.id == tag_id)
+    )
+    if guild:
+      query = query.where(schema.Schedule.guild == guild)
+    if public:
+      query = query.where(schema.Schedule.discoverable == True)
+
+    query = query.order_by(schema.ScheduleTag.name)
+
+    async with new_session() as session:
+      result = (await session.execute(query)).first()
+
+    if not result:
+      return None
+    return cls(
+      **result.ScheduleTag.asdict(),
+      schedule_guild=result.guild,
+      schedule_title=result.title,
+      schedule_channel=result.post_channel,
+      schedule_type=result.type,
+    )
+
+
+  @classmethod
+  async def fetch_all(
+    cls,
+    schedule: Union[Schedule, int],
+    guild: Optional[Snowflake] = None,
+    public: bool = True,
+  ):
+    schedule_id = schedule.id if isinstance(schedule, Schedule) else schedule
+
+    query = (
+      select(
+        schema.ScheduleTag,
+        schema.Schedule.guild,
+        schema.Schedule.title,
+        schema.Schedule.post_channel,
+        schema.Schedule.type,
+      )
+      .join(schema.Schedule, schema.Schedule.id == schema.ScheduleTag.schedule_id)
+      .where(schema.ScheduleTag.schedule_id == schedule_id)
+    )
+    if guild:
+      query = query.where(schema.Schedule.guild == guild)
+    if public:
+      query = query.where(schema.Schedule.discoverable == True)
+
+    query = query.order_by(schema.ScheduleTag.name)
+
+    async with new_session() as session:
+      results = (await session.execute(query)).all()
+
+    return [cls(
+      **result.ScheduleTag.asdict(),
+      schedule_guild=result.guild,
+      schedule_title=result.title,
+      schedule_channel=result.post_channel,
+      schedule_type=result.type,
+    ) for result in results]
+
+
+  async def add(self, session: AsyncSession):
+    values = self.asdbdict()
+    for key in ["id"]:
+      values.pop(key)
+
+    statement = insert(schema.ScheduleTag).values(values).returning(schema.ScheduleTag.id)
+    result    = (await session.execute(statement)).first()
+    self.id   = result.id if result else None
+    self.__attrs_post_init__()
+
+
+  async def update_modify(self, session: AsyncSession, modified_by: Snowflake):
+    self.modified_by = modified_by
+    self.date_modified = timestamp_now()
+    self.__attrs_post_init__()
+    await self.update(session)
+
+
+  async def update(self, session: AsyncSession):
+    values = self.asdbdict()
+    for key in ["id", "schedule_id", "name"]:
+      values.pop(key)
+
+    await session.execute(
+      update(schema.ScheduleTag)
+      .where(schema.ScheduleTag.id == self.id)
+      .values(**values)
+    )
+    self.__attrs_post_init__()
+
+
+  async def delete(self, session: AsyncSession):
+    if not self.id:
+      raise ValueError("Cannot delete an unadded ScheduleTag to the database.")
+
+    await session.execute(
+      delete(schema.ScheduleTag)
+      .where(schema.ScheduleTag.id == self.id)
+    )
+
+    # Clear the ScheduleTag ID of this object
+    self.id = None
+    self.__attrs_post_init__()
+
+
+# =================================================================================================
 # Schedule Message
 
+
 MESSAGE_COLUMNS = schema.Message().columns.copy()
+_tags_s_re = re.compile(r"[^\s]+")
+
 
 @define
 class Message(AsDict):
@@ -445,6 +692,7 @@ class Message(AsDict):
   schedule_type: Optional[int] = field(default=None)
 
   number_s: str = field(init=False)
+  tags_s: str = field(init=False)
   partial_message: str = field(init=False)
   long_partial_message: str = field(init=False)
   posted_mark: str = field(init=False)
@@ -466,10 +714,15 @@ class Message(AsDict):
     else:
       self.message_link = "-"
 
+    if self.tags:
+      self.tags_s = _tags_s_re.sub(r"`\g<0>`", self.tags)
+    else:
+      self.tags_s = "-"
+
     self.number_s = str(self.number) if self.number else "???"
-    self.partial_message = self.message if len(self.message) < 100 else self.message[:97].strip() + "..."
-    self.long_partial_message = self.message if len(self.message) < 1024 else self.message[:1022].strip() + "..."
-    self.posted_mark = "✅" if self.message_link != "-" else "🕗"
+    self.partial_message = truncate(self.message, 100)
+    self.long_partial_message = truncate(self.message, 1024)
+    self.posted_mark = f"{settings.emoji.yes}" if self.message_link != "-" else f"{settings.emoji.time}"
 
     self.schedule_channel_mention = f"<#{self.schedule_channel}>" if self.schedule_channel else "-"
     self.created_by_mention = f"<@{self.created_by}>"
@@ -480,35 +733,48 @@ class Message(AsDict):
     self.date_posted_f = f"<t:{int(self.date_posted)}:f>" if self.date_posted else "-"
 
 
+  @property
+  def is_posted(self):
+    return self.message_id is not None
+
+
   @staticmethod
   def process_tags(tags: str):
     # Convert commas to spaces; remove redundant whitespace
     processed = re.sub(r"[\s]+", " ", tags.replace(",", " ")).strip().lower()
     # Remove redundant items; sort alphabetically
-    return " ".join(sorted(set(processed.split(" "))))
+    return " ".join(sorted(set(processed.split())))
 
 
   def set_tags(self, tags: str):
     self.tags = self.process_tags(tags)
+    self.tags_s = _tags_s_re.sub(r"`\g<0>`", self.tags)
 
 
   @classmethod
   async def search(
     cls,
     search_key: Optional[str] = None,
-    tags: Optional[List[str]] = None,
+    tags: Optional[Union[str, List[str]]] = None,
     guild: Optional[Snowflake] = None,
     public: bool = True,
+    schedule: Optional[Union[Schedule, int]] = None,
     limit: Optional[int] = None
   ):
-    if not search_key and not tags:
-      raise ValueError("Search key and tags cannot be both empty")
+    # if not search_key and not tags:
+    #   raise ValueError("Search key and tags cannot be both empty")
+    if isinstance(tags, list):
+      tags = cls.process_tags(" ".join(tags))
+    elif isinstance(tags, str):
+      tags = cls.process_tags(tags)
 
     search_query = (
       select(
-        schema.Message.id,
-        schema.Message.number,
-        schema.Message.message
+        schema.Message,
+        schema.Schedule.guild,
+        schema.Schedule.title,
+        schema.Schedule.post_channel,
+        schema.Schedule.type,
       )
       .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule_id)
     )
@@ -516,26 +782,35 @@ class Message(AsDict):
       search_query = search_query.where(schema.Schedule.guild == guild)
     if public:
       search_query = search_query.where(schema.Schedule.discoverable == True).where(schema.Message.message_id != None)
+    if search_key:
+      processed_search_key = escape_like_text(search_key.lower())
+      search_query = search_query.where(
+        func.lower(schema.Message.message).like(f"%{processed_search_key}%", escape="\\")
+      )
     if tags:
-      processed_tags = cls.process_tags(tags).replace("/", "//").replace("%", "/%")
-      search_query = search_query.where(schema.Message.tags.like(f"%{processed_tags}%", escape="/"))
+      processed_tags = re.escape(tags).replace("\\ ", r"\b.*\b")
+      search_query = search_query.where(schema.Message.tags.regexp_match(r"(\b" + processed_tags + r"\b)"))
+    if schedule:
+      schedule_id = schedule.id if isinstance(schedule, Schedule) else schedule
+      search_query = search_query.where(schema.Message.schedule_id == schedule_id)
+
+    search_query = search_query.order_by(schema.Message.number.desc(), schema.Message.message)
+    if limit:
+      search_query = search_query.limit(limit)
 
     async with new_session() as session:
       results = (await session.execute(search_query)).all()
 
-    if search_key:
-      matches = [
-        (
-          result.id,
-          ratio(search_key, result.message, processor=process_text)
-        )
-        for result in results
-      ]
-    else:
-      matches = [(result.id, result.number) for result in results]
-    matches.sort(key=lambda r: r[-1], reverse=True)
-
-    return [await cls.fetch(match[0], guild=guild) for match in (matches[:limit] if limit else matches)]
+    return [
+      cls(
+        **result.Message.asdict(),
+        schedule_guild=result.guild,
+        schedule_title=result.title,
+        schedule_channel=result.post_channel,
+        schedule_type=result.type,
+      )
+      for result in results
+    ]
 
 
   @classmethod
@@ -543,6 +818,7 @@ class Message(AsDict):
     cls,
     message_id: int,
     guild: Optional[Snowflake] = None,
+    public: bool = False,
   ):
     query = (
       select(
@@ -557,6 +833,10 @@ class Message(AsDict):
     )
     if guild:
       query = query.where(schema.Schedule.guild == guild)
+    if public:
+      query = query.where(schema.Schedule.discoverable == True).where(schema.Message.message_id != None)
+
+    query = query.order_by(schema.Message.date_posted.desc())
 
     async with new_session() as session:
       result = (await session.execute(query)).first()
@@ -573,6 +853,46 @@ class Message(AsDict):
 
 
   @classmethod
+  async def fetch_by_number(
+    cls,
+    number: int,
+    guild: Optional[Snowflake] = None,
+    public: bool = False
+  ):
+    query = (
+      select(
+        schema.Message,
+        schema.Schedule.guild,
+        schema.Schedule.title,
+        schema.Schedule.post_channel,
+        schema.Schedule.type,
+      )
+      .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule_id)
+      .where(schema.Message.number == number)
+    )
+    if guild:
+      query = query.where(schema.Schedule.guild == guild)
+    if public:
+      query = query.where(schema.Schedule.discoverable == True).where(schema.Message.message_id != None)
+
+    query = query.order_by(schema.Message.date_posted.desc())
+
+    async with new_session() as session:
+      results = (await session.execute(query)).all()
+
+    return [
+      cls(
+        **result.Message.asdict(),
+        schedule_guild=result.guild,
+        schedule_title=result.title,
+        schedule_channel=result.post_channel,
+        schedule_type=result.type,
+      )
+      for result in results
+    ]
+
+
+  @classmethod
   async def fetch_by_schedule(
     cls,
     guild: Snowflake,
@@ -582,6 +902,7 @@ class Message(AsDict):
     sort: Optional[str] = None,
     limit: Optional[int] = None,
     offset: Optional[int] = None,
+    ascending: bool = False,
   ):
     query = (
       select(
@@ -609,11 +930,11 @@ class Message(AsDict):
     sort = sort or "number"
     match sort:
       case "number":
-        query = query.order_by(schema.Message.number.desc())
+        query = query.order_by(schema.Message.number if ascending else schema.Message.number.desc())
       case "created":
-        query = query.order_by(schema.Message.date_created.desc())
+        query = query.order_by(schema.Message.date_created if ascending else schema.Message.date_created.desc())
       case "modified":
-        query = query.order_by(schema.Message.date_modified.desc())
+        query = query.order_by(schema.Message.date_modified if ascending else schema.Message.date_modified.desc())
       case _:
         raise ValueError(f"Unknown sort option '{sort}'")
 
@@ -775,6 +1096,9 @@ class Message(AsDict):
 
 
   async def delete(self, session: AsyncSession):
+    if not self.id:
+      raise ValueError("Cannot delete an unadded ScheduleMessage to the database.")
+
     await session.execute(
       delete(schema.Message)
       .where(schema.Message.id == self.id)
@@ -806,6 +1130,9 @@ class Message(AsDict):
           .where(schema.Message.number > self.number)
           .values(number=schema.Message.__table__.c.number - 1)
         )
+
+    # Clear the ScheduleMessage ID of this object
+    self.id = None
 
 
   async def update_modify(self, session: AsyncSession, modified_by: Snowflake):

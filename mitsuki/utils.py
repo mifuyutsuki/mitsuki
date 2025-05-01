@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -20,11 +20,13 @@ from interactions.api.events import Component
 from rapidfuzz.utils import default_process
 from rapidfuzz import fuzz
 
+from typing import Optional
 import unicodedata
 import regex as re
 
 __all__ = (
   "ratio",
+  "substring_ratio",
   "escape_text",
   "process_text",
   "remove_accents",
@@ -36,6 +38,7 @@ __all__ = (
 
 
 _escape_text_re = re.compile(r"[*_`.+(){}!#|:@<>~\-\[\]\\\/]")
+_escape_like_text_re = re.compile(r"[%_]")
 _remove_accents_re = re.compile(r"\p{Mn}")
 
 
@@ -45,6 +48,12 @@ def ratio(s1: str, s2: str, processor=None):
     + (0.35 * fuzz.ratio(s1, s2, processor=processor))
     + (0.10 * fuzz.partial_ratio(s1, s2, processor=processor))
   )
+
+
+def substring_ratio(s1: str, s2: str, processor=None):
+  _s1 = processor(s1)
+  _s2 = processor(s2)
+  return 1.0 if (_s1 in _s2 or _s2 in _s1) else 0.0
 
 
 def escape_text(text: str):
@@ -61,6 +70,22 @@ def escape_text(text: str):
   """
   global _escape_text_re
   return _escape_text_re.sub(r"\\\g<0>", text)
+
+
+def escape_like_text(text: str):
+  """
+  Escape SQL LIKE special characters `%` and `_` in a text with `\\`.
+
+  For example, `100%` is converted into `100\\%`.
+
+  Args:
+      text: String to be escaped
+  
+  Returns;
+      SQL LIKE-escaped string
+  """
+  global _escape_like_text_re
+  return _escape_like_text_re.sub(r"\\\g<0>", text)
 
 
 def process_text(text: str):

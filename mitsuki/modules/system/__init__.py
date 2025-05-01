@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -27,13 +27,18 @@ from typing import Optional
 from . import commands
 
 
-class SystemModule(Extension):  
+class SystemModule(Extension):
+  # TODO: Make this module DM only (ContextType.BOT_DM)
   @slash_command(
     name="system",
-    description="System commands",
+    description="System commands (requires bot owner)",
   )
   async def system_cmd(self, ctx: SlashContext):
     pass
+
+  # ===============================================================================================
+  # Manage Nickname
+  # ===============================================================================================
 
   @system_cmd.subcommand(
     sub_cmd_name="set-nickname",
@@ -47,4 +52,21 @@ class SystemModule(Extension):
     max_length=32,
   )
   async def set_nickname_cmd(self, ctx: SlashContext, nickname: Optional[str] = None):
+    # TODO: Move to future /server module
     await commands.Nickname.create(ctx).run(nickname)
+
+  # ===============================================================================================
+  # Manage Templates
+  # ===============================================================================================
+
+  system_templates_cmd = system_cmd.group(
+    name="templates",
+    description="Manage bot templates"
+  )
+
+  @system_templates_cmd.subcommand(
+    sub_cmd_name="reload",
+    sub_cmd_description="Reload bot templates"
+  )
+  async def system_templates_cmd(self, ctx: SlashContext):
+    await commands.ReloadTemplates.create(ctx).run()

@@ -10,13 +10,25 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from sys import argv
-from os import environ
+from interactions import (
+  TYPE_ALL_CHANNEL,
+)
+from typing import Dict, List, Optional, Union
 
-dev_mode = "dev" in argv
-environ["ENABLE_DEV_MODE"] = "1" if dev_mode else "0"
+from mitsuki import logger
+from asyncio import Lock, sleep
 
-from mitsuki import run
+_autosend_lock = Lock()
 
-if __name__ == "__main__":
-  run()
+AUTOSEND_DELAY_SECONDS = 0.1
+
+
+async def autosend(channel: TYPE_ALL_CHANNEL, content: str, sleep_seconds: Optional[float] = None, **kwargs):
+  sleep_seconds = sleep_seconds or AUTOSEND_DELAY_SECONDS
+
+  async with _autosend_lock:
+    m = await channel.send(content, **kwargs)
+    if sleep_seconds:
+      await sleep(sleep_seconds)
+
+  return m

@@ -14,6 +14,13 @@ schedule_not_found:
     Could not find a Schedule with the specified title or key.
   color: error
 
+schedule_already_exists:
+  title: >-
+    Schedule Exists
+  description: >-
+    Schedule '${title}' already exists in this server.
+  color: error
+
 message_too_long:
   title: >-
     Message Too Long
@@ -26,6 +33,27 @@ message_not_found:
     Message Not Found
   description: >-
     Could not find the specified message.
+  color: error
+
+tag_not_found:
+  title: >-
+    Tag Not Found
+  description: >-
+    Could not find the specified tag.
+  color: error
+
+tag_already_exists:
+  title: >-
+    Tag Exists
+  description: >-
+    Tag `${name}` already exists in the given Schedule.
+  color: error
+
+tag_invalid_name:
+  title: >-
+    Invalid Tag Name
+  description: >-
+    Tag contains invalid characters, such as spaces.
   color: error
 
 invalid_input:
