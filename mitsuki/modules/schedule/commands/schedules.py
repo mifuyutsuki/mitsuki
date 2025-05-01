@@ -220,6 +220,13 @@ class ManageSchedules(SelectionMixin, ReaderCommand):
           ),
           Button(
             style=ButtonStyle.BLURPLE,
+            label="Tags",
+            emoji=settings.emoji.list,
+            custom_id=CustomIDs.TAG_MANAGE.id(schedule.id),
+            disabled=not can_configure
+          ),
+          Button(
+            style=ButtonStyle.BLURPLE,
             label="Configure",
             emoji=settings.emoji.configure,
             custom_id=CustomIDs.CONFIGURE.id(schedule.id),

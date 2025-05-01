@@ -10,15 +10,27 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
+# Manage Schedule
 from .schedules import ManageSchedules
 from .create import CreateSchedule
 from .configure import ConfigureSchedule
+
+# Manage Message
 from .messages import ManageMessages
 from .add import AddMessage
 from .reorder import ReorderMessage
 from .edit import EditMessage
 from .delete import DeleteMessage
+
+# View Message
 from .view import ViewSchedule
+
+# View/Manage Tag
+from .tag_view import ViewTag
+from .tag_add import AddTag
+from .tag_manage import ManageTag
+from .tag_edit import EditTag
+from .tag_delete import DeleteTag
 
 
 __all__ = (
@@ -31,4 +43,9 @@ __all__ = (
   "EditMessage",
   "DeleteMessage",
   "ViewSchedule",
+  "AddTag",
+  "ManageTag",
+  "ViewTag",
+  "EditTag",
+  "DeleteTag",
 )

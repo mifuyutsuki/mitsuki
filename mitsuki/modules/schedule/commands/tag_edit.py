@@ -42,8 +42,8 @@ from interactions import (
 from interactions.client.errors import Forbidden, NotFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mitsuki import bot
-from mitsuki.utils import escape_text, is_caller, get_member_color_value
+from mitsuki import settings
+from mitsuki.utils import escape_text, is_caller, get_member_color_value, truncate
 from mitsuki.lib.commands import (
   CustomID,
   AsDict,
@@ -75,77 +75,81 @@ from mitsuki.lib.userdata import new_session
 from ..userdata import (
   Schedule,
   Message as ScheduleMessage,
-  ScheduleTypes
+  ScheduleTag,
+  ScheduleTypes,
 )
 from ..daemon import daemon
 from ..errors import (
   ScheduleException,
   ScheduleNotFound,
-  ScheduleAlreadyExists,
+  MessageNotFound,
+  MessageTooLong,
+  TagInvalidName,
+  TagAlreadyExists,
+  TagNotFound,
 )
 from ..utils import (
   check_fetch_schedule,
+  check_fetch_message,
   has_schedule_permissions,
 )
 from ..customids import CustomIDs
 
 
-class CreateSchedule(WriterCommand):
-  schedule: Schedule
+class EditTag(WriterCommand):
+  schedule_tag: ScheduleTag
+
 
   class Templates(StrEnum):
-    SUCCESS        = "schedule_manage_create_success"
-    ALREADY_EXISTS = "schedule_manage_create_already_exists"  
+    SUCCESS = "schedule_tag_edit_success"
 
 
-  async def prompt(self):
+  async def prompt_from_button(self):
+    return await self.prompt(int(CustomID.get_id_from(self.ctx)))
+
+
+  async def prompt(self, tag_id: int):
     await assert_in_guild(self.ctx)
-    await assert_user_permissions(
-      self.ctx, Permissions.ADMINISTRATOR,
-      "Server admin"
-    )
 
-    return await self.ctx.send_modal(
+    tag = await ScheduleTag.fetch(tag_id, guild=self.ctx.guild.id, public=True)
+    if not tag:
+      raise TagNotFound()
+
+    tag_name = truncate(tag.name, length=32)
+    await self.ctx.send_modal(
       modal=Modal(
-        ShortText(
-          label="Schedule Title",
-          custom_id="title",
-          placeholder="e.g. \"Daily Questions\"",
-          min_length=3,
-          max_length=64,
+        ParagraphText(
+          label=f"Description (Optional)",
+          custom_id="description",
+          placeholder="No description set",
+          value=tag.description,
+          min_length=0,
+          max_length=100,
+          required=False,
         ),
-        title="Create Schedule",
-        custom_id=CustomIDs.SCHEDULE_CREATE.response()
+        title=f"Edit Tag: {tag_name}",
+        custom_id=CustomIDs.TAG_EDIT.response().id(tag.id)
       )
     )
 
 
-  async def response(self, schedule_title: str):
+  async def response_from_prompt(self, description: Optional[str] = None):
+    return await self.response(int(CustomID.get_id_from(self.ctx)), description)
+
+
+  async def response(self, tag_id: int, description: Optional[str] = None):
     await assert_in_guild(self.ctx)
-    await assert_user_permissions(
-      self.ctx, Permissions.ADMINISTRATOR,
-      "Server admin"
-    )
+    await self.defer(ephemeral=True)
 
-    if self.has_origin:
-      await self.defer(edit_origin=True)
-    else:
-      await self.defer(ephemeral=True)
+    tag = await ScheduleTag.fetch(tag_id, guild=self.ctx.guild.id, public=True)
+    if not tag:
+      raise TagNotFound()
 
-    schedule_title = schedule_title.strip()
+    self.schedule_tag = tag
+    self.schedule_tag.set_description(description.strip() if description else None)
 
-    # Length check
-    if len(schedule_title) <= 0:
-      raise BadInput(field="Schedule title")
-
-    # Duplicate check
-    guild_schedules = await Schedule.fetch_many(guild=self.ctx.guild.id)
-    if schedule_title in (s.title for s in guild_schedules):
-      raise ScheduleAlreadyExists(schedule_title)
-
-    self.schedule = Schedule.create(self.ctx, schedule_title)
-    await self.send_commit(self.Templates.SUCCESS, other_data={"schedule_title": schedule_title})
+    await self.send_commit(self.Templates.SUCCESS, other_data=tag.asdict(), components=[])
 
 
   async def transaction(self, session: AsyncSession):
-    await self.schedule.add(session)
+    await self.schedule_tag.update_modify(session, self.ctx.author.id)

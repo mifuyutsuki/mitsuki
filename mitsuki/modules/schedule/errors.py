@@ -38,6 +38,15 @@ class ScheduleNotFound(ScheduleException):
     super().__init__(f"Unable to find schedule with key '{schedule_key}'")
 
 
+class ScheduleAlreadyExists(ScheduleException):
+  TEMPLATE: str = "schedule_error_schedule_already_exists"
+
+  def __init__(self, title: str):
+    self.data = {"title": title}
+
+    super().__init__(f"Schedule '{title}' already exists in given server")
+
+
 class MessageTooLong(ScheduleException):
   TEMPLATE: str = "schedule_error_message_too_long"
 
@@ -52,3 +61,26 @@ class MessageNotFound(ScheduleException):
 
   def __init__(self):
     super().__init__(f"Unable to find schedule message")
+
+
+class TagNotFound(ScheduleException):
+  TEMPLATE: str = "schedule_error_tag_not_found"
+
+  def __init__(self):
+    super().__init__(f"Unable to find schedule tag")
+
+
+class TagAlreadyExists(ScheduleException):
+  TEMPLATE: str = "schedule_error_tag_already_exists"
+
+  def __init__(self, name: str):
+    self.data = {"name": name}
+
+    super().__init__(f"Tag '{name}' already exists in given schedule")
+
+
+class TagInvalidName(ScheduleException):
+  TEMPLATE: str = "schedule_error_tag_invalid_name"
+
+  def __init__(self):
+    super().__init__(f"Tag contains invalid characters, such as spaces")

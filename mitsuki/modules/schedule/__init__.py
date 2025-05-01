@@ -266,3 +266,69 @@ class ScheduleModule(Extension):
   @component_callback(CustomIDs.MESSAGE_DELETE.string_id_pattern())
   async def message_delete_run(self, ctx: ComponentContext):
     return await DeleteMessage.create(ctx).run()
+
+  # ===========================================================================
+  # List Tag
+  # ===========================================================================
+
+  @schedule_cmd.subcommand(
+    sub_cmd_name="tags",
+    sub_cmd_description="View Schedule tags"
+  )
+  @slash_option(
+    name="schedule",
+    description="Schedule to view",
+    opt_type=OptionType.STRING,
+    required=True,
+    autocomplete=False,
+  )
+  async def tag_list_cmd(self, ctx: SlashContext, schedule: str):
+    return await ManageTag.create(ctx).list(schedule)
+
+  @component_callback(CustomIDs.TAG_MANAGE.string_id_pattern())
+  async def tag_manage_btn(self, ctx: ComponentContext):
+    return await ManageTag.create(ctx).manage_from_button()
+
+  @component_callback(CustomIDs.TAG_LIST.string_id_pattern())
+  async def tag_list_btn(self, ctx: ComponentContext):
+    return await ManageTag.create(ctx).list_from_button()
+
+  @component_callback(CustomIDs.TAG_VIEW.string_id_pattern())
+  async def tag_view_btn(self, ctx: ComponentContext):
+    return await ViewTag.create(ctx).view_from_button()
+
+  # ===========================================================================
+  # Add Tag
+  # ===========================================================================
+
+  @component_callback(CustomIDs.TAG_ADD.prompt().string_id_pattern())
+  async def tag_add_btn(self, ctx: ComponentContext):
+    return await AddTag.create(ctx).prompt_from_button()
+
+  @modal_callback(CustomIDs.TAG_ADD.response().string_id_pattern())
+  async def tag_add_response(self, ctx: ModalContext, name: str, description: Optional[str] = None):
+    return await AddTag.create(ctx).response_from_prompt(name, description)
+
+  # ===========================================================================
+  # Edit Tag
+  # ===========================================================================
+
+  @component_callback(CustomIDs.TAG_EDIT.prompt().string_id_pattern())
+  async def tag_edit_btn(self, ctx: ComponentContext):
+    return await EditTag.create(ctx).prompt_from_button()
+
+  @modal_callback(CustomIDs.TAG_EDIT.response().string_id_pattern())
+  async def tag_edit_response(self, ctx: ModalContext, description: Optional[str] = None):
+    return await EditTag.create(ctx).response_from_prompt(description)
+
+  # ===========================================================================
+  # Delete Tag
+  # ===========================================================================
+
+  @component_callback(CustomIDs.TAG_DELETE.confirm().string_id_pattern())
+  async def tag_delete_confirm(self, ctx: ComponentContext):
+    return await DeleteTag.create(ctx).confirm_from_button()
+
+  @component_callback(CustomIDs.TAG_DELETE.string_id_pattern())
+  async def tag_delete_run(self, ctx: ComponentContext):
+    return await DeleteTag.create(ctx).run_from_button()

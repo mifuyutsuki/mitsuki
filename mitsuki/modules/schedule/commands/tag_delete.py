@@ -42,8 +42,8 @@ from interactions import (
 from interactions.client.errors import Forbidden, NotFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mitsuki import bot
-from mitsuki.utils import escape_text, is_caller, get_member_color_value
+from mitsuki import settings
+from mitsuki.utils import escape_text, is_caller, get_member_color_value, truncate
 from mitsuki.lib.commands import (
   CustomID,
   AsDict,
@@ -75,77 +75,101 @@ from mitsuki.lib.userdata import new_session
 from ..userdata import (
   Schedule,
   Message as ScheduleMessage,
-  ScheduleTypes
+  ScheduleTag,
+  ScheduleTypes,
 )
 from ..daemon import daemon
 from ..errors import (
   ScheduleException,
   ScheduleNotFound,
-  ScheduleAlreadyExists,
+  MessageNotFound,
+  MessageTooLong,
+  TagInvalidName,
+  TagAlreadyExists,
+  TagNotFound,
 )
 from ..utils import (
   check_fetch_schedule,
+  check_fetch_message,
   has_schedule_permissions,
 )
 from ..customids import CustomIDs
 
 
-class CreateSchedule(WriterCommand):
-  schedule: Schedule
+class DeleteTag(WriterCommand):
+  schedule_tag: ScheduleTag
 
   class Templates(StrEnum):
-    SUCCESS        = "schedule_manage_create_success"
-    ALREADY_EXISTS = "schedule_manage_create_already_exists"  
+    CONFIRM = "schedule_tag_delete_confirm"
+    SUCCESS = "schedule_tag_delete_success"
 
 
-  async def prompt(self):
+  async def confirm_from_button(self):
+    await self.confirm(int(CustomID.get_id_from(self.ctx)))
+
+
+  async def confirm(self, tag_id: int):
     await assert_in_guild(self.ctx)
-    await assert_user_permissions(
-      self.ctx, Permissions.ADMINISTRATOR,
-      "Server admin"
-    )
-
-    return await self.ctx.send_modal(
-      modal=Modal(
-        ShortText(
-          label="Schedule Title",
-          custom_id="title",
-          placeholder="e.g. \"Daily Questions\"",
-          min_length=3,
-          max_length=64,
-        ),
-        title="Create Schedule",
-        custom_id=CustomIDs.SCHEDULE_CREATE.response()
-      )
-    )
-
-
-  async def response(self, schedule_title: str):
-    await assert_in_guild(self.ctx)
-    await assert_user_permissions(
-      self.ctx, Permissions.ADMINISTRATOR,
-      "Server admin"
-    )
 
     if self.has_origin:
       await self.defer(edit_origin=True)
     else:
       await self.defer(ephemeral=True)
 
-    schedule_title = schedule_title.strip()
+    tag = await ScheduleTag.fetch(tag_id, guild=self.ctx.guild.id, public=True)
+    if not tag:
+      raise TagNotFound()
 
-    # Length check
-    if len(schedule_title) <= 0:
-      raise BadInput(field="Schedule title")
+    return await self.send(
+      self.Templates.CONFIRM,
+      other_data=tag.asdict(),
+      components=[
+        Button(
+          style=ButtonStyle.RED,
+          label="Delete",
+          emoji=settings.emoji.delete,
+          custom_id=CustomIDs.TAG_DELETE.id(tag_id)
+        ),
+        Button(
+          style=ButtonStyle.GRAY,
+          label="Cancel",
+          emoji=settings.emoji.back,
+          custom_id=CustomIDs.TAG_VIEW.id(tag_id)
+        )
+      ]
+    )
 
-    # Duplicate check
-    guild_schedules = await Schedule.fetch_many(guild=self.ctx.guild.id)
-    if schedule_title in (s.title for s in guild_schedules):
-      raise ScheduleAlreadyExists(schedule_title)
 
-    self.schedule = Schedule.create(self.ctx, schedule_title)
-    await self.send_commit(self.Templates.SUCCESS, other_data={"schedule_title": schedule_title})
+  async def run_from_button(self):
+    await self.run(int(CustomID.get_id_from(self.ctx)))
+
+
+  async def run(self, tag_id: int):
+    await assert_in_guild(self.ctx)
+
+    if self.has_origin:
+      await self.defer(edit_origin=True)
+    else:
+      await self.defer(ephemeral=True)
+
+    tag = await ScheduleTag.fetch(tag_id, guild=self.ctx.guild.id, public=True)
+    if not tag:
+      raise TagNotFound()
+
+    self.schedule_tag = tag
+    await self.send_commit(
+      self.Templates.SUCCESS,
+      other_data=tag.asdict(),
+      components=[
+        Button(
+          style=ButtonStyle.GRAY,
+          label="Back to Tags",
+          emoji=settings.emoji.back,
+          custom_id=CustomIDs.TAG_MANAGE.id(tag.schedule_id)
+        )
+      ]
+    )
 
 
   async def transaction(self, session: AsyncSession):
-    await self.schedule.add(session)
+    await self.schedule_tag.delete(session)

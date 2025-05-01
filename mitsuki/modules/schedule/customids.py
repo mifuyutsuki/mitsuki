@@ -86,3 +86,21 @@ class CustomIDs:
 
   SCHEDULE_VIEW = CustomID("schedule_view")
   """View a Schedule message. (id: Message ID; select)"""
+
+  TAG_MANAGE = CustomID("schedule_tag_manage")
+  """Manage tags in a Schedule. (id: Schedule ID/key)"""
+
+  TAG_LIST = CustomID("schedule_tag_list")
+  """View list of all tags in a Schedule. (id: Schedule ID/key)"""
+
+  TAG_VIEW = CustomID("schedule_tag_view")
+  """View list of messages with a given tag in a Schedule. (id: Tag ID)"""
+
+  TAG_ADD = CustomID("schedule_tag_add")
+  """Add a searchable tag to a Schedule. (id: Schedule ID; modal)"""
+
+  TAG_EDIT = CustomID("schedule_tag_edit")
+  """Edit a Schedule tag('s description). (id; Tag ID; modal)"""
+
+  TAG_DELETE = CustomID("schedule_tag_delete")
+  """Delete a Schedule tag. (id: Tag ID; confirm)"""
