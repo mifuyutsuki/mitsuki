@@ -93,7 +93,7 @@ delete_confirm:
     Are you sure to delete `${name}`?
 
 
-    Deleting a tag only delists it from `/schedule view`, and does not remove messages.
+    Deleting a tag only delists it from `/schedule tags`, and does not remove messages.
 
     
     `${name}`
