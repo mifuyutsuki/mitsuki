@@ -720,6 +720,7 @@ class Message(AsDict):
     tags: Optional[Union[str, List[str]]] = None,
     guild: Optional[Snowflake] = None,
     public: bool = True,
+    schedule: Optional[Union[Schedule, int]] = None,
     limit: Optional[int] = None
   ):
     if not search_key and not tags:
@@ -751,7 +752,10 @@ class Message(AsDict):
     if tags:
       processed_tags = re.escape(tags).replace("\\ ", r"\b.*\b")
       search_query = search_query.where(schema.Message.tags.regexp_match(r"(\b" + processed_tags + r"\b)"))
-    
+    if schedule:
+      schedule_id = schedule.id if isinstance(schedule, Schedule) else schedule
+      search_query = search_query.where(schema.Message.schedule_id == schedule_id)
+
     search_query = search_query.order_by(schema.Message.number.desc(), schema.Message.message)
     if limit:
       search_query = search_query.limit(limit)
