@@ -340,6 +340,7 @@ class TargetMixin:
 class MultifieldMixin:
   data: "AsDict"
   field_data: Union[List["AsDict"], List[Dict[str, Any]]]
+  _paginator: Paginator
 
   @property
   def base_data(self):
@@ -367,6 +368,11 @@ class MultifieldMixin:
       template, {multiline_key: self.field_dict}, base_data=self.asdict() | (other_data or {}), **kwargs
     )
 
+  def clear_timeout(self):
+    if hasattr(self, "_paginator") and self._paginator.timeout_interval > 1 and self._paginator._timeout_task.run:
+      self._paginator._timeout_task.run = False
+      self._paginator._timeout_task.ping.set()
+
   async def send_multifield(
     self,
     template: Optional[str] = None,
@@ -390,7 +396,8 @@ class MultifieldMixin:
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
 
-    self.message = await paginator.send(self.ctx, content=message.content, **kwargs)
+    self._paginator = paginator
+    self.message = await self._paginator.send(self.ctx, content=message.content, **kwargs)
     return self.message
 
 
@@ -440,7 +447,8 @@ class MultifieldMixin:
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
 
-    self.message = await paginator.send(self.ctx, content=message.content, **kwargs)
+    self._paginator = paginator
+    self.message = await self._paginator.send(self.ctx, content=message.content, **kwargs)
     return self.message
 
 
@@ -491,7 +499,8 @@ class MultifieldMixin:
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
 
-    self.message = await paginator.send(self.ctx, content=message.content, **kwargs)
+    self._paginator = paginator
+    self.message = await self._paginator.send(self.ctx, content=message.content, **kwargs)
     return self.message
 
 
@@ -558,7 +567,8 @@ class SelectionMixin(MultifieldMixin):
     if self.selection_placeholder:
       paginator.selection_placeholder = self.selection_placeholder
 
-    self.message = await paginator.send(self.ctx, content=message.content, **kwargs)
+    self._paginator = paginator
+    self.message = await self._paginator.send(self.ctx, content=message.content, **kwargs)
     return self.message
 
 
@@ -592,7 +602,8 @@ class SelectionMixin(MultifieldMixin):
     if self.selection_placeholder:
       paginator.selection_placeholder = self.selection_placeholder
 
-    self.message = await paginator.send(self.ctx, content=message.content, **kwargs)
+    self._paginator = paginator
+    self.message = await self._paginator.send(self.ctx, content=message.content, **kwargs)
     return self.message
 
 

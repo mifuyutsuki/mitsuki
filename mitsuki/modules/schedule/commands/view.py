@@ -132,13 +132,14 @@ class ViewSchedule(SelectionMixin, ReaderCommand):
 
 
   async def selection_callback(self, ctx: ComponentContext):
-    return await self.create(ctx).view(ctx.values[0])
+    self.clear_timeout()
+    return await self.create(ctx).view(ctx.values[0], edit_origin=True)
 
 
-  async def view(self, message: Union[ScheduleMessage, int, str]):
+  async def view(self, message: Union[ScheduleMessage, int, str], edit_origin: bool = False):
     await assert_in_guild(self.ctx)
 
-    await self.defer(edit_origin=self.has_origin and not self.ctx.deferred)
+    await self.defer(edit_origin=edit_origin and self.has_origin and not self.ctx.deferred)
 
     if isinstance(message, str):
       if not message.isnumeric():
