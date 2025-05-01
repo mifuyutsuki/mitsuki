@@ -178,7 +178,7 @@ class ConfigureSchedule(WriterCommand):
           Button(
             style=ButtonStyle.GREEN if schedule.discoverable else ButtonStyle.RED,
             label="Searchable" if schedule.discoverable else "Hidden",
-            emoji=settings.emoji.on if schedule.discoverable else settings.emoji.off,
+            emoji=settings.emoji.yes if schedule.discoverable else settings.emoji.no,
             custom_id=CustomIDs.CONFIGURE_DISCOVERABLE.id(schedule_id)
           ),
         ),
