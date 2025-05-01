@@ -689,7 +689,7 @@ class View(CurrencyMixin, SelectionMixin, AutocompleteMixin, ReaderCommand):
     if total_results <= 0:
       return await self.send(self.States.NO_RESULTS)
 
-    escapes = ["search_key", "name", "type", "series"]
+    escapes = ["name", "type", "series"]
     self.field_data = search_results
     self.selection_values = [
       StringSelectOption(
@@ -732,7 +732,7 @@ class View(CurrencyMixin, SelectionMixin, AutocompleteMixin, ReaderCommand):
       else:
         return await Errors.create(self.ctx).card_not_found(card)
 
-    escapes = ["search_key", "name", "type", "series"]
+    escapes = ["name", "type", "series"]
 
     user_card = await userdata.card_user(self.caller_id, card.card)
     if user_card:
