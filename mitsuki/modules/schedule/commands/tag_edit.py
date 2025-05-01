@@ -111,7 +111,7 @@ class EditTag(WriterCommand):
   async def prompt(self, tag_id: int):
     await assert_in_guild(self.ctx)
 
-    tag = await ScheduleTag.fetch(tag_id, guild=self.ctx.guild.id, public=True)
+    tag = await ScheduleTag.fetch(tag_id, guild=self.ctx.guild.id, public=False)
     if not tag:
       raise TagNotFound()
 
@@ -141,7 +141,7 @@ class EditTag(WriterCommand):
     await assert_in_guild(self.ctx)
     await self.defer(ephemeral=True)
 
-    tag = await ScheduleTag.fetch(tag_id, guild=self.ctx.guild.id, public=True)
+    tag = await ScheduleTag.fetch(tag_id, guild=self.ctx.guild.id, public=False)
     if not tag:
       raise TagNotFound()
 

@@ -116,7 +116,7 @@ class DeleteTag(WriterCommand):
     else:
       await self.defer(ephemeral=True)
 
-    tag = await ScheduleTag.fetch(tag_id, guild=self.ctx.guild.id, public=True)
+    tag = await ScheduleTag.fetch(tag_id, guild=self.ctx.guild.id, public=False)
     if not tag:
       raise TagNotFound()
 
@@ -152,7 +152,7 @@ class DeleteTag(WriterCommand):
     else:
       await self.defer(ephemeral=True)
 
-    tag = await ScheduleTag.fetch(tag_id, guild=self.ctx.guild.id, public=True)
+    tag = await ScheduleTag.fetch(tag_id, guild=self.ctx.guild.id, public=False)
     if not tag:
       raise TagNotFound()
 
