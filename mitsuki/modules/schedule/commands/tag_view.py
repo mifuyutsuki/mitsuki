@@ -173,6 +173,7 @@ class ViewTag(SelectionMixin, ReaderCommand):
       await self.send(
         self.Templates.VIEW_EMPTY,
         other_data=tag.asdict(),
+        template_kwargs=dict(use_string_templates=string_templates),
         components=buttons,
       )
       return
