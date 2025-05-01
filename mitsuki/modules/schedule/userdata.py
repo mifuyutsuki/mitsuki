@@ -477,7 +477,7 @@ class ScheduleTag(AsDict):
       self.partial_description = "*No description set*"
 
     self.created_by_mention = f"<@{self.created_by}>"
-    self.modified_by_mention = f"<@{self.modified_by}"
+    self.modified_by_mention = f"<@{self.modified_by}>"
     self.date_created_f = f"<t:{int(self.date_created)}:f>"
     self.date_modified_f = f"<t:{int(self.date_modified)}:f>"
 
@@ -522,6 +522,17 @@ class ScheduleTag(AsDict):
       cls.create(author, schedule, tag, date_created=date_created)
       for tag in Message.process_tags(tags).split()
     ]
+
+
+  def set_description(self, description: Optional[str] = None):
+    self.description = description
+
+    if self.description:
+      self.description_s = self.description
+      self.partial_description = truncate(self.description, 50)
+    else:
+      self.description_s = "*No description set*"
+      self.partial_description = "*No description set*"
 
 
   @classmethod
@@ -608,6 +619,27 @@ class ScheduleTag(AsDict):
     statement = insert(schema.ScheduleTag).values(values).returning(schema.ScheduleTag.id)
     result    = (await session.execute(statement)).first()
     self.id   = result.id if result else None
+    self.__attrs_post_init__()
+
+
+  async def update_modify(self, session: AsyncSession, modified_by: Snowflake):
+    self.modified_by = modified_by
+    self.date_modified = timestamp_now()
+    self.__attrs_post_init__()
+    await self.update(session)
+
+
+  async def update(self, session: AsyncSession):
+    values = self.asdbdict()
+    for key in ["id", "schedule_id", "name"]:
+      values.pop(key)
+
+    await session.execute(
+      update(schema.ScheduleTag)
+      .where(schema.ScheduleTag.id == self.id)
+      .values(**values)
+    )
+    self.__attrs_post_init__()
 
 
   async def delete(self, session: AsyncSession):
@@ -621,6 +653,7 @@ class ScheduleTag(AsDict):
 
     # Clear the ScheduleTag ID of this object
     self.id = None
+    self.__attrs_post_init__()
 
 
 # =================================================================================================
