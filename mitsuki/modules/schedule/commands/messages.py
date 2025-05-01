@@ -191,7 +191,7 @@ class ManageMessages(SelectionMixin, ReaderCommand):
     self.field_data = messages
     self.selection_values = [
       StringSelectOption(
-        label=f"{schedule.title} #{message.number or '???'} ",
+        label=f"(ID-{message.id}) {schedule.title} #{message.number or '???'}",
         value=str(message.id),
         description=message.partial_message
       )
