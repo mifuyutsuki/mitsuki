@@ -77,12 +77,16 @@ class ScheduleModule(Extension):
     description="Part of message content to search",
     opt_type=OptionType.STRING,
     required=True,
-    autocomplete=False,
+    autocomplete=True,
     min_length=3,
     max_length=100,
   )
   async def schedule_view_cmd(self, ctx: SlashContext, key: str):
     return await ViewSchedule.create(ctx).search(key)
+
+  @schedule_view_cmd.autocomplete("key")
+  async def schedule_view_cmd_autocomplete(self, ctx: AutocompleteContext):
+    return await ViewSchedule.create(ctx).autocomplete(ctx.input_text)
 
   @component_callback(CustomIDs.SCHEDULE_VIEW.select())
   async def schedule_view_select(self, ctx: ComponentContext):
@@ -280,10 +284,14 @@ class ScheduleModule(Extension):
     description="Schedule to view",
     opt_type=OptionType.STRING,
     required=True,
-    autocomplete=False,
+    autocomplete=True,
   )
   async def tag_list_cmd(self, ctx: SlashContext, schedule: str):
     return await ManageTag.create(ctx).list(schedule)
+
+  @tag_list_cmd.autocomplete("schedule")
+  async def tag_list_cmd_autocomplete(self, ctx: AutocompleteContext):
+    return await ManageTag.create(ctx).autocomplete(ctx.input_text)
 
   @component_callback(CustomIDs.TAG_MANAGE.string_id_pattern())
   async def tag_manage_btn(self, ctx: ComponentContext):

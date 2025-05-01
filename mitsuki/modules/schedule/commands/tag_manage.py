@@ -98,10 +98,23 @@ from ..customids import CustomIDs
 from .tag_view import ViewTag
 
 
-class ManageTag(SelectionMixin, ReaderCommand):
+class ManageTag(SelectionMixin, AutocompleteMixin, ReaderCommand):
   class Templates(StrEnum):
     LIST       = "schedule_tag_list"
     LIST_EMPTY = "schedule_tag_list_empty"
+
+
+  async def autocomplete(self, input_text: str):
+    options = [
+      self.option(
+        schedule.title,
+        schedule.title
+      )
+      for schedule in await Schedule.fetch_many(self.ctx.guild.id, discoverable=True, sort="id")
+      if len(input_text) == 0 or input_text.lower().strip() in schedule.title.lower()
+    ]
+
+    return await self.send_autocomplete(options)
 
 
   async def manage_from_button(self):

@@ -92,7 +92,7 @@ from ..utils import (
 from ..customids import CustomIDs
 
 
-class ViewSchedule(SelectionMixin, ReaderCommand):
+class ViewSchedule(SelectionMixin, AutocompleteMixin, ReaderCommand):
   class Templates(StrEnum):
     SEARCH_RESULTS = "schedule_view_search_results"
     NO_RESULTS = "schedule_view_no_results"
@@ -135,6 +135,55 @@ class ViewSchedule(SelectionMixin, ReaderCommand):
     self.clear_timeout()
     return await self.create(ctx).view(ctx.values[0], edit_origin=True)
 
+
+  async def autocomplete(self, input_text: str):
+    # Input text for prompt
+    number_results = []
+
+    if len(input_text) <= 0:
+      options = [
+        self.option(
+          f"#{result.number_s} {truncate(result.message, 80)}",
+          f"@{result.id}"
+        )
+        for result in await ScheduleMessage.search(guild=self.ctx.guild.id, public=True, limit=10)
+      ]
+      return await self.send_autocomplete(options)
+
+    options = [self.option(input_text, input_text)]
+
+    if input_text.isnumeric():
+      number_results = await ScheduleMessage.fetch_by_number(
+        int(input_text), guild=self.ctx.guild.id, public=True
+      )
+
+    elif input_text.startswith("#") and input_text[1:].isnumeric():
+      number_results = await ScheduleMessage.fetch_by_number(
+        int(input_text[1:]), guild=self.ctx.guild.id, public=True
+      )
+
+    if len(number_results) > 0:
+      options.extend([
+        self.option(
+          f"#{result.number_s} {truncate(result.message, 80)}",
+          f"@{result.id}"
+        )
+        for result in number_results[:9]
+      ])
+
+    if len(options) < 10:
+      for result in await ScheduleMessage.search(
+        input_text, guild=self.ctx.guild.id, public=True, limit=10 - len(options)
+      ):
+        options.append(
+          self.option(
+            f"#{result.number_s} {truncate(result.message, 80)}",
+            f"@{result.id}"
+          )
+        )
+
+    return await self.send_autocomplete(options)
+  
 
   async def view(self, message: Union[ScheduleMessage, int, str], edit_origin: bool = False):
     await assert_in_guild(self.ctx)

@@ -853,6 +853,46 @@ class Message(AsDict):
 
 
   @classmethod
+  async def fetch_by_number(
+    cls,
+    number: int,
+    guild: Optional[Snowflake] = None,
+    public: bool = False
+  ):
+    query = (
+      select(
+        schema.Message,
+        schema.Schedule.guild,
+        schema.Schedule.title,
+        schema.Schedule.post_channel,
+        schema.Schedule.type,
+      )
+      .join(schema.Schedule, schema.Schedule.id == schema.Message.schedule_id)
+      .where(schema.Message.number == number)
+    )
+    if guild:
+      query = query.where(schema.Schedule.guild == guild)
+    if public:
+      query = query.where(schema.Schedule.discoverable == True).where(schema.Message.message_id != None)
+
+    query = query.order_by(schema.Message.date_posted.desc())
+
+    async with new_session() as session:
+      results = (await session.execute(query)).all()
+
+    return [
+      cls(
+        **result.Message.asdict(),
+        schedule_guild=result.guild,
+        schedule_title=result.title,
+        schedule_channel=result.post_channel,
+        schedule_type=result.type,
+      )
+      for result in results
+    ]
+
+
+  @classmethod
   async def fetch_by_schedule(
     cls,
     guild: Snowflake,
