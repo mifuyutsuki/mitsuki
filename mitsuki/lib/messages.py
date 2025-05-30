@@ -567,17 +567,16 @@ class MessageMan:
 # =============================================================================
 
 
-BASE_MESSAGES_YAML = settings.mitsuki.messages_default
-CUSTOM_MESSAGES_YAML = settings.mitsuki.messages
-BASE_MESSAGES_DIR = settings.mitsuki.messages_dir
-CUSTOM_MESSAGES_DIR = settings.mitsuki.messages_custom_dir
-
-
 def _defined(s: Optional[str]):
   return s is not None and len(s.strip()) > 0
 
 
 def load_templates(raise_on_error: bool = False):
+  BASE_MESSAGES_YAML = settings.mitsuki.messages_default
+  CUSTOM_MESSAGES_YAML = settings.mitsuki.messages
+  BASE_MESSAGES_DIR = settings.mitsuki.messages_dir
+  CUSTOM_MESSAGES_DIR = settings.mitsuki.messages_custom_dir
+
   new_root = MessageMan()
 
   if _defined(BASE_MESSAGES_DIR):

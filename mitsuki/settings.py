@@ -11,18 +11,23 @@
 # GNU Affero General Public License for more details.
 
 from yaml import safe_load
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union, TypeAlias
 from attrs import frozen, field
-from os import environ
+from os import environ, PathLike
 from interactions import PartialEmoji
 
 from mitsuki import logger
 
 __all__ = (
+  "settings",
   "mitsuki",
   "dev",
   "gacha",
+  "emoji",
+  "load_settings",
 )
+
+FileName: TypeAlias = Union[str, bytes, PathLike]
 
 
 @frozen(kw_only=True)
@@ -104,15 +109,31 @@ class EmojiSettings:
   page_goto: PartialEmoji = field(converter=PartialEmoji.from_str)
 
 
-_settings_file = environ.get("SETTINGS_YAML") or ""
-if len(_settings_file.strip()) > 0:
-  root = BaseSettings.create(_settings_file)
-else:
-  root = None
-  logger.warning("No valid SETTINGS_YAML provided")
+settings = None
+mitsuki = None
+dev = None
+gacha = None
+emoji = None
 
 
-mitsuki = root.mitsuki if root else None
-dev = root.dev if root else None
-gacha = root.gacha if root else None
-emoji = root.emoji if root else None
+def load_settings(settings_file: Optional[FileName] = None) -> None:
+  """
+  Load or reload a given Mitsuki settings file.
+
+  If `settings_file` is not provided, the `.env` variable SETTINGS_YAML is used.
+  """
+
+  global settings, mitsuki, dev, gacha, emoji
+
+  settings_file = settings_file or environ.get("SETTINGS_YAML")
+  if not settings_file or len(settings_file.strip()) <= 0:
+    raise ValueError("Cannot load Mitsuki settings file. Ensure SETTINGS_YAML is set in .env to continue")
+
+  settings = BaseSettings.create(settings_file)
+  mitsuki = settings.mitsuki
+  dev = settings.dev
+  gacha = settings.gacha
+  emoji = settings.emoji
+
+
+load_settings()
