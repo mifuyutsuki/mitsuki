@@ -38,6 +38,7 @@ from interactions.api.events import Startup
 from typing import Optional
 
 from mitsuki import init_event
+from mitsuki.lib.commands import CustomID
 
 from . import commands
 from .gachaman import gacha
@@ -134,7 +135,11 @@ class GachaModule(Extension):
   @auto_defer(time_until_defer=2.0)
   @cooldown(Buckets.USER, 1, 3.0)
   async def roll_cmd(self, ctx: SlashContext):
-    await commands.Roll.create(ctx).run()
+    await commands.Roll.create(ctx).run2()
+
+  @component_callback(commands.CustomIDs.ROLL.string_id_pattern())
+  async def roll_btn(self, ctx: ComponentContext):
+    await commands.Roll.create(ctx).run2(int(CustomID.get_id_from(ctx)))
 
   # ===========================================================================
   # ===========================================================================

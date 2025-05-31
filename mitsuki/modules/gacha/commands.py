@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mitsuki import bot, settings
 from mitsuki.utils import escape_text, process_text, truncate, get_member_color_value, ratio
 from mitsuki.lib.commands import (
+  userlock,
   AsDict,
   CustomID,
   ReaderCommand,
@@ -42,6 +43,7 @@ from mitsuki.lib.commands import (
   SelectionMixin,
 )
 from mitsuki.lib.checks import is_caller, assert_user_permissions
+from mitsuki.lib.errors import InteractionDenied
 
 from . import userdata
 from .schema import UserCard, StatsCard, RosterCard
@@ -384,6 +386,8 @@ class Daily(CurrencyMixin, WriterCommand):
   def amount(self):
     return self.data.shards
 
+
+  @userlock()
   async def run(self):
     user = self.caller_user
     available      = await userdata.daily_check(user.id)
@@ -413,9 +417,10 @@ class Daily(CurrencyMixin, WriterCommand):
     )
 
     if available and daily_shards > 0:
-      return await self.send_commit(template_kwargs=dict(escape_data_values=["guild_name"]))
+      await self.send_commit(template_kwargs=dict(escape_data_values=["guild_name"]))
     else:
-      return await self.send(template_kwargs=dict(escape_data_values=["guild_name"]))
+      await self.send(template_kwargs=dict(escape_data_values=["guild_name"]))
+
 
   async def transaction(self, session: AsyncSession):
     await userdata.daily_give(session, self.caller_id, self.amount)
@@ -470,6 +475,41 @@ class Roll(CurrencyMixin, WriterCommand):
     self.again = self.data.new_shards >= self.data.cost
     self.card  = card
     return True
+
+
+  @userlock(pre_defer=True)
+  async def run2(self, custom_id: Optional[Snowflake] = None):
+    """
+    Alternative (patchwork) runner for /gacha roll.
+    """
+
+    if custom_id and custom_id != self.caller_id:
+      raise InteractionDenied()
+
+    if not await self.roll():
+      # Roll fails due to insufficient shards
+      return await Errors.from_other(self).insufficient_funds(self.data.shards, gacha.cost)
+
+    again_btn = Button(
+      style=ButtonStyle.BLURPLE,
+      label="Roll again",
+      emoji=gacha.currency_icon_emoji,
+      custom_id=CustomIDs.ROLL.id(self.caller_id),
+      disabled=not self.again
+    )
+    message = await self.send_commit(
+      other_data=self.card.asdict(), 
+      template_kwargs=dict(escape_data_values=["name", "type", "series"]),
+      components=again_btn
+    )
+
+    try:
+      _ = await self.bot.wait_for_component(components=again_btn, check=is_caller(self.ctx, silent=True), timeout=15)
+    except TimeoutError:
+      return
+    finally:
+      if message:       
+        await message.edit(components=[])
 
 
   async def run(self):
