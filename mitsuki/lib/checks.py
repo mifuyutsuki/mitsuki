@@ -141,16 +141,19 @@ async def has_bot_channel_permissions(
   return all(permission in channel.permissions_for(bot.user.id) for permission in permissions)
 
 
-def is_caller(ctx: BaseContext, message: Optional[str] = None):
+def is_caller(ctx: BaseContext, message: Optional[str] = None, silent: bool = False):
   """
   Produce a command check for whether the component is activated by the caller.
 
   If a non-caller user uses the component, the specified message or the default
-  "This interaction is not for you" is sent to the user.
+  "This interaction is not for you" is sent to the user, unless `silent` is set
+  to True. In such case, the response is delegated to the command's Custom ID
+  handler.
 
   Args:
       ctx: Command context object
       message: Wrong user message
+      silent: Whether to not emit a message
 
   Returns:
       Coroutine to be passed into `bot.wait_for_component()`.
@@ -159,7 +162,7 @@ def is_caller(ctx: BaseContext, message: Optional[str] = None):
 
   async def check(component: Component):
     c = component.ctx.author.id == ctx.author.id
-    if not c:
+    if not c and not silent:
       await component.ctx.send(message, ephemeral=True)
     return c
   return check
