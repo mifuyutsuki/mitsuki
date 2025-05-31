@@ -21,9 +21,11 @@ from mitsuki.lib.paginators import Paginator, SelectionPaginator
 from mitsuki.lib.userdata import new_session
 
 from attrs import define, asdict as _asdict
-from typing import Optional, Union, List, Dict, Any
+from typing import Optional, Union, List, Dict, Any, Callable, ParamSpec, TypeVar
+from collections.abc import Awaitable
 from enum import StrEnum
-from asyncio import iscoroutinefunction
+from asyncio import iscoroutinefunction, Lock
+
 from interactions import (
   Client,
   Snowflake,
@@ -43,6 +45,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import re
 
 __all__ = (
+  "userlock",
+  "is_userlocked",
   "CustomID",
   "AsDict",
   "Caller",
@@ -54,6 +58,46 @@ __all__ = (
   "MultifieldMixin",
   "AutocompleteMixin",
 )
+
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+_user_locks: Dict[Snowflake, Lock] = {}
+
+
+def userlock(
+  f: Callable[P, Awaitable[R]],
+  *,
+  pre_defer: bool = False,
+  **defer_kwargs
+) -> Callable[P, Awaitable[R]]:
+  global _user_locks
+
+  def _userlock(g: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
+    async def wrapper(self: "Command", *args: P.args, **kwargs: P.kwargs):
+      caller_id = self.caller_id
+      if caller_id not in _user_locks:
+        _user_locks[caller_id] = Lock()
+
+      if pre_defer and _user_locks[caller_id].locked():
+        await self.defer(**defer_kwargs)
+
+      async with _user_locks[caller_id]:
+        return await g(self, *args, **kwargs)
+
+    return wrapper
+
+  return _userlock(f)
+
+
+def is_userlocked(id: Snowflake):
+  global _user_locks
+
+  if id not in _user_locks:
+    return False
+  return _user_locks[id].locked()
 
 
 class CustomID(str):
