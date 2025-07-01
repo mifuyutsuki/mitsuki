@@ -387,7 +387,7 @@ class Daily(CurrencyMixin, WriterCommand):
     return self.data.shards
 
 
-  @userlock()
+  @userlock(bucket="gacha")
   async def run(self):
     user = self.caller_user
     available      = await userdata.daily_check(user.id)
@@ -477,7 +477,7 @@ class Roll(CurrencyMixin, WriterCommand):
     return True
 
 
-  @userlock(pre_defer=True)
+  @userlock(pre_defer=True, bucket="gacha")
   async def run2(self, custom_id: Optional[Snowflake] = None):
     """
     Alternative (patchwork) runner for /gacha roll.

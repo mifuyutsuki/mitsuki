@@ -64,40 +64,41 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
-_user_locks: Dict[Snowflake, Lock] = {}
+_user_locks: Dict[str, Lock] = {}
 
 
 def userlock(
-  f: Callable[P, Awaitable[R]],
-  *,
+  bucket: Optional[str] = None,
   pre_defer: bool = False,
   **defer_kwargs
-) -> Callable[P, Awaitable[R]]:
+):
   global _user_locks
+  bucket = bucket or "_"
 
   def _userlock(g: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
     async def wrapper(self: "Command", *args: P.args, **kwargs: P.kwargs):
-      caller_id = self.caller_id
-      if caller_id not in _user_locks:
-        _user_locks[caller_id] = Lock()
+      bucket_name = f"{bucket}|{self.caller_id}"
+      if bucket_name not in _user_locks:
+        _user_locks[bucket_name] = Lock()
 
-      if pre_defer and _user_locks[caller_id].locked():
+      if pre_defer and _user_locks[bucket_name].locked():
         await self.defer(**defer_kwargs)
 
-      async with _user_locks[caller_id]:
+      async with _user_locks[bucket_name]:
         return await g(self, *args, **kwargs)
 
     return wrapper
 
-  return _userlock(f)
+  return _userlock
 
 
-def is_userlocked(id: Snowflake):
+def is_userlocked(id: Snowflake, bucket: Optional[str] = None):
   global _user_locks
+  bucket_name = f"{bucket or '_'}|{id}"
 
-  if id not in _user_locks:
+  if bucket_name not in _user_locks:
     return False
-  return _user_locks[id].locked()
+  return _user_locks[bucket_name].locked()
 
 
 class CustomID(str):
