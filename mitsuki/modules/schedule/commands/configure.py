@@ -255,9 +255,8 @@ class ConfigureSchedule(WriterCommand):
 
     schedule.title = title
 
-    async with new_session() as session:
+    async with new_session.begin() as session:
       await schedule.update_modify(session, self.ctx.author.id)
-      await session.commit()
 
     return await self.send(self.Templates.TITLE_SUCCESS)
 
@@ -311,9 +310,8 @@ class ConfigureSchedule(WriterCommand):
 
     schedule.format = format
 
-    async with new_session() as session:
+    async with new_session.begin() as session:
       await schedule.update_modify(session, self.ctx.author.id)
-      await session.commit()
 
     return await self.send(self.Templates.FORMAT_SUCCESS)
 
@@ -384,9 +382,8 @@ class ConfigureSchedule(WriterCommand):
       return await self.send(self.Templates.ROUTINE_SUCCESS, other_data={"next_fire_f": next_fire})
 
     schedule.post_routine = f"{minute} {hour} * * *"
-    async with new_session() as session:
+    async with new_session.begin() as session:
       await schedule.update_modify(session, self.ctx.author.id)
-      await session.commit()
 
     next_fire = f"<t:{int(schedule.cron().next(float))}:f>"
     return await self.send(self.Templates.ROUTINE_SUCCESS, other_data={"next_fire_f": next_fire})
@@ -412,9 +409,8 @@ class ConfigureSchedule(WriterCommand):
       schedule.activate()
 
     # Activation toggles don't modify the schedule itself
-    async with new_session() as session:
+    async with new_session.begin() as session:
       await schedule.update(session)
-      await session.commit()
     return await self.main()
 
 
@@ -448,9 +444,8 @@ class ConfigureSchedule(WriterCommand):
 
     schedule.pin = not schedule.pin
 
-    async with new_session() as session:
+    async with new_session.begin() as session:
       await schedule.update_modify(session, self.ctx.author.id)
-      await session.commit()
     return await self.main()
 
 
@@ -466,9 +461,8 @@ class ConfigureSchedule(WriterCommand):
 
     schedule.discoverable = not schedule.discoverable
 
-    async with new_session() as session:
+    async with new_session.begin() as session:
       await schedule.update_modify(session, self.ctx.author.id)
-      await session.commit()
     return await self.main()
 
 
@@ -544,9 +538,8 @@ class ConfigureSchedule(WriterCommand):
     # Set post channel
     schedule.post_channel = channel.id
 
-    async with new_session() as session:
+    async with new_session.begin() as session:
       await schedule.update_modify(session, self.ctx.author.id)
-      await session.commit()
     return await self.main()
 
 
@@ -624,7 +617,6 @@ class ConfigureSchedule(WriterCommand):
     else:
       schedule.manager_roles = None
 
-    async with new_session() as session:
+    async with new_session.begin() as session:
       await schedule.update_modify(session, self.ctx.author.id)
-      await session.commit()
     return await self.main()

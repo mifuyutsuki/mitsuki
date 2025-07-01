@@ -133,17 +133,11 @@ class DaemonTask:
 
     # Save: Update database
     schedule.last_fire = timestamp_now()
-    async with new_session() as session:
-      try:
-        if is_ready and message and posted_message:
-          schedule.posted_number += 1
-          await message.add_posted_message(posted_message).update(session)
-        await schedule.update(session)
-      except Exception:
-        await session.rollback()
-        raise
-      else:
-        await session.commit()
+    async with new_session.begin() as session:
+      if is_ready and message and posted_message:
+        schedule.posted_number += 1
+        await message.add_posted_message(posted_message).update(session)
+      await schedule.update(session)
 
     # Log post
     if message and formatted_message:

@@ -351,17 +351,12 @@ class WriterCommand(Command):
       else:
         raise RuntimeError("Unspecified message template or state")
 
-    async with new_session() as session:
-      try:
-        await self.transaction(session)
-        self.message = await self.send(
-          template, other_data=other_data, template_kwargs=template_kwargs, edit_origin=edit_origin, **kwargs
-        )
-      except Exception:
-        await session.rollback()
-        raise
-      else:
-        await session.commit()
+    async with new_session.begin() as session:
+      await self.transaction(session)
+      self.message = await self.send(
+        template, other_data=other_data, template_kwargs=template_kwargs, edit_origin=edit_origin, **kwargs
+      )
+
     return self.message
 
 
