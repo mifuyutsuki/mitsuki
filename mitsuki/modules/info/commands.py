@@ -109,7 +109,6 @@ class AvatarInfo(TargetMixin, ReaderCommand):
 
 
   async def _run_with_server_avatar(self):
-    guild_name = self.target_user.guild.name
     view_global = False
 
     while True:
@@ -122,7 +121,6 @@ class AvatarInfo(TargetMixin, ReaderCommand):
 
       _ = await self.send(
         other_data={
-          "guild_name": guild_name,
           "target_avatar": avatar,
           "avatar_mode": "global" if view_global else "server"
         },
@@ -141,6 +139,5 @@ class AvatarInfo(TargetMixin, ReaderCommand):
 
 
   async def _run_without_server_avatar(self):
-    guild_name = self.target_user.guild.name
     avatar = self.target_user.avatar_url
-    _ = await self.send(other_data={"guild_name": guild_name, "target_avatar": avatar, "avatar_mode": "global"})
+    _ = await self.send(other_data={"target_avatar": avatar, "avatar_mode": "global"})
