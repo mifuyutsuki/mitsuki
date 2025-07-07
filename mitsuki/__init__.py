@@ -292,6 +292,7 @@ def run():
 
   bot.load_extension("mitsuki.modules.about")
   bot.load_extension("mitsuki.modules.system")
+  bot.load_extension("mitsuki.modules.server")
   bot.load_extension("mitsuki.modules.info")
   bot.load_extension("mitsuki.modules.gacha")
   bot.load_extension("mitsuki.modules.schedule")
