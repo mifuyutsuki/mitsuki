@@ -143,6 +143,14 @@ class CustomID(str):
   def get_ids_from(cls, ctx: ComponentContext):
     return cls(ctx.custom_id).get_ids()
 
+  @classmethod
+  def get_int_from(cls, ctx: ComponentContext):
+    return int(cls(ctx.custom_id).get_id())
+
+  @classmethod
+  def get_snowflake_from(cls, ctx: ComponentContext):
+    return Snowflake(cls(ctx.custom_id).get_id())
+
 
 class AsDict:
   def asdict(self):

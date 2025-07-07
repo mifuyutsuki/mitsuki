@@ -29,48 +29,77 @@ class AvatarInfo(libcmd.TargetMixin, libcmd.ReaderCommand):
 
 
   async def run(self, target: Optional[Union[ipy.User, ipy.Member]] = None):
-    await self.defer(suppress_error=True)
-
     target = target or self.caller_user
+
+    if isinstance(target, ipy.Member) and target.guild_avatar:
+      await self.run_server(target)
+    else:
+      await self.run_global(target)
+
+
+  async def run_server(self, target: Optional[Union[ipy.User, ipy.Member, ipy.Snowflake]] = None):
+    await self.defer(suppress_error=True, edit_origin=self.has_origin)
+
+    if isinstance(target, ipy.Snowflake):
+      _target = await self.ctx.guild.fetch_member(target)
+      if not _target:
+        return await self.run_global(target)
+      target = _target
+    else:
+      target = target or self.caller_user
+
     self.set_target(target)
 
-    if isinstance(self.target_user, ipy.Member) and self.target_user.guild_avatar:
-      await self._run_with_server_avatar()
+    data = {
+      "target_avatar": target.guild_avatar.as_url(),
+      "avatar_mode": "server",
+    }
+    btn = ipy.Button(
+      label="Global Avatar",
+      emoji=settings.emoji.gallery,
+      style=ipy.ButtonStyle.BLURPLE,
+      custom_id=CustomIDs.INFO_AVATAR_GLOBAL.id(target.id),
+    )
+
+    m = await self.send(self.Templates.AVATAR, other_data=data, edit_origin=self.has_origin, components=btn)
+
+    try:
+      _ = await self.ctx.bot.wait_for_component(components=btn, timeout=45)
+    except TimeoutError:
+      if m:
+        await m.edit(components=[])
+
+
+  async def run_global(self, target: Optional[Union[ipy.User, ipy.Member, ipy.Snowflake]] = None):
+    await self.defer(suppress_error=True, edit_origin=self.has_origin)
+
+    if isinstance(target, ipy.Snowflake):
+      target = await self.ctx.guild.fetch_member(target) or await self.ctx.bot.fetch_user(target)
     else:
-      await self._run_without_server_avatar()
+      target = target or self.caller_user
 
+    has_server_avatar = isinstance(target, ipy.Member) and target.guild_avatar
 
-  async def _run_with_server_avatar(self):
-    view_global = False
+    if isinstance(target, ipy.Member):
+      target = target.user
+    self.set_target(target)
 
-    while True:
-      if view_global:
-        avatar = self.target_user.user.avatar.url
-        btn = ipy.Button(label="Server Avatar", style=ipy.ButtonStyle.BLURPLE)
-      else:
-        avatar = self.target_user.guild_avatar.url
-        btn = ipy.Button(label="Global Avatar", style=ipy.ButtonStyle.BLURPLE)
+    data = {
+      "target_avatar": target.avatar.as_url(),
+      "avatar_mode": "global",
+    }
+    btn = ipy.Button(
+      label="Server Avatar",
+      emoji=settings.emoji.gallery,
+      style=ipy.ButtonStyle.BLURPLE,
+      custom_id=CustomIDs.INFO_AVATAR_SERVER.id(target.id),
+    ) if has_server_avatar else None
 
-      _ = await self.send(
-        self.Templates.AVATAR,
-        other_data={
-          "target_avatar": avatar,
-          "avatar_mode": "global" if view_global else "server"
-        },
-        edit_origin=True,
-        components=btn
-      )
+    m = await self.send(self.Templates.AVATAR, other_data=data, edit_origin=self.has_origin, components=btn)
+
+    if btn:
       try:
-        response = await self.ctx.bot.wait_for_component(components=btn, timeout=45, check=utils.is_caller(self.ctx))
+        _ = await self.ctx.bot.wait_for_component(components=btn, timeout=45)
       except TimeoutError:
-        if response.ctx.message:
-          await response.ctx.message.edit(components=[])
-        return
-      else:
-        self.set_ctx(response.ctx)
-        view_global = not view_global
-
-
-  async def _run_without_server_avatar(self):
-    avatar = self.target_user.avatar_url
-    _ = await self.send(self.Templates.AVATAR, other_data={"target_avatar": avatar, "avatar_mode": "global"})
+        if m:
+          await m.edit(components=[])

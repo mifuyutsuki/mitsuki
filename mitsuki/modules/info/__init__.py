@@ -10,56 +10,63 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from interactions import (
-  Extension,
-  slash_command,
-  slash_option,
-  SlashContext,
-  OptionType,
-  BaseUser,
-  Member,
-  User,
-  cooldown,
-  Buckets,
-)
+import interactions as ipy
+from typing import Optional
+
+from mitsuki.lib.commands import CustomID
 
 from . import commands
+from .customids import CustomIDs
 
 
-class InfoModule(Extension):
-  @slash_command(
+class InfoModule(ipy.Extension):
+  info_cmd = ipy.SlashCommand(
     name="info",
     description="Informational commands"
   )
-  async def info_cmd(self, ctx: SlashContext):
-    pass
 
+  # ===============================================================================================
+  # User Info
+  # ===============================================================================================
 
   @info_cmd.subcommand(
     sub_cmd_name="user",
     sub_cmd_description="Information about yourself or another user"
   )
-  @cooldown(Buckets.USER, 1, 5.0)
-  @slash_option(
+  @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
+  @ipy.slash_option(
     name="user",
     description="User to view, defaults to self",
     required=False,
-    opt_type=OptionType.USER
+    opt_type=ipy.OptionType.USER
   )
-  async def user_cmd(self, ctx: SlashContext, user: BaseUser = None):
+  async def user_cmd(self, ctx: "ipy.SlashContext", user: "ipy.BaseUser" = None):
     await commands.UserInfo.create(ctx).run(user)
 
+  # ===============================================================================================
+  # Avatar Info
+  # ===============================================================================================
 
   @info_cmd.subcommand(
     sub_cmd_name="avatar",
     sub_cmd_description="View avatar of user"
   )
-  @cooldown(Buckets.USER, 1, 5.0)
-  @slash_option(
+  @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
+  @ipy.slash_option(
     name="user",
     description="User to view, defaults to self",
     required=False,
-    opt_type=OptionType.USER
+    opt_type=ipy.OptionType.USER
   )
-  async def avatar_cmd(self, ctx: SlashContext, user: BaseUser = None):
+  async def avatar_cmd(self, ctx: "ipy.SlashContext", user: "ipy.BaseUser" = None):
     await commands.AvatarInfo.create(ctx).run(user)
+
+  @ipy.component_callback(CustomIDs.INFO_AVATAR_GLOBAL.string_id_pattern())
+  @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
+  async def avatar_global_btn(self, ctx: "ipy.ComponentContext"):
+    await commands.AvatarInfo.create(ctx).run_global(CustomID.get_snowflake_from(ctx))
+
+  @ipy.component_callback(CustomIDs.INFO_AVATAR_SERVER.string_id_pattern())
+  @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
+  async def avatar_server_btn(self, ctx: "ipy.ComponentContext"):
+    await commands.AvatarInfo.create(ctx).run_server(CustomID.get_snowflake_from(ctx))
