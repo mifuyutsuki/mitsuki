@@ -40,3 +40,14 @@ class ServerModule(ipy.Extension):
   )
   async def server_nickname_cmd(self, ctx: ipy.SlashContext, nickname: Optional[str] = None):
     return await commands.ServerNickname.create(ctx).run(nickname)
+
+  # ===============================================================================================
+  # Server Info
+  # ===============================================================================================
+
+  @server_cmd.subcommand(
+    sub_cmd_name="info",
+    sub_cmd_description="View information about this server",
+  )  
+  async def server_info_cmd(self, ctx: ipy.SlashContext):
+    return await commands.ServerInfo.create(ctx).run()

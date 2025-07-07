@@ -15,4 +15,5 @@ from .info import ServerInfo
 
 __all__ = (
   "ServerNickname",
+  "ServerInfo",
 )
