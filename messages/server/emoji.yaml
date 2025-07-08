@@ -1,0 +1,46 @@
+# /server emoji
+# View list of custom emoji on this server.
+
+_namespace: "server_emoji"
+
+
+empty:
+  title: >-
+    Emoji for "${guild_name}"
+  description: >-
+    **${guild_emoji_count}**/${guild_emoji_limit} available (Level ${guild_boost_level})
+
+
+    This server has no emoji of this type.
+  thumbnail: >-
+    ${guild_icon}
+
+
+# [Multifield]
+static:
+  title: >-
+    Emoji for "${guild_name}" - static (${page}/${pages})
+  description: >-
+    **${guild_emoji_count}**/${guild_emoji_limit} available (Level ${guild_boost_level})
+  thumbnail: >-
+    ${guild_icon}
+  field:
+    name   : ${emoji_mention} ${emoji_name} `${emoji_id}` ${emoji_available}
+    value  : >-
+      [__**Link**__](${emoji_url}) · Created: ${emoji_created_at_f}
+    inline : false
+
+
+# [Multifield]
+animated:
+  title: >-
+    Emoji for "${guild_name}" - animated (${page}/${pages})
+  description: >-
+    **${guild_emoji_count}**/${guild_emoji_limit} available (Level ${guild_boost_level})
+  thumbnail: >-
+    ${guild_icon}
+  field:
+    name   : ${emoji_mention} ${emoji_name} `${emoji_id}` ${emoji_available}
+    value  : >-
+      [__**Link**__](${emoji_url}) · Created: ${emoji_created_at_f}
+    inline : false

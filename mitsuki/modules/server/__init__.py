@@ -13,7 +13,7 @@
 import interactions as ipy
 from typing import Optional
 
-from . import commands
+from . import commands, customids
 
 
 class ServerModule(ipy.Extension):
@@ -51,3 +51,33 @@ class ServerModule(ipy.Extension):
   )  
   async def server_info_cmd(self, ctx: ipy.SlashContext):
     return await commands.ServerInfo.create(ctx).run()
+
+  @ipy.component_callback(customids.SERVER_INFO.string_id_pattern())
+  async def server_info_btn(self, ctx: ipy.ComponentContext):
+    return await commands.ServerInfo.create(ctx).run()
+
+  # ===============================================================================================
+  # Server Emoji
+  # ===============================================================================================
+
+  @server_cmd.subcommand(
+    sub_cmd_name="emoji",
+    sub_cmd_description="View detailed list of emoji on this server",
+  )
+  @ipy.slash_option(
+    name="animated",
+    description="View animated emoji? default: false",
+    opt_type=ipy.OptionType.BOOLEAN,
+    required=False,
+  )
+  @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
+  async def server_emoji_cmd(self, ctx: ipy.SlashContext, animated: bool = False):
+    return await commands.ServerEmoji.create(ctx).run(animated=animated)
+
+  @ipy.component_callback(customids.SERVER_EMOJIS_STATIC.string_id_pattern())
+  async def server_emoji_static_btn(self, ctx: ipy.ComponentContext):
+    return await commands.ServerEmoji.create(ctx).run(animated=False)
+
+  @ipy.component_callback(customids.SERVER_EMOJIS_ANIMATED.string_id_pattern())
+  async def server_emoji_animated_btn(self, ctx: ipy.ComponentContext):
+    return await commands.ServerEmoji.create(ctx).run(animated=True)
