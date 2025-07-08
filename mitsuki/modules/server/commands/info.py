@@ -21,7 +21,7 @@ from mitsuki.lib import commands as libcmd
 from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
 
-from ..customids import CustomIDs
+from .. import customids
 
 
 def banner_link(id: ipy.Snowflake, hash: Optional[str] = None):
@@ -41,18 +41,25 @@ class ServerInfo(libcmd.ReaderCommand):
 
   def _components(self, emoji_count: int, sticker_count: int, icon_url: Optional[str] = None):
     components = [
-      # ipy.Button(
-      #   style=ipy.ButtonStyle.BLURPLE,
-      #   emoji=settings.emoji.list,
-      #   label="Emojis",
-      #   custom_id=CustomIDs.SERVER_EMOJIS_INFO.id(self.ctx.guild_id),
-      #   disabled=emoji_count == 0
-      # ),
+      ipy.Button(
+        style=ipy.ButtonStyle.BLURPLE,
+        emoji=settings.emoji.list,
+        label="Emojis",
+        custom_id=customids.SERVER_EMOJIS_STATIC.id(self.ctx.guild_id),
+        disabled=emoji_count == 0
+      ),
+      ipy.Button(
+        style=ipy.ButtonStyle.BLURPLE,
+        emoji=settings.emoji.list,
+        label="Emojis (animated)",
+        custom_id=customids.SERVER_EMOJIS_ANIMATED.id(self.ctx.guild_id),
+        disabled=emoji_count == 0
+      ),
       # ipy.Button(
       #   style=ipy.ButtonStyle.BLURPLE,
       #   emoji=settings.emoji.gallery,
       #   label="Stickers",
-      #   custom_id=CustomIDs.SERVER_STICKERS_INFO.id(self.ctx.guild_id),
+      #   custom_id=customids.SERVER_STICKERS.id(self.ctx.guild_id),
       #   disabled=sticker_count == 0
       # ),
     ]
