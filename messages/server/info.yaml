@@ -5,11 +5,11 @@ _namespace: "server_info"
 
 info:
   title: >-
-    ${guild_name} (${guild_id})
+    ${guild_name_esc} (${guild_id})
   thumbnail: >-
     ${guild_icon_url}
   description: >-
-    > ${guild_description__esc}
+    > ${guild_description_esc}
 
 
     Server created at ${guild_created_at_f}

@@ -39,7 +39,9 @@ class ServerInfo(libcmd.ReaderCommand):
     await checks.assert_in_guild(self.ctx)
 
 
-  def _components(self, emoji_count: int, sticker_count: int, icon_url: Optional[str] = None):
+  def _components(
+    self, emoji_count: int, sticker_count: int, icon_url: Optional[str] = None, banner_url: Optional[str] = None
+  ):
     components = [
       ipy.Button(
         style=ipy.ButtonStyle.BLURPLE,
@@ -69,6 +71,12 @@ class ServerInfo(libcmd.ReaderCommand):
         label="Icon",
         url=icon_url,
       ))
+    if banner_url:
+      components.append(ipy.Button(
+        style=ipy.Button.LINK,
+        label="Banner",
+        url=icon_url,
+      ))
     return components
 
 
@@ -83,6 +91,9 @@ class ServerInfo(libcmd.ReaderCommand):
     emojis = await guild.fetch_all_custom_emojis()
     stickers = await guild.fetch_all_custom_stickers()
 
+    icon = guild.icon.as_url() if guild.icon else None
+    banner = banner_link(guild.id, guild.banner)
+
     info = {
       "guild_id": guild.id,
       "guild_name": guild.name,
@@ -90,8 +101,8 @@ class ServerInfo(libcmd.ReaderCommand):
       "guild_description": guild.description or "No description set",
       "guild_description_esc": utils.escape_text(guild.description or "No description set"),
       "guild_created_at_f": guild.created_at.format("f"),
-      "guild_icon_url": guild.icon.as_url() if guild.icon else None,
-      "guild_banner_url": banner_link(guild.banner) or None,
+      "guild_icon_url": icon,
+      "guild_banner_url": banner,
       "guild_owner": owner.tag,
       "guild_owner_mention": owner.mention,
       "guild_boost_level": guild.premium_tier or 0,
@@ -105,8 +116,5 @@ class ServerInfo(libcmd.ReaderCommand):
       "guild_role_count": len(guild.roles),
     }
 
-    components = self._components(
-      len(emojis), len(stickers), guild.icon.as_url() if guild.icon else None
-    )
-
+    components = self._components(len(emojis), len(stickers), icon_url=icon, banner_url=banner)
     await self.send(self.Templates.INFO, components=components, other_data=info)
