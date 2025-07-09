@@ -11,6 +11,7 @@ info:
   description: >-
     > ${guild_description_esc}
 
+    -# — — — — — — — — — —
 
     Server created at ${guild_created_at_f}
 

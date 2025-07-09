@@ -78,6 +78,7 @@ class ServerEmoji(libcmd.MultifieldMixin, libcmd.ReaderCommand):
       "guild_boost_count": guild.premium_subscription_count,
       "guild_emoji_count": 0,
       "guild_emoji_limit": guild.emoji_limit,
+      "guild_emoji_type": "animated" if animated else "static",
     }
     components = self.components(from_animated=animated)
 
