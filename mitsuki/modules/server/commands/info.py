@@ -40,31 +40,32 @@ class ServerInfo(libcmd.ReaderCommand):
 
 
   def _components(
-    self, emoji_count: int, sticker_count: int, icon_url: Optional[str] = None, banner_url: Optional[str] = None
+    self, emoji_static_count: int, emoji_animated_count: int, sticker_count: int,
+    icon_url: Optional[str] = None, banner_url: Optional[str] = None
   ):
-    components = [
-      ipy.Button(
+    components = []
+    if emoji_static_count > 0:
+      components.append(ipy.Button(
         style=ipy.ButtonStyle.BLURPLE,
         emoji=settings.emoji.list,
         label="Emojis",
         custom_id=customids.SERVER_EMOJIS_STATIC.id(self.ctx.guild_id),
-        disabled=emoji_count == 0
-      ),
-      ipy.Button(
+      ))
+    if emoji_animated_count > 0:
+      components.append(ipy.Button(
         style=ipy.ButtonStyle.BLURPLE,
         emoji=settings.emoji.list,
-        label="Emojis (animated)",
+        label="Animated Emojis",
         custom_id=customids.SERVER_EMOJIS_ANIMATED.id(self.ctx.guild_id),
-        disabled=emoji_count == 0
-      ),
-      # ipy.Button(
-      #   style=ipy.ButtonStyle.BLURPLE,
-      #   emoji=settings.emoji.gallery,
-      #   label="Stickers",
-      #   custom_id=customids.SERVER_STICKERS.id(self.ctx.guild_id),
-      #   disabled=sticker_count == 0
-      # ),
-    ]
+      ))
+    if sticker_count > 0:
+      components.append(
+      ipy.Button(
+        style=ipy.ButtonStyle.BLURPLE,
+        emoji=settings.emoji.gallery,
+        label="Stickers",
+        custom_id=customids.SERVER_STICKERS.id(self.ctx.guild_id),
+      ))
     if icon_url:
       components.append(ipy.Button(
         style=ipy.ButtonStyle.LINK,
@@ -93,6 +94,8 @@ class ServerInfo(libcmd.ReaderCommand):
 
     icon = guild.icon.as_url() if guild.icon else None
     banner = banner_link(guild.id, guild.banner)
+    e_static_count = len([e for e in emojis if not e.animated])
+    e_animated_count = len([e for e in emojis if e.animated])
 
     info = {
       "guild_id": guild.id,
@@ -109,12 +112,13 @@ class ServerInfo(libcmd.ReaderCommand):
       "guild_boost_count": guild.premium_subscription_count,
       "guild_emoji_limit": guild.emoji_limit,
       "guild_emoji_count": len(emojis),
-      "guild_emoji_static_count": len([e for e in emojis if not e.animated]),
-      "guild_emoji_animated_count": len([e for e in emojis if e.animated]),
+      "guild_emoji_static_count": e_static_count,
+      "guild_emoji_animated_count": e_animated_count,
       "guild_sticker_limit": guild.sticker_limit,
       "guild_sticker_count": len(stickers),
       "guild_role_count": len(guild.roles),
     }
 
-    components = self._components(len(emojis), len(stickers), icon_url=icon, banner_url=banner)
+    components = self._components(e_static_count, e_animated_count, len(stickers),
+                                  icon_url=icon, banner_url=banner)
     await self.send(self.Templates.INFO, components=components, other_data=info)

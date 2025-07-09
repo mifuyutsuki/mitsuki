@@ -5,8 +5,10 @@ _namespace: "server_emoji"
 
 
 empty:
+  author:
+    name: ${guild_name}
   title: >-
-    Emoji for "${guild_name}"
+    Emoji List - ${guild_emoji_type}
   description: >-
     **${guild_emoji_count}**/${guild_emoji_limit} available (Level ${guild_boost_level})
 
@@ -18,8 +20,10 @@ empty:
 
 # [Multifield]
 static:
+  author:
+    name: ✦ ${guild_name}
   title: >-
-    Emoji for "${guild_name}" - static (${page}/${pages})
+    Emoji List - ${guild_emoji_type} (${page}/${pages})
   description: >-
     **${guild_emoji_count}**/${guild_emoji_limit} available (Level ${guild_boost_level})
   thumbnail: >-
@@ -33,8 +37,10 @@ static:
 
 # [Multifield]
 animated:
+  author:
+    name: ✦ ${guild_name}
   title: >-
-    Emoji for "${guild_name}" - animated (${page}/${pages})
+    Emoji List - ${guild_emoji_type} (${page}/${pages})
   description: >-
     **${guild_emoji_count}**/${guild_emoji_limit} available (Level ${guild_boost_level})
   thumbnail: >-
