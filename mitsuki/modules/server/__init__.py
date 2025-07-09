@@ -81,3 +81,19 @@ class ServerModule(ipy.Extension):
   @ipy.component_callback(customids.SERVER_EMOJIS_ANIMATED.string_id_pattern())
   async def server_emoji_animated_btn(self, ctx: ipy.ComponentContext):
     return await commands.ServerEmoji.create(ctx).run(animated=True)
+
+  # ===============================================================================================
+  # Server Stickers
+  # ===============================================================================================
+
+  @server_cmd.subcommand(
+    sub_cmd_name="stickers",
+    sub_cmd_description="View detailed gallery of stickers on this server",
+  )
+  @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
+  async def server_stickers_cmd(self, ctx: ipy.SlashContext):
+    return await commands.ServerStickers.create(ctx).run()
+
+  @ipy.component_callback(customids.SERVER_STICKERS.string_id_pattern())
+  async def server_stickers_btn(self, ctx: ipy.ComponentContext):
+    return await commands.ServerStickers.create(ctx).run()
