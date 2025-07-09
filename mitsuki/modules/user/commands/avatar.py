@@ -20,15 +20,15 @@ from mitsuki.lib import commands as libcmd
 from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
 
-from ..customids import CustomIDs
+from .. import customids
 
 
-class AvatarInfo(libcmd.TargetMixin, libcmd.ReaderCommand):
+class UserAvatar(libcmd.TargetMixin, libcmd.ReaderCommand):
   class Templates(StrEnum):
-    AVATAR = "info_avatar"
+    AVATAR = "user_avatar"
 
 
-  async def run(self, target: Optional[Union[ipy.User, ipy.Member]] = None):
+  async def run(self, target: Optional[Union[ipy.User, ipy.Member, ipy.Snowflake]] = None):
     target = target or self.caller_user
 
     if isinstance(target, ipy.Member) and target.guild_avatar:
@@ -58,7 +58,7 @@ class AvatarInfo(libcmd.TargetMixin, libcmd.ReaderCommand):
       label="Global Avatar",
       emoji=settings.emoji.gallery,
       style=ipy.ButtonStyle.BLURPLE,
-      custom_id=CustomIDs.INFO_AVATAR_GLOBAL.id(target.id),
+      custom_id=customids.USER_AVATAR_GLOBAL.id(target.id),
     )
 
     m = await self.send(self.Templates.AVATAR, other_data=data, edit_origin=self.has_origin, components=btn)
@@ -92,7 +92,7 @@ class AvatarInfo(libcmd.TargetMixin, libcmd.ReaderCommand):
       label="Server Avatar",
       emoji=settings.emoji.gallery,
       style=ipy.ButtonStyle.BLURPLE,
-      custom_id=CustomIDs.INFO_AVATAR_SERVER.id(target.id),
+      custom_id=customids.USER_AVATAR_SERVER.id(target.id),
     ) if has_server_avatar else None
 
     m = await self.send(self.Templates.AVATAR, other_data=data, edit_origin=self.has_origin, components=btn)

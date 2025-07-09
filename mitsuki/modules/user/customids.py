@@ -10,10 +10,17 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from .user import UserInfo
-from .avatar import AvatarInfo
+from mitsuki.lib.commands import CustomID
 
-__all__ = (
-  "UserInfo",
-  "AvatarInfo",
-)
+
+USER_INFO = CustomID("info_user")
+"""View user information. (id: User ID)"""
+
+USER_AVATAR = CustomID("info_avatar")
+"""View avatar of a user. (id: User ID)"""
+
+USER_AVATAR_GLOBAL = CustomID("info_avatar|global")
+"""View global avatar of a user. (id: User ID)"""
+
+USER_AVATAR_SERVER = CustomID("info_avatar|server")
+"""View server avatar of a user. (id: User ID)"""
