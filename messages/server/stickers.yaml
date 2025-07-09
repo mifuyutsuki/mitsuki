@@ -1,0 +1,39 @@
+# /server stickers
+# View gallery of custom stickers on this server.
+
+_namespace: "server_stickers"
+
+
+empty:
+  author:
+    name: ✦ ${guild_name}
+  title: >-
+    No Stickers
+  description: >-
+    **${guild_sticker_count}**/${guild_sticker_limit} available (Level ${guild_boost_level})
+
+
+    This server has no stickers.
+  thumbnail: >-
+    ${guild_icon}
+
+
+stickers:
+  author:
+    name: ✦ ${guild_name}
+  title: >-
+    ${sticker_name_esc} ${sticker_available}
+  description: >-
+    > ${sticker_description}
+
+    -# — — — — — — — — — —
+
+    **${guild_sticker_count}**/${guild_sticker_limit} available (Level ${guild_boost_level})
+
+    ${sticker_format} sticker created at ${sticker_created_at_f}
+
+    [__**Link**__](${sticker_url}) · `${sticker_id}`
+  thumbnail: >-
+    ${guild_icon}
+  image: >-
+    ${sticker_url}

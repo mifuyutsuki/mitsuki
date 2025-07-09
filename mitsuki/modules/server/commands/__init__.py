@@ -13,9 +13,11 @@
 from .nickname import ServerNickname
 from .info import ServerInfo
 from .emoji import ServerEmoji
+from .stickers import ServerStickers
 
 __all__ = (
   "ServerNickname",
   "ServerInfo",
   "ServerEmoji",
+  "ServerStickers",
 )
