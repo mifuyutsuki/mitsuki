@@ -33,32 +33,32 @@ class ServerEmoji(libcmd.MultifieldMixin, libcmd.ReaderCommand):
 
   def components(self, from_animated: bool = False):
     components = []
-    if from_animated:
-      components.append(ipy.Button(
-        style=ipy.ButtonStyle.BLURPLE,
-        label="View static",
-        emoji=settings.emoji.list,
-        custom_id=customids.SERVER_EMOJIS_STATIC.id(self.ctx.guild_id),
-      ))
-    else:
-      components.append(ipy.Button(
-        style=ipy.ButtonStyle.BLURPLE,
-        label="View animated",
-        emoji=settings.emoji.list,
-        custom_id=customids.SERVER_EMOJIS_ANIMATED.id(self.ctx.guild_id),
-      ))
+    # if from_animated:
+    #   components.append(ipy.Button(
+    #     style=ipy.ButtonStyle.BLURPLE,
+    #     label="View static",
+    #     emoji=settings.emoji.list,
+    #     custom_id=customids.SERVER_EMOJIS_STATIC.id(self.ctx.guild_id),
+    #   ))
+    # else:
+    #   components.append(ipy.Button(
+    #     style=ipy.ButtonStyle.BLURPLE,
+    #     label="View animated",
+    #     emoji=settings.emoji.list,
+    #     custom_id=customids.SERVER_EMOJIS_ANIMATED.id(self.ctx.guild_id),
+    #   ))
     # components.append(ipy.Button(
     #   style=ipy.ButtonStyle.BLURPLE,
     #   label="Stickers",
     #   emoji=settings.emoji.gallery,
     #   custom_id=customids.SERVER_STICKERS.id(self.ctx.guild_id),
     # ))
-    components.append(ipy.Button(
-      style=ipy.ButtonStyle.BLURPLE,
-      label="Server info",
-      emoji=settings.emoji.back,
-      custom_id=customids.SERVER_INFO.id(self.ctx.guild_id)
-    ))
+    # components.append(ipy.Button(
+    #   style=ipy.ButtonStyle.BLURPLE,
+    #   label="Server info",
+    #   emoji=settings.emoji.back,
+    #   custom_id=customids.SERVER_INFO.id(self.ctx.guild_id)
+    # ))
     return components
 
 
@@ -66,9 +66,9 @@ class ServerEmoji(libcmd.MultifieldMixin, libcmd.ReaderCommand):
     await checks.assert_in_guild(self.ctx)
 
 
-  async def run(self, animated: bool = False, edit_origin: bool = False):
+  async def run(self, animated: bool = False):
     await self.check()
-    await self.defer(ephemeral=False, edit_origin=self.has_origin if edit_origin else False)
+    await self.defer(ephemeral=False, edit_origin=False)
 
     guild = self.ctx.guild
     emojis = await guild.fetch_all_custom_emojis()
