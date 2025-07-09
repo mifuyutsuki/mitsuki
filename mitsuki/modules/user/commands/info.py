@@ -20,15 +20,13 @@ from mitsuki.lib import commands as libcmd
 from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
 
-from ..customids import CustomIDs
+from .. import customids
 
 
 class UserInfo(libcmd.TargetMixin, libcmd.ReaderCommand):
-  data: "UserInfo.Data"
-
   class Templates(StrEnum):
-    USER = "info_user_user"
-    MEMBER = "info_user_member"
+    USER = "user_info_user"
+    MEMBER = "user_info_member"
 
 
   async def run(self, target: Optional[Union[ipy.User, ipy.Member]] = None):
@@ -67,7 +65,7 @@ class UserInfo(libcmd.TargetMixin, libcmd.ReaderCommand):
       )
     else:
       if target.nick:
-        string_templates.append("info_user_has_nickname")
+        string_templates.append("user_info_has_nickname")
       data |= {
         "guild_name": target.guild.name,
         "guild_id": target.guild.id,

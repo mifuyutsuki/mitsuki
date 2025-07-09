@@ -1,10 +1,11 @@
-# /info *
-# Information tools.
+# /user info
+# View information of yourself or another user.
 
-_namespace: info
+_namespace: user_info
+
 
 # Info about user (nonmember)
-user_user:
+user:
   author:
     name: >-
       ${target_username} (${target_userid})
@@ -17,13 +18,14 @@ user_user:
   thumbnail   : ${target_usericon}
   image       : ${target_userbanner}
 
+
 # Info about user (member)
-user_member:
+member:
   author:
     name: >-
       ${target_username} (${target_userid})
   title: >-
-    ${info_user_has_nickname} ${target_globalname}
+    ${user_info_has_nickname} ${target_globalname}
   description: >-
     ${target_user}
 
@@ -36,18 +38,7 @@ user_member:
       **Last joined** — ${joined_at}
 
       **Server booster** — ${is_booster}
-    inline    : false # fields.inline
+    inline    : false
 
-# View user avatar
-avatar:
-  author:
-    name: >-
-      ${target_username} (${target_userid})
-  title: >-
-    Avatar of ${target_username}
-  url: ${target_avatar}
-  description: >-
-    Viewing **${avatar_mode}** avatar of ${target_user}
-  image: ${target_avatar}
 
-user_has_nickname: ${target_nickname} / 
+has_nickname: ${target_nickname} / 
