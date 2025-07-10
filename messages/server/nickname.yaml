@@ -21,6 +21,13 @@ error_same:
     Bot is already set with this nickname.
   color: error
 
+error_invalid:
+  title: >-
+    Command Error
+  description: >-
+    Nickname contains invalid strings or characters.
+  color: error
+
 error:
   title: >-
     Command Error
