@@ -26,9 +26,10 @@ class ServerNickname(libcmd.ReaderCommand):
   data: "ServerNickname.Data"
 
   class Templates(StrEnum):
-    OK           = "server_nickname_ok"
-    ERROR        = "server_nickname_error"
-    ERROR_SAME   = "server_nickname_error_same"
+    OK            = "server_nickname_ok"
+    ERROR         = "server_nickname_error"
+    ERROR_INVALID = "server_nickname_error_invalid"
+    ERROR_SAME    = "server_nickname_error_same"
 
 
   async def check(self):
@@ -46,6 +47,14 @@ class ServerNickname(libcmd.ReaderCommand):
 
     if old_nickname == new_nickname:
       await self.send(self.Templates.ERROR_SAME)
+      return
+
+    # https://discord.com/developers/docs/resources/user#usernames-and-nicknames
+    if new_nickname and (
+      any([substring in new_nickname for substring in ("@", "#", ":", "```", "discord")])
+      or new_nickname == "everyone" or new_nickname == "here"
+    ):
+      await self.send(self.Templates.ERROR_INVALID)
       return
 
     try:
