@@ -15,8 +15,8 @@ user:
     ${target_user}
 
     **Created at** — ${created_at}
-  thumbnail   : ${target_usericon}
-  image       : ${target_userbanner}
+  thumbnail   : ${target_avatar}
+  image       : ${target_banner}
 
 
 # Info about user (member)
@@ -30,8 +30,8 @@ member:
     ${target_user}
 
     **Created at** — ${created_at}
-  thumbnail   : ${target_usericon}
-  image       : ${target_userbanner}
+  thumbnail   : ${target_avatar}
+  image       : ${target_banner}
   fields:
   - name      : ${guild_name} (${guild_id})
     value     : >-

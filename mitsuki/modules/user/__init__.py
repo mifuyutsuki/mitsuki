@@ -42,9 +42,17 @@ class UserModule(ipy.Extension):
   async def info_cmd(self, ctx: ipy.SlashContext, user: ipy.BaseUser = None):
     await commands.UserInfo.create(ctx).run(user)
 
-  # @ipy.component_callback(customids.USER_INFO.string_id_pattern())
-  # async def info_btn(self, ctx: ipy.ComponentContext):
-  #   await commands.UserInfo.create(ctx).run(CustomID.get_snowflake_from(ctx))
+  @ipy.component_callback(customids.USER_INFO.string_id_pattern())
+  async def info_btn(self, ctx: ipy.ComponentContext):
+    await commands.UserInfo.create(ctx).run(CustomID.get_snowflake_from(ctx))
+
+  @ipy.component_callback(customids.USER_INFO_SERVER.string_id_pattern())
+  async def info_server_btn(self, ctx: ipy.ComponentContext):
+    await commands.UserInfo.create(ctx).run_member(CustomID.get_snowflake_from(ctx), view_global=False)
+
+  @ipy.component_callback(customids.USER_INFO_GLOBAL.string_id_pattern())
+  async def info_global_btn(self, ctx: ipy.ComponentContext):
+    await commands.UserInfo.create(ctx).run_member(CustomID.get_snowflake_from(ctx), view_global=True)
 
   # ===============================================================================================
   # Avatar Info
