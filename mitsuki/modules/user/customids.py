@@ -13,14 +13,20 @@
 from mitsuki.lib.commands import CustomID
 
 
-USER_INFO = CustomID("info_user")
+USER_INFO = CustomID("user_info")
 """View user information. (id: User ID)"""
 
-USER_AVATAR = CustomID("info_avatar")
+USER_INFO_GLOBAL = CustomID("user_info|global")
+"""View user information, using this user's main profile. (id: User ID)"""
+
+USER_INFO_SERVER = CustomID("user_info|server")
+"""View user information, using this user's server profile. (id: User ID)"""
+
+USER_AVATAR = CustomID("user_avatar")
 """View avatar of a user. (id: User ID)"""
 
-USER_AVATAR_GLOBAL = CustomID("info_avatar|global")
-"""View global avatar of a user. (id: User ID)"""
+USER_AVATAR_GLOBAL = CustomID("user_avatar|global")
+"""View main avatar of a user. (id: User ID)"""
 
-USER_AVATAR_SERVER = CustomID("info_avatar|server")
+USER_AVATAR_SERVER = CustomID("user_avatar|server")
 """View server avatar of a user. (id: User ID)"""
