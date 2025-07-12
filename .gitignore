@@ -16,6 +16,9 @@ venv.bak/
 .vscode
 vscode/
 
+# Unit tests
+.pytest_cache
+
 # Userdata
 assets/
 data/
