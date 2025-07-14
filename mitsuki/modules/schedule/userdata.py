@@ -16,6 +16,7 @@ from interactions import (
   Message as DiscordMessage,
   InteractionContext,
   Permissions,
+  Client,
 )
 
 from sqlalchemy import select, insert, update, delete
@@ -32,7 +33,7 @@ import re
 
 from . import schema
 
-from mitsuki import bot, settings
+from mitsuki import settings
 from mitsuki.lib.checks import has_bot_channel_permissions
 from mitsuki.lib.userdata import new_session, AsDict
 from mitsuki.utils import process_text, ratio, escape_like_text, truncate
@@ -368,7 +369,7 @@ class Schedule(AsDict):
       return await session.scalar(query) is not None
 
 
-  async def is_valid(self, server_list: Optional[List[Snowflake]] = None):
+  async def is_valid(self, bot: Client):
     if (
       not self.post_channel
       or len(self.format.strip()) <= 0
@@ -383,7 +384,7 @@ class Schedule(AsDict):
         Permissions.VIEW_CHANNEL,         # for fetching previous pin
         Permissions.READ_MESSAGE_HISTORY, # for fetching previous pin
       ])
-    if server_list and self.guild not in server_list:
+    if self.guild not in [guild.id for guild in bot.guilds]:
       return False
     if not await has_bot_channel_permissions(bot, self.post_channel, required_permissions):
       return False

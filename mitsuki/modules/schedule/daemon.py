@@ -91,7 +91,7 @@ class DaemonTask:
       return
 
     # Validation: schedule is valid (channel exists, perms check, etc.)
-    if not await schedule.is_valid(server_list=[guild.id for guild in bot.guilds]):
+    if not await schedule.is_valid(bot):
       return
 
     # Validation: channel exists (also caught by is_valid())
@@ -177,7 +177,7 @@ class Daemon:
       return
 
     for schedule in active_schedules:
-      if not schedule.active or not await schedule.is_valid(server_list=self.server_list):
+      if not schedule.active or not await schedule.is_valid(self.bot):
         continue
 
       # post unsent backlog
@@ -193,7 +193,7 @@ class Daemon:
   async def force_post(self, schedule: Union[Schedule, int], time: Optional[float] = None):
     if isinstance(schedule, int):
       schedule = await Schedule.fetch_by_id(schedule)
-    if not schedule or not await schedule.is_valid(server_list=self.server_list):
+    if not schedule or not await schedule.is_valid(self.bot):
       raise ValueError("Schedule not ready or doesn't exist")
 
     if schedule.has_unsent():
@@ -203,7 +203,7 @@ class Daemon:
   async def activate(self, schedule: Union[Schedule, int]):
     if isinstance(schedule, int):
       schedule = await Schedule.fetch_by_id(schedule)
-    if not schedule or not await schedule.is_valid(server_list=self.server_list):
+    if not schedule or not await schedule.is_valid(self.bot):
       raise ValueError("Schedule not ready or doesn't exist")
 
     if active_schedule := self.active_schedules.get(schedule.id):
@@ -227,7 +227,7 @@ class Daemon:
   async def reactivate(self, schedule: Union[Schedule, int]):
     if isinstance(schedule, int):
       schedule = await Schedule.fetch_by_id(schedule)
-    if not schedule or not await schedule.is_valid(server_list=self.server_list):
+    if not schedule or not await schedule.is_valid(self.bot):
       raise ValueError("Schedule not ready or doesn't exist")
 
     if schedule_task := self.active_schedules.get(schedule.id):

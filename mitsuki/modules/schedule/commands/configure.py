@@ -167,7 +167,7 @@ class ConfigureSchedule(WriterCommand):
             label="Active" if schedule.active else "Inactive",
             emoji=settings.emoji.on if schedule.active else settings.emoji.off,
             custom_id=CustomIDs.CONFIGURE_ACTIVE.id(schedule_id),
-            disabled=not schedule.active and not await schedule.is_valid()
+            disabled=not schedule.active and not await schedule.is_valid(self.bot)
           ),
           Button(
             style=ButtonStyle.GREEN if schedule.pin else ButtonStyle.RED,
@@ -402,7 +402,7 @@ class ConfigureSchedule(WriterCommand):
     if schedule.active:
       await daemon.deactivate(schedule)
       schedule.deactivate()
-    elif not await schedule.is_valid():
+    elif not await schedule.is_valid(self.bot):
       return await self.send(self.Templates.ERROR_NOT_READY, ephemeral=True)
     else:
       await daemon.activate(schedule)
