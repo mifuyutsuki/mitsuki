@@ -37,9 +37,38 @@ async def init_db(init_empty):
 
 
 @pytest.fixture()
+def mock_message():
+  class MockMessage:
+    id = ipy.Snowflake(111100000000000000)
+    timestamp = ipy.Timestamp.now()
+
+    async def edit(self, *args, **kwargs):
+      pass
+
+  return MockMessage()
+
+
+@pytest.fixture()
+def mock_channel(mock_message):
+  class MockChannel:
+    id = 111000000000000000
+
+    async def fetch_message(self, id, *args, **kwargs):
+      pass
+
+    async def send(self, *args, **kwargs):
+      return mock_message
+
+    def permissions_for(self, *args, **kwargs):
+      return ipy.Permissions.ALL
+
+  return MockChannel()
+
+
+@pytest.fixture()
 def mock_guild():
   class MockGuild:
-    id = 110000000000000000
+    id = ipy.Snowflake(110000000000000000)
     name = "Student Council"
 
   return MockGuild()
@@ -48,31 +77,81 @@ def mock_guild():
 @pytest.fixture()
 def mock_user():
   class MockUser:
-    id = 100000000000000000
+    id = ipy.Snowflake(100000000000000000)
     username = ".everyone"
     global_name = "Student Council President"
     # avatar = ipy.Asset(mock_bot, f"{ipy.Asset.BASE}/embed/avatars/0")
+
+    def has_permission(self, *args):
+      return True
 
   return MockUser()
 
 
 @pytest.fixture()
-def mock_bot(mock_guild, mock_user):
-  class MockClient(ipy.Client):
+def mock_bot(mock_guild, mock_user, mock_channel, monkeypatch):
+  class MockApplication:
+    team = None
+  
+  class MockClientUser:
+    id = 1
+
+  class MockClient:
+    _members = {
+      mock_guild.id: {
+        mock_user.id: mock_user
+      }
+    }
+    _channels = {
+      mock_channel.id: mock_channel
+    }
+
     guilds = [mock_guild]
+
+    # Used by is_owner()
+    owner_ids = [mock_user.id]
+    app = MockApplication()
+    user = MockClientUser()
+
+    async def fetch_user(self, user_id):
+      for users in self._members.values():
+        if user_id in users:
+          return users[user_id]
+      return None
+
+    async def fetch_member(self, user_id, guild_id):
+      if users := self._members.get(guild_id):
+        return users.get(user_id)
+      return None
+
+    async def fetch_channel(self, channel_id):
+      return self._channels.get(channel_id)
 
   return MockClient()
 
 
 @pytest.fixture()
-async def mock_ctx(mock_bot: ipy.Client, mock_user: ipy.BaseUser, mock_guild: ipy.BaseGuild):
+async def mock_ctx(
+  mock_bot: ipy.Client, mock_user: ipy.BaseUser, mock_guild: ipy.BaseGuild, mock_message: ipy.BaseMessage
+):
   class MockInteractionContext:
     bot = mock_bot
     author = mock_user
-    author_id = ipy.Snowflake(100000000000000000)
+    author_id = mock_user.id
     user = mock_user
-    user_id = ipy.Snowflake(100000000000000000)
+    user_id = mock_user.id
     guild = mock_guild
-    guild_id = ipy.Snowflake(110000000000000000)
+    guild_id = mock_guild.id
+    deferred = False
+    responded = False
+
+    async def defer(self, *args, suppress_error=False, **kwargs):
+      if not suppress_error:
+        assert not self.deferred
+      self.deferred = True
+
+    async def send(self, *args, **kwargs):
+      self.responded = True
+      return mock_message
 
   return MockInteractionContext()
