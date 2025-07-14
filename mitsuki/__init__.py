@@ -269,9 +269,20 @@ def run():
 
   if environ.get("ENABLE_DEV_MODE") == "1":
     # Activate Jurigged integration with dev-mode (run.py dev)
-    bot.load_extension("interactions.ext.jurigged")
-    print("Running in dev mode. Jurigged is active")
+    print("Running in dev mode")
+    try:
+      bot.load_extension("interactions.ext.jurigged")
+    except ImportError:
+      logger.warning(
+        "Install jurigged to enable hot code reloading (pip install -U -r requirements-dev.txt)"
+      )
+    except Exception as e:
+      logger.exception(e)
+      logger.warning("Could not enable hot code reloading (jurigged)")
+    else:
+      print("Hot code reloading (jurigged) is active")
 
+    # TODO: System commands
     if not settings.dev.scope:
       logger.warning("Settings property dev.dev_scope is not set. Running commands globally")
 
