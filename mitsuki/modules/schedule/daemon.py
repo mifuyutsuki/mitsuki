@@ -85,7 +85,7 @@ class DaemonTask:
 
 
   @staticmethod
-  async def post(bot: Client, schedule: Schedule, force: bool = False):
+  async def post(bot: Client, schedule: Schedule, force: bool = False, time: Optional[float] = None):
     # Validation: schedule is active unless force-posted
     if not force and not schedule.active:
       return
@@ -132,7 +132,12 @@ class DaemonTask:
           schedule.current_pin = posted_message.id
 
     # Save: Update database
-    schedule.last_fire = timestamp_now()
+    time = time or timestamp_now()
+    if not schedule.last_fire:
+      schedule.last_fire = time
+    else:
+      schedule.last_fire = max(time, schedule.cron(schedule.last_fire).next(float))
+
     async with new_session.begin() as session:
       if is_ready and message and posted_message:
         schedule.posted_number += 1
@@ -185,14 +190,14 @@ class Daemon:
       self.active_schedules[schedule.id] = task
 
 
-  async def force_post(self, schedule: Union[Schedule, int]):
+  async def force_post(self, schedule: Union[Schedule, int], time: Optional[float] = None):
     if isinstance(schedule, int):
       schedule = await Schedule.fetch_by_id(schedule)
     if not schedule or not await schedule.is_valid(server_list=self.server_list):
       raise ValueError("Schedule not ready or doesn't exist")
 
     if schedule.has_unsent():
-      await DaemonTask.post(self.bot, schedule, force=True)
+      await DaemonTask.post(self.bot, schedule, force=True, time=time)
 
 
   async def activate(self, schedule: Union[Schedule, int]):
