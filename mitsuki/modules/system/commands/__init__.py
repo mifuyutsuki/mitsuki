@@ -10,9 +10,8 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from .nickname import Nickname
 from .templates_reload import ReloadTemplates
 
 __all__ = (
-  "Nickname",
+  "ReloadTemplates",
 )
