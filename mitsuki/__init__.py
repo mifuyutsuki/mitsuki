@@ -71,7 +71,7 @@ import asyncio
 import logging
 
 # Settings must load first
-from mitsuki import settings
+from mitsuki import settings, settings2
 
 from mitsuki.lib.errors import MitsukiSoftException
 from mitsuki.lib.messages import load_message
