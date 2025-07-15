@@ -110,6 +110,18 @@ bad_input:
   color: error
 
 
+# Not a valid input for a field. (Detailed message)
+bad_input_message:
+  title: >-
+    Invalid Input
+  description: >-
+    Not a valid input for `${field}`.
+
+
+    ${message}
+  color: error
+
+
 # Not a valid input range for a numeric field.
 bad_input_range:
   title: >-

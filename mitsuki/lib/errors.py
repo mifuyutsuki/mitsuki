@@ -101,8 +101,10 @@ class BadInput(MitsukiSoftException):
 
   TEMPLATE: str = "error_bad_input"
 
-  def __init__(self, field: str):
-    self.data = {"field": field}
+  def __init__(self, field: str, message: Optional[str] = None):
+    if message:
+      self.TEMPLATE = "error_bad_input_message"
+    self.data = {"field": field, "message": message}
 
 
 class BadInputRange(MitsukiSoftException):
