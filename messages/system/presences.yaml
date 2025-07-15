@@ -1,0 +1,41 @@
+# /system presences
+# Manage bot presences rotation.
+
+_namespace: system_presences
+
+
+# [Multiline/Selection]
+_:
+  base_template: admin
+  title: >-
+    Presences for "${bot_username}"
+  description: >-
+    `${total_presences}` available - cycling every ${cycle_time} seconds
+
+
+    ${multiline2}
+  thumbnail: >-
+    ${bot_usericon}
+  multiline2: >-
+    * ${name}
+
+
+empty:
+  base_template: admin
+  title: >-
+    Presences for "${bot_username}"
+  description: >-
+    `${total_presences}` available - cycling every ${cycle_time} seconds
+
+
+    No presences found. Press `Add` to add a presence and begin the presence rotation.
+  thumbnail: >-
+    ${bot_usericon}
+
+
+add_success:
+  base_template: admin
+  title: >-
+    Presence added
+  description: >-
+    * ${presence_name}

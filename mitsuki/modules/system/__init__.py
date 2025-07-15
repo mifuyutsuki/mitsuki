@@ -10,31 +10,80 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from interactions import (
-  Extension,
-  slash_command,
-  slash_option,
-  SlashContext,
-  OptionType,
-  BaseUser,
-  Member,
-  User,
-  cooldown,
-  Buckets,
-)
+import interactions as ipy
 from typing import Optional
 
-from . import commands
+from mitsuki import init_event
+from . import commands, customids, presencer
 
 
-class SystemModule(Extension):
+class SystemModule(ipy.Extension):
+  @ipy.listen(ipy.events.Ready)
+  async def on_ready(self, event: ipy.events.Ready):
+    await init_event.wait()
+
+    presencer.set_presencer(self.bot)
+    await presencer.presencer().init()
+
+
   # TODO: Make this module DM only (ContextType.BOT_DM)
-  @slash_command(
+  system_cmd = ipy.SlashCommand(
     name="system",
     description="System commands (requires bot owner)",
   )
-  async def system_cmd(self, ctx: SlashContext):
-    pass
+
+  # ===============================================================================================
+  # Manage Presences
+  # ===============================================================================================
+
+  @system_cmd.subcommand(
+    sub_cmd_name="presences",
+    sub_cmd_description="Manage bot presences",
+  )
+  async def system_presences_cmd(self, ctx: ipy.SlashContext):
+    await commands.SystemPresences.create(ctx).run()
+
+  @ipy.component_callback(customids.SYSTEM_PRESENCES)
+  async def system_presences_btn(self, ctx: ipy.ComponentContext):
+    await commands.SystemPresences.create(ctx).run()
+
+  # ===============================================================================================
+
+  @ipy.component_callback(customids.SYSTEM_PRESENCES_ADD.prompt())
+  async def system_presences_add_prompt(self, ctx: ipy.ComponentContext):
+    await commands.SystemPresencesAdd.create(ctx).prompt()
+
+  @ipy.modal_callback(customids.SYSTEM_PRESENCES_ADD.response())
+  async def system_presences_add_response(self, ctx: ipy.ModalContext, name: str):
+    await commands.SystemPresencesAdd.create(ctx).response(name)
+
+  # ===============================================================================================
+
+  # @ipy.component_callback(customids.SYSTEM_PRESENCES_EDIT.numeric_id_pattern())
+  # async def system_presences_edit_btn(self, ctx: ipy.ComponentContext):
+  #   pass
+
+  # @ipy.component_callback(customids.SYSTEM_PRESENCES_EDIT.select())
+  # async def system_presences_edit_select(self, ctx: ipy.ComponentContext):
+  #   pass
+
+  # @ipy.component_callback(customids.SYSTEM_PRESENCES_EDIT.prompt().numeric_id_pattern())
+  # async def system_presences_edit_prompt(self, ctx: ipy.ComponentContext):
+  #   pass
+
+  # @ipy.modal_callback(customids.SYSTEM_PRESENCES_EDIT.response().numeric_id_pattern())
+  # async def system_presences_edit_response(self, ctx: ipy.ModalContext):
+  #   pass
+
+  # ===============================================================================================
+
+  # @ipy.component_callback(customids.SYSTEM_PRESENCES_DELETE.confirm().numeric_id_pattern())
+  # async def system_presences_delete_confirm(self, ctx: ipy.ComponentContext):
+  #   pass
+
+  # @ipy.component_callback(customids.SYSTEM_PRESENCES_DELETE.numeric_id_pattern())
+  # async def system_presences_delete(self, ctx: ipy.ComponentContext):
+  #   pass
 
   # ===============================================================================================
   # Manage Templates
@@ -49,5 +98,5 @@ class SystemModule(Extension):
     sub_cmd_name="reload",
     sub_cmd_description="Reload bot templates"
   )
-  async def system_templates_cmd(self, ctx: SlashContext):
+  async def system_templates_cmd(self, ctx: ipy.SlashContext):
     await commands.ReloadTemplates.create(ctx).run()

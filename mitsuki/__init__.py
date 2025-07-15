@@ -126,20 +126,20 @@ class Bot(Client):
   @listen(Startup)
   async def on_startup(self):
     await initialize()
-    self.cycle_status.start()
+    # self.cycle_status.start()
     init_event.set()
 
 
   @listen(Ready)
   async def on_ready(self):
-    await self.next_status()
+    # await self.next_status()
     curr_time = datetime.now(tz=timezone.utc).isoformat(sep=" ")
     print(f"Ready: {curr_time} UTC | {self.user.tag} ({self.user.id}) @ {len(self.guilds)} guild(s)")
 
 
-  @Task.create(IntervalTrigger(seconds=max(60, settings.mitsuki.status_cycle)))
-  async def cycle_status(self):
-    await self.next_status()
+  # @Task.create(IntervalTrigger(seconds=max(60, settings.mitsuki.status_cycle)))
+  # async def cycle_status(self):
+  #   await self.next_status()
 
 
   async def next_status(self):

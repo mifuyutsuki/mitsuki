@@ -10,12 +10,4 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from .templates_reload import ReloadTemplates
-from .presences import SystemPresences
-from .presences_add import SystemPresencesAdd
-
-__all__ = (
-  "ReloadTemplates",
-  "SystemPresences",
-  "SystemPresencesAdd",
-)
+from .presences import Presence
