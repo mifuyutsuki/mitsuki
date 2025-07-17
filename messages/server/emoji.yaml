@@ -6,7 +6,7 @@ _namespace: "server_emoji"
 
 empty:
   author:
-    name: ${guild_name}
+    name: ✦ ${guild_name}
   title: >-
     Emoji List - ${guild_emoji_type}
   description: >-
