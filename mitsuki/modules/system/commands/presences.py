@@ -60,7 +60,7 @@ class SystemPresences(libcmd.SelectionMixin, libcmd.ReaderCommand):
     presences = await api.Presence.fetch_all()
     data = {
       "total_presences": len(presences),
-      "cycle_time": await Settings.get(Settings.StatusCycle),
+      "cycle_time": settings.mitsuki.status_cycle,
     }
 
     if len(presences) == 0:
