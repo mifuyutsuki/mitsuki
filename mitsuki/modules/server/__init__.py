@@ -70,17 +70,28 @@ class ServerModule(ipy.Extension):
     opt_type=ipy.OptionType.BOOLEAN,
     required=False,
   )
+  @ipy.slash_option(
+    name="sort",
+    description="Sort emoji by, default: name (case-sensitive)",
+    opt_type=ipy.OptionType.STRING,
+    required=False,
+    choices=[
+      ipy.SlashCommandChoice(name="Name (case-sensitive) (default)", value="name"),
+      ipy.SlashCommandChoice(name="Name (case-insensitive)", value="name-i"),
+      ipy.SlashCommandChoice(name="Recently added", value="date"),
+    ]
+  )
   @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
-  async def server_emoji_cmd(self, ctx: ipy.SlashContext, animated: bool = False):
-    return await commands.ServerEmoji.create(ctx).run(animated=animated)
+  async def server_emoji_cmd(self, ctx: ipy.SlashContext, animated: bool = False, sort: str = "name"):
+    return await commands.ServerEmoji.create(ctx).run(animated=animated, sort=sort)
 
-  @ipy.component_callback(customids.SERVER_EMOJIS_STATIC.string_id_pattern())
-  async def server_emoji_static_btn(self, ctx: ipy.ComponentContext):
-    return await commands.ServerEmoji.create(ctx).run(animated=False)
+  # @ipy.component_callback(customids.SERVER_EMOJIS_STATIC.string_id_pattern())
+  # async def server_emoji_static_btn(self, ctx: ipy.ComponentContext):
+  #   return await commands.ServerEmoji.create(ctx).run(animated=False, sort="name")
 
-  @ipy.component_callback(customids.SERVER_EMOJIS_ANIMATED.string_id_pattern())
-  async def server_emoji_animated_btn(self, ctx: ipy.ComponentContext):
-    return await commands.ServerEmoji.create(ctx).run(animated=True)
+  # @ipy.component_callback(customids.SERVER_EMOJIS_ANIMATED.string_id_pattern())
+  # async def server_emoji_animated_btn(self, ctx: ipy.ComponentContext):
+  #   return await commands.ServerEmoji.create(ctx).run(animated=True, sort="name")
 
   # ===============================================================================================
   # Server Stickers

@@ -66,7 +66,7 @@ class ServerEmoji(libcmd.MultifieldMixin, libcmd.ReaderCommand):
     await checks.assert_in_guild(self.ctx)
 
 
-  async def run(self, animated: bool = False):
+  async def run(self, animated: bool = False, sort: str = "name"):
     await self.check()
     await self.defer(ephemeral=False, edit_origin=False)
 
@@ -91,7 +91,15 @@ class ServerEmoji(libcmd.MultifieldMixin, libcmd.ReaderCommand):
       await self.send(self.Templates.EMPTY, other_data=data, components=components)
       return
 
-    emojis.sort(key=lambda e: e.id, reverse=True)
+    match sort:
+      case "name":
+        emojis.sort(key=lambda e: e.name)
+      case "name-i":
+        emojis.sort(key=lambda e: e.name.lower())
+      case "date":
+        emojis.sort(key=lambda e: e.id, reverse=True)
+      case _:
+        raise ValueError(f"Unexpected sort option: {sort}")
     emojis.sort(key=lambda e: e.available, reverse=True)
 
     data |= {
