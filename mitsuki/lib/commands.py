@@ -311,9 +311,11 @@ class Command:
 
     if (edit_origin or self.edit_origin) and self.has_origin:
       send = self.ctx.edit_origin
+    elif getattr(self.ctx, "editing_origin", False):
+      send = self.ctx.edit_origin
     else:
       send = self.ctx.send
-    
+
     message_template = self.message_template(template, other_data, lines_data=lines_data, **template_kwargs)
 
     self.message = await send(**message_template.to_dict(), **kwargs)
