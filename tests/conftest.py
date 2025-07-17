@@ -105,6 +105,8 @@ def mock_bot(mock_guild, mock_user, mock_channel, monkeypatch):
     _channels = {
       mock_channel.id: mock_channel
     }
+    activity = None
+    status = None
 
     guilds = [mock_guild]
 
@@ -112,6 +114,10 @@ def mock_bot(mock_guild, mock_user, mock_channel, monkeypatch):
     owner_ids = [mock_user.id]
     app = MockApplication()
     user = MockClientUser()
+
+    async def change_presence(self, status, activity):
+      self.status = status
+      self.activity = activity
 
     async def fetch_user(self, user_id):
       for users in self._members.values():
