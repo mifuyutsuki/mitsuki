@@ -26,22 +26,27 @@ from . import api
 
 @attrs.define()
 class Presencer:
-  bot: ipy.Client               = attrs.field()
-  presences: list[api.Presence] = attrs.field(factory=list)
-  cycle_time: Optional[int]     = attrs.field(default=None)
-  _task: Optional[ipy.Task]     = attrs.field(default=None)
-  _prev: Optional[api.Presence] = attrs.field(default=None)
+  bot: ipy.Client                  = attrs.field()
+  presences: list[api.Presence]    = attrs.field(factory=list)
+  cycle_time: Optional[int]        = attrs.field(default=None)
+  _task: Optional[ipy.Task]        = attrs.field(default=None)
+  _current: Optional[api.Presence] = attrs.field(default=None)
+
+
+  @property
+  def current(self):
+    return self._current
 
 
   async def cycle(self):
-    presence = await api.Presence.fetch_next(prev=self._prev)
+    presence = await api.Presence.fetch_next(prev=self._current)
     if not presence:
       return
 
     await self.bot.change_presence(
       ipy.Status.ONLINE, activity=ipy.Activity(presence.name, ipy.ActivityType.PLAYING)
     )
-    self._prev = presence
+    self._current = presence
 
 
   async def init(self):
@@ -50,6 +55,7 @@ class Presencer:
     self.presences = await api.Presence.fetch_all()
 
     if len(self.presences) == 0:
+      self._current = None
       await self.bot.change_presence(ipy.Status.ONLINE, activity=None)
       return
 
