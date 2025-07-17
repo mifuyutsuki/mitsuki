@@ -23,7 +23,7 @@ from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
 
 
-from .. import customids, api
+from .. import customids, api, commands
 
 
 class SystemPresences(libcmd.SelectionMixin, libcmd.ReaderCommand):
@@ -55,7 +55,7 @@ class SystemPresences(libcmd.SelectionMixin, libcmd.ReaderCommand):
 
   async def run(self):
     await self.check()
-    await self.defer(ephemeral=True)
+    await self.defer(ephemeral=True, edit_origin=self.has_origin, suppress_error=True)
 
     presences = await api.Presence.fetch_all()
     data = {
@@ -80,4 +80,4 @@ class SystemPresences(libcmd.SelectionMixin, libcmd.ReaderCommand):
 
 
   async def selection_callback(self, ctx: ipy.ComponentContext):
-    pass
+    await commands.SystemPresencesDelete.create(ctx).confirm(int(ctx.values[0]))

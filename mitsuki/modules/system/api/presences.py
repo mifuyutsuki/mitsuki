@@ -41,9 +41,19 @@ class Presence(libcmd.AsDict):
 
 
   @classmethod
-  async def fetch_all(cls):
+  async def fetch(cls, id: int):
+    statement = sa.select(schema.Presence).where(schema.Presence.id == id)
+
     async with new_session.begin() as session:
-      results = (await session.scalars(sa.select(schema.Presence))).all()
+      return await session.scalar(statement)
+
+
+  @classmethod
+  async def fetch_all(cls):
+    statement = sa.select(schema.Presence).order_by(schema.Presence.name)
+
+    async with new_session.begin() as session:
+      results = (await session.scalars(statement)).all()
     return [cls(id=result.id, name=result.name) for result in results]
 
 
@@ -69,12 +79,18 @@ class Presence(libcmd.AsDict):
 
   async def edit(self, session: AsyncSession, name: str):
     """Edit an existing presence in the rotation."""
-    statement = sa.update(schema.Presence).where(id=self.id).values(name=name)
+    statement = sa.update(schema.Presence).where(schema.Presence.id == self.id).values(name=name)
     await session.execute(statement)
 
 
   async def delete(self, session: AsyncSession):
     """Delete a presence out of the rotation."""
-    statement = sa.delete(schema.Presence).where(id=self.id)
+    statement = sa.delete(schema.Presence).where(schema.Presence.id == self.id)
     await session.execute(statement)
     self.id = None
+
+
+  @classmethod
+  async def delete_id(cls, session: AsyncSession, id: int):
+    statement = sa.delete(schema.Presence).where(schema.Presence.id == id).returning(schema.Presence.name)
+    return cls(name=await session.scalar(statement))

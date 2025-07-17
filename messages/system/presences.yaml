@@ -38,4 +38,17 @@ add_success:
   title: >-
     Presence added
   description: >-
+    This presence is now added to the rotation.
+
+    * ${presence_name}
+
+
+delete_confirm:
+  base_template: admin
+  title: >-
+    Delete Presence?
+  description: >-
+    Are you sure to delete this presence? This removes the presence from the rotation.
+
+
     * ${presence_name}

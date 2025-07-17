@@ -23,7 +23,7 @@ from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
 
 
-from .. import customids, api, presencer
+from .. import customids, api, presencer, commands
 
 
 class SystemPresencesAdd(libcmd.WriterCommand):
@@ -57,7 +57,7 @@ class SystemPresencesAdd(libcmd.WriterCommand):
 
   async def response(self, name: str):
     await self.check()
-    await self.defer(ephemeral=True, edit_origin=False)
+    await self.defer(ephemeral=True, edit_origin=False, suppress_error=True)
 
     self.presence_name = name
     data = {

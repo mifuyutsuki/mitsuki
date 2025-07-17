@@ -13,9 +13,11 @@
 from .templates_reload import ReloadTemplates
 from .presences import SystemPresences
 from .presences_add import SystemPresencesAdd
+from .presences_delete import SystemPresencesDelete
 
 __all__ = (
   "ReloadTemplates",
   "SystemPresences",
   "SystemPresencesAdd",
+  "SystemPresencesDelete",
 )

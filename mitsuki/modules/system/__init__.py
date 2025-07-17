@@ -79,11 +79,11 @@ class SystemModule(ipy.Extension):
 
   # @ipy.component_callback(customids.SYSTEM_PRESENCES_DELETE.confirm().numeric_id_pattern())
   # async def system_presences_delete_confirm(self, ctx: ipy.ComponentContext):
-  #   pass
+  #   await commands.SystemPresencesDelete.create(ctx).confirm(customids.CustomID.get_int_from(ctx))
 
-  # @ipy.component_callback(customids.SYSTEM_PRESENCES_DELETE.numeric_id_pattern())
-  # async def system_presences_delete(self, ctx: ipy.ComponentContext):
-  #   pass
+  @ipy.component_callback(customids.SYSTEM_PRESENCES_DELETE.numeric_id_pattern())
+  async def system_presences_delete(self, ctx: ipy.ComponentContext):
+    await commands.SystemPresencesDelete.create(ctx).delete(customids.CustomID.get_int_from(ctx))
 
   # ===============================================================================================
   # Manage Templates
