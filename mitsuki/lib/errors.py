@@ -96,6 +96,15 @@ class OutOfGuild(MitsukiSoftException):
   TEMPLATE: str = "error_out_of_guild"
 
 
+class ObjectNotFound(MitsukiSoftException):
+  """Could not find object (e.g. Schedule), which may already have been deleted."""
+
+  TEMPLATE: str = "error_object_not_found"
+
+  def __init__(self, obj_name: str):
+    self.data = {"obj_name": obj_name}
+
+
 class BadInput(MitsukiSoftException):
   """Not a valid input for a field."""
 
