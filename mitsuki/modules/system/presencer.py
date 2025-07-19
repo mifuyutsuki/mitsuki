@@ -14,6 +14,7 @@
 import interactions as ipy
 import attrs
 import asyncio
+import random
 
 from typing import Optional
 
@@ -31,6 +32,7 @@ class Presencer:
   cycle_time: Optional[int]        = attrs.field(default=None)
   _task: Optional[ipy.Task]        = attrs.field(default=None)
   _current: Optional[api.Presence] = attrs.field(default=None)
+  _random: random.Random           = attrs.field(default=random.Random())
 
 
   @property
@@ -38,8 +40,17 @@ class Presencer:
     return self._current
 
 
+  def get_next(self, prev: Optional[api.Presence] = None):
+    if prev:
+      ps = [p for p in self.presences if p.id != prev.id]
+      if len(ps) == 0:
+        return None
+      return self._random.choice(ps)
+    return self._random.choice(self.presences)
+
+
   async def cycle(self):
-    presence = await api.Presence.fetch_next(prev=self._current)
+    presence = self.get_next(prev=self._current)
     if not presence:
       return
 
