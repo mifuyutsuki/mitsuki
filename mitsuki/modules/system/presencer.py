@@ -75,9 +75,9 @@ class Presencer:
 _presencer = None
 
 
-def set_presencer(bot: ipy.Client):
+def set_presencer(bot: ipy.Client, cycle_time: Optional[int] = None):
   global _presencer
-  _presencer = Presencer(bot)
+  _presencer = Presencer(bot, cycle_time=cycle_time)
 
 
 def presencer():
