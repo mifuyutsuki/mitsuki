@@ -69,4 +69,4 @@ class SystemPresencesAdd(libcmd.WriterCommand):
 
   async def transaction(self, session: AsyncSession):
     await api.Presence.create(self.presence_name).add(session)
-    await presencer.presencer().restart()
+    await presencer.presencer().sync()

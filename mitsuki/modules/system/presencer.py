@@ -49,6 +49,24 @@ class Presencer:
     return self._random.choice(self.presences)
 
 
+  async def init(self):
+    # TODO: use new settings system (requires settings management commands)
+    self.cycle_time = self.cycle_time or settings.mitsuki.status_cycle
+    self.presences = await api.Presence.fetch_all()
+    self._current = None
+
+    if len(self.presences) == 0:
+      await self.bot.change_presence(ipy.Status.ONLINE, activity=None)
+    else:
+      await self.start()
+
+
+  async def start(self):
+    self._task = ipy.Task(self.cycle, ipy.IntervalTrigger(seconds=max(60, self.cycle_time)))
+    self._task.start()
+    await self.cycle()
+
+
   async def cycle(self):
     presence = self.get_next(prev=self._current)
     if not presence:
@@ -60,27 +78,33 @@ class Presencer:
     self._current = presence
 
 
-  async def init(self):
-    # TODO: use new settings system (requires settings management commands)
-    self.cycle_time = self.cycle_time or settings.mitsuki.status_cycle
-    self.presences = await api.Presence.fetch_all()
-
-    if len(self.presences) == 0:
-      self._current = None
-      await self.bot.change_presence(ipy.Status.ONLINE, activity=None)
-      return
-
-    self._task = ipy.Task(self.cycle, ipy.IntervalTrigger(seconds=max(60, self.cycle_time)))
-    self._task.start()
-    await self.cycle()
-
-
-  async def restart(self):
+  async def stop(self):
     if self._task and self._task.running:
       self._task.stop()
     self._task = None
 
-    await self.init()
+
+  async def restart(self):
+    await self.stop()
+    await self.start()
+
+
+  async def sync(self):
+    self.presences = await api.Presence.fetch_all()
+
+    if len(self.presences) == 0:
+      # Presences list is empty, stop rotation
+      self._current = None
+      await self.bot.change_presence(ipy.Status.ONLINE, activity=None)
+      await self.stop()
+
+    elif self.current is None:
+      # Presences list was empty, begin rotation
+      await self.restart()
+
+    elif self.current.id not in (p.id for p in self.presences):
+      # Current presence is deleted, restart rotation
+      await self.restart()
 
 
 _presencer = None

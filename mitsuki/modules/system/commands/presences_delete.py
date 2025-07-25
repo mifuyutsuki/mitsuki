@@ -73,10 +73,7 @@ class SystemPresencesDelete(libcmd.WriterCommand):
     await self.defer(ephemeral=True, edit_origin=self.has_origin, suppress_error=True)
 
     async with new_session.begin() as session:
-      presence = await api.Presence.delete_id(session, presence_id)
+      _ = await api.Presence.delete_id(session, presence_id)
 
-    current = presencer.presencer().current
-    if current and current.name == presence.name:
-      await presencer.presencer().restart()
-
+    await presencer.presencer().sync()
     await commands.SystemPresences.create(self.ctx).run()
