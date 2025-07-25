@@ -29,9 +29,12 @@ async def single_presence():
   return p
 
 
-@pytest_asyncio.fixture()
-async def multiple_presences():
-  names = ["Spice Market", "Daydream Cafe", "Connected Sky"]
+@pytest_asyncio.fixture(params=[
+  ["Spice Market", "Daydream Cafe"],
+  ["Spice Market", "Daydream Cafe", "Connected Sky"],
+])
+async def multiple_presences(request: pytest.FixtureRequest):
+  names = request.param
   ps = [api.Presence.create(name) for name in names]
 
   async with new_session.begin() as session:
@@ -95,7 +98,73 @@ async def test_presence_delete_id(init_db, single_presence: api.Presence):
   assert len(ps) == 0
 
 
-async def test_presencer_empty(init_db, mock_presencer: presencer.Presencer):
+async def test_presencer_add_empty(init_db, mock_presencer: presencer.Presencer):
+  pr = mock_presencer
+  await pr.init()
+  assert len(pr.presences) == 0
+  assert pr.current is None
+
+  p = api.Presence.create("Spice Market")
+  async with new_session.begin() as session:
+    await p.add(session)
+
+  await pr.sync()
+  assert len(pr.presences) == 1
+  assert pr.current is not None
+
+
+async def test_presencer_add_nonempty(init_db, mock_presencer: presencer.Presencer, single_presence: api.Presence):
+  pr = mock_presencer
+
+  await pr.init()
+  assert len(pr.presences) == 1
+  assert pr.current is not None
+  assert pr.current.name == single_presence.name
+
+  p = api.Presence.create("Connected Sky")
+  async with new_session.begin() as session:
+    await p.add(session)
+
+  await pr.sync()
+  assert len(pr.presences) == 2
+  assert pr.current.name == single_presence.name
+
+  await pr.cycle()
+  assert pr.current.name == p.name
+
+
+async def test_presencer_delete_empty(init_db, mock_presencer: presencer.Presencer, single_presence: api.Presence):
+  pr, p = mock_presencer, single_presence
+
+  await pr.init()
+  assert pr.current is not None
+
+  async with new_session.begin() as session:
+    await p.delete(session)
+
+  await pr.sync()
+  assert len(pr.presences) == 0
+  assert pr.current is None
+
+
+async def test_presencer_delete_nonempty(
+  init_db, mock_presencer: presencer.Presencer, multiple_presences: list[api.Presence]
+):
+  pr, ps = mock_presencer, multiple_presences
+
+  await pr.init()
+  assert pr.current is not None
+
+  p = pr.current
+  async with new_session.begin() as session:
+    await p.delete(session)
+
+  await pr.sync()
+  assert len(pr.presences) < len(ps)
+  assert pr.current.name != p.name
+
+
+async def test_presencer_run_empty(init_db, mock_presencer: presencer.Presencer):
   pr = mock_presencer
   assert len(pr.presences) == 0
 
@@ -104,7 +173,7 @@ async def test_presencer_empty(init_db, mock_presencer: presencer.Presencer):
   assert pr.current is None
 
 
-async def test_presencer_single(init_db, mock_presencer: presencer.Presencer, single_presence: api.Presence):
+async def test_presencer_run_single(init_db, mock_presencer: presencer.Presencer, single_presence: api.Presence):
   pr, p = mock_presencer, single_presence
   assert len(pr.presences) == 0
 
@@ -114,13 +183,16 @@ async def test_presencer_single(init_db, mock_presencer: presencer.Presencer, si
   assert pr.current.name == p.name
 
   current_0 = pr.current
+  await pr.sync()
+  assert len(pr.presences) == 1
+
   await pr.cycle()
   current_1 = pr.current
 
   assert current_1.name == current_0.name
 
 
-async def test_presencer_multiple(init_db, mock_presencer: presencer.Presencer, multiple_presences: list[api.Presence]):
+async def test_presencer_run_multiple(init_db, mock_presencer: presencer.Presencer, multiple_presences: list[api.Presence]):
   pr, ps = mock_presencer, multiple_presences
   assert len(pr.presences) == 0
 
