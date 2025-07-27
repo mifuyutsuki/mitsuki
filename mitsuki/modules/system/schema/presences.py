@@ -10,14 +10,16 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from .templates_reload import ReloadTemplates
-from .presences import SystemPresences
-from .presences_add import SystemPresencesAdd
-from .presences_delete import SystemPresencesDelete
+from sqlalchemy import UniqueConstraint, text, types
+from sqlalchemy.orm import Mapped, mapped_column
+from rapidfuzz import fuzz
+from typing import Optional, List, Callable
 
-__all__ = (
-  "ReloadTemplates",
-  "SystemPresences",
-  "SystemPresencesAdd",
-  "SystemPresencesDelete",
-)
+from mitsuki.lib.userdata import Base
+
+
+class Presence(Base):
+  __tablename__ = "system_presences"
+
+  id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+  name: Mapped[str] = mapped_column(types.String(128))

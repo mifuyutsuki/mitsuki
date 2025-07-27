@@ -101,12 +101,32 @@ out_of_guild:
   color: error
 
 
+# Could not find object.
+object_not_found:
+  title: >-
+    ${obj_name} Not Found
+  description: >-
+    Could not find a ${obj_name} with the specified ID or key.
+
+
 # Not a valid input for a field.
 bad_input:
   title: >-
     Invalid Input
   description: >-
     Not a valid input for `${field}`.
+  color: error
+
+
+# Not a valid input for a field. (Detailed message)
+bad_input_message:
+  title: >-
+    Invalid Input
+  description: >-
+    Not a valid input for `${field}`.
+
+
+    ${message}
   color: error
 
 

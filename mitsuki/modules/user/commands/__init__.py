@@ -10,10 +10,10 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from .user import UserInfo
-from .avatar import AvatarInfo
+from .info import UserInfo
+from .avatar import UserAvatar
 
 __all__ = (
   "UserInfo",
-  "AvatarInfo",
+  "UserAvatar",
 )

@@ -1,0 +1,34 @@
+# /server info
+# Show server details.
+
+_namespace: "server_info"
+
+info:
+  title: >-
+    ${guild_name_esc} (${guild_id})
+  thumbnail: >-
+    ${guild_icon_url}
+  description: >-
+    > ${guild_description_esc}
+
+    -# — — — — — — — — — —
+
+    Server created at ${guild_created_at_f}
+
+    **Owner:** ${guild_owner} ${guild_owner_mention}
+
+    **Boosts:** ${guild_boost_count} (Level ${guild_boost_level})
+  fields      : 
+  - name      : Emojis (static)
+    value     : >-
+      **${guild_emoji_static_count}**/${guild_emoji_limit}
+    inline    : true
+  - name      : Emojis (animated)
+    value     : >-
+      **${guild_emoji_animated_count}**/${guild_emoji_limit}
+    inline    : true
+  - name      : Stickers
+    value     : >-
+      **${guild_sticker_count}**/${guild_sticker_limit}
+    inline    : true
+  image       : ${guild_banner_url}

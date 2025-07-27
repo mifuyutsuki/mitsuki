@@ -311,9 +311,11 @@ class Command:
 
     if (edit_origin or self.edit_origin) and self.has_origin:
       send = self.ctx.edit_origin
+    elif getattr(self.ctx, "editing_origin", False):
+      send = self.ctx.edit_origin
     else:
       send = self.ctx.send
-    
+
     message_template = self.message_template(template, other_data, lines_data=lines_data, **template_kwargs)
 
     self.message = await send(**message_template.to_dict(), **kwargs)
@@ -446,6 +448,7 @@ class MultifieldMixin:
     other_data: Optional[dict] = None,
     template_kwargs: Optional[dict] = None,
     timeout: int = 0,
+    per_page: int = 6,
     extra_components: Optional[List[BaseComponent]] = None,
     **kwargs
   ):
@@ -456,7 +459,7 @@ class MultifieldMixin:
         raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
-    message = self.message_multifield(template, other_data, **template_kwargs)
+    message = self.message_multifield(template, other_data, per_page, **template_kwargs)
     paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
     paginator.show_select_menu = True
     if extra_components and len(extra_components) > 0:
@@ -473,6 +476,7 @@ class MultifieldMixin:
     page_index: int = 0,
     *,
     other_data: Optional[dict] = None,
+    per_page: int = 6,
     template_kwargs: Optional[dict] = None,
     **kwargs
   ):
@@ -483,7 +487,7 @@ class MultifieldMixin:
         raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
-    message = self.message_multifield(template, other_data, **template_kwargs)
+    message = self.message_multifield(template, other_data, per_page, **template_kwargs)
     self.message = await self.ctx.send(
       content=message.content, embed=message.embeds[page_index] if message.embeds else None, **kwargs
     )
@@ -546,6 +550,7 @@ class MultifieldMixin:
     template: Optional[str] = None,
     *,
     other_data: Optional[dict] = None,
+    per_page: int = 6,
     template_kwargs: Optional[dict] = None,
     timeout: int = 0,
     extra_components: Optional[List[BaseComponent]] = None,
@@ -558,7 +563,7 @@ class MultifieldMixin:
         raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
-    message = self.message_multiline(template, other_data, **template_kwargs)
+    message = self.message_multiline(template, other_data, per_page, **template_kwargs)
     paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
     paginator.show_select_menu = True
     if extra_components and len(extra_components) > 0:
@@ -575,6 +580,7 @@ class MultifieldMixin:
     page_index: int = 0,
     *,
     other_data: Optional[dict] = None,
+    per_page: int = 6,
     template_kwargs: Optional[dict] = None,
     **kwargs
   ):
@@ -585,7 +591,7 @@ class MultifieldMixin:
         raise RuntimeError("Unspecified message template or state")
     template_kwargs = template_kwargs or {}
 
-    message = self.message_multiline(template, other_data, **template_kwargs)
+    message = self.message_multiline(template, other_data, per_page, **template_kwargs)
     self.message = await self.ctx.send(
       content=message.content, embed=message.embed[page_index] if message.embed else None, **kwargs
     )

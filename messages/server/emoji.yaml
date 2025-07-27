@@ -1,0 +1,52 @@
+# /server emoji
+# View list of custom emoji on this server.
+
+_namespace: "server_emoji"
+
+
+empty:
+  author:
+    name: ✦ ${guild_name}
+  title: >-
+    Emoji List - ${guild_emoji_type}
+  description: >-
+    **${guild_emoji_count}**/${guild_emoji_limit} available (Level ${guild_boost_level})
+
+
+    This server has no emoji of this type.
+  thumbnail: >-
+    ${guild_icon}
+
+
+# [Multifield]
+static:
+  author:
+    name: ✦ ${guild_name}
+  title: >-
+    Emoji List - ${guild_emoji_type} (${page}/${pages})
+  description: >-
+    **${guild_emoji_count}**/${guild_emoji_limit} available (Level ${guild_boost_level})
+  thumbnail: >-
+    ${guild_icon}
+  field:
+    name   : ${emoji_mention} ${emoji_name} `${emoji_id}` ${emoji_available}
+    value  : >-
+      [__**Link**__](${emoji_url}) · Created: ${emoji_created_at_f}
+    inline : false
+
+
+# [Multifield]
+animated:
+  author:
+    name: ✦ ${guild_name}
+  title: >-
+    Emoji List - ${guild_emoji_type} (${page}/${pages})
+  description: >-
+    **${guild_emoji_count}**/${guild_emoji_limit} available (Level ${guild_boost_level})
+  thumbnail: >-
+    ${guild_icon}
+  field:
+    name   : ${emoji_mention} ${emoji_name} `${emoji_id}` ${emoji_available}
+    value  : >-
+      [__**Link**__](${emoji_url}) · Created: ${emoji_created_at_f}
+    inline : false

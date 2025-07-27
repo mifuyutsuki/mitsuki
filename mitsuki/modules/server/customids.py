@@ -10,14 +10,17 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from .templates_reload import ReloadTemplates
-from .presences import SystemPresences
-from .presences_add import SystemPresencesAdd
-from .presences_delete import SystemPresencesDelete
+from mitsuki.lib.commands import CustomID
 
-__all__ = (
-  "ReloadTemplates",
-  "SystemPresences",
-  "SystemPresencesAdd",
-  "SystemPresencesDelete",
-)
+
+SERVER_INFO = CustomID("server_info")
+"""View server info. (nominal args: Guild ID)"""
+
+SERVER_EMOJIS_STATIC = CustomID("server_emoji_static")
+"""View list of static server emojis. (nominal args: Guild ID)"""
+
+SERVER_EMOJIS_ANIMATED = CustomID("server_emoji_animated")
+"""View list of animated server emojis. (nominal args: Guild ID)"""
+
+SERVER_STICKERS = CustomID("server_stickers")
+"""View gallery of server stickers. (nominal args: Guild ID)"""

@@ -1,0 +1,44 @@
+# /user info
+# View information of yourself or another user.
+
+_namespace: user_info
+
+
+# Info about user (nonmember)
+user:
+  author:
+    name: >-
+      ${target_username} (${target_userid})
+  title: >-
+    ${target_globalname}
+  description: >-
+    ${target_user}
+
+    **Created at** — ${created_at}
+  thumbnail   : ${target_avatar}
+  image       : ${target_banner}
+
+
+# Info about user (member)
+member:
+  author:
+    name: >-
+      ${target_username} (${target_userid})
+  title: >-
+    ${user_info_has_nickname} ${target_globalname}
+  description: >-
+    ${target_user}
+
+    **Created at** — ${created_at}
+  thumbnail   : ${target_avatar}
+  image       : ${target_banner}
+  fields:
+  - name      : ${guild_name} (${guild_id})
+    value     : >-
+      **Last joined** — ${joined_at}
+
+      **Server booster** — ${is_booster}
+    inline    : false
+
+
+has_nickname: ${target_nickname} / 

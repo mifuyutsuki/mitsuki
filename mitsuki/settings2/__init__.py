@@ -10,14 +10,21 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from .templates_reload import ReloadTemplates
-from .presences import SystemPresences
-from .presences_add import SystemPresencesAdd
-from .presences_delete import SystemPresencesDelete
+"""
+New Mitsuki Settings system.
+
+In future versions, settings that can be changed in-bot will be moved here.
+This includes things such as the presences cycle (status cycle) and
+gacha shard counts, but not message paths and custom emoji settings.
+"""
+
+from .settings import Settings, SettingData, SettingTypes, get, get_all, set
 
 __all__ = (
-  "ReloadTemplates",
-  "SystemPresences",
-  "SystemPresencesAdd",
-  "SystemPresencesDelete",
+  "Settings",
+  "SettingData",
+  "SettingTypes",
+  "get",
+  "get_all",
+  "set",
 )

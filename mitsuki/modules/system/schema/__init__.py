@@ -10,15 +10,4 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from mitsuki.lib.commands import CustomID
-
-
-class CustomIDs:
-  INFO_USER = CustomID("info_user")
-  """View user information. (id: User ID)"""
-
-  INFO_AVATAR_GLOBAL = CustomID("info_avatar|global")
-  """View global avatar of a user. (id: User ID)"""
-
-  INFO_AVATAR_SERVER = CustomID("info_avatar|server")
-  """View server avatar of a user. (id: User ID)"""
+from .presences import Presence

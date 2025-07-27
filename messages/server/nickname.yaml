@@ -1,0 +1,68 @@
+# /server nickname
+# Set the bot nickname. Requires manage nicknames permission
+
+_namespace: server_nickname
+
+ok:
+  author      :
+    name      : ${guild_name}
+    icon_url  : ${guild_icon}
+  title: >-
+    Bot nickname set
+  description: >-
+    Old: `${old_nickname}`
+    
+    New: `${new_nickname}`
+
+error_same:
+  title: >-
+    Command Error
+  description: >-
+    Bot is already set with this nickname.
+  color: error
+
+error_invalid:
+  title: >-
+    Command Error
+  description: >-
+    Nickname contains invalid strings or characters.
+  color: error
+
+error:
+  title: >-
+    Command Error
+  description: >-
+    Could not set nickname to ${new_nickname}.
+
+
+    Error: `${error}`
+  color: error
+
+# Deprecated by check errors
+
+# not_in_guild:
+#   title: >-
+#     Command Error
+#   description: >-
+#     This command is only available in servers.
+#   color: error
+
+# denied_bot:
+#   title: >-
+#     Permission Error
+#   description: >-
+#     The bot has no permissions to execute this command.
+    
+
+#     Requires: `Change Nickname`
+#   color: error
+
+# denied_user:
+#   title: >-
+#     Permission Error
+#   description: >-
+#     You don't have permissions to run this command.
+    
+
+#     Requires: `Manage Nickname`
+#   color: error

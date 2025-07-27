@@ -15,22 +15,21 @@ from typing import Optional
 
 from mitsuki.lib.commands import CustomID
 
-from . import commands
-from .customids import CustomIDs
+from . import commands, customids
 
 
-class InfoModule(ipy.Extension):
-  info_cmd = ipy.SlashCommand(
-    name="info",
-    description="Informational commands"
+class UserModule(ipy.Extension):
+  user_cmd = ipy.SlashCommand(
+    name="user",
+    description="User information and tools"
   )
 
   # ===============================================================================================
   # User Info
   # ===============================================================================================
 
-  @info_cmd.subcommand(
-    sub_cmd_name="user",
+  @user_cmd.subcommand(
+    sub_cmd_name="info",
     sub_cmd_description="Information about yourself or another user"
   )
   @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
@@ -40,14 +39,26 @@ class InfoModule(ipy.Extension):
     required=False,
     opt_type=ipy.OptionType.USER
   )
-  async def user_cmd(self, ctx: "ipy.SlashContext", user: "ipy.BaseUser" = None):
+  async def info_cmd(self, ctx: ipy.SlashContext, user: ipy.BaseUser = None):
     await commands.UserInfo.create(ctx).run(user)
+
+  @ipy.component_callback(customids.USER_INFO.string_id_pattern())
+  async def info_btn(self, ctx: ipy.ComponentContext):
+    await commands.UserInfo.create(ctx).run(CustomID.get_snowflake_from(ctx))
+
+  @ipy.component_callback(customids.USER_INFO_SERVER.string_id_pattern())
+  async def info_server_btn(self, ctx: ipy.ComponentContext):
+    await commands.UserInfo.create(ctx).run_member(CustomID.get_snowflake_from(ctx), view_global=False)
+
+  @ipy.component_callback(customids.USER_INFO_GLOBAL.string_id_pattern())
+  async def info_global_btn(self, ctx: ipy.ComponentContext):
+    await commands.UserInfo.create(ctx).run_member(CustomID.get_snowflake_from(ctx), view_global=True)
 
   # ===============================================================================================
   # Avatar Info
   # ===============================================================================================
 
-  @info_cmd.subcommand(
+  @user_cmd.subcommand(
     sub_cmd_name="avatar",
     sub_cmd_description="View avatar of user"
   )
@@ -58,15 +69,18 @@ class InfoModule(ipy.Extension):
     required=False,
     opt_type=ipy.OptionType.USER
   )
-  async def avatar_cmd(self, ctx: "ipy.SlashContext", user: "ipy.BaseUser" = None):
-    await commands.AvatarInfo.create(ctx).run(user)
+  async def avatar_cmd(self, ctx: ipy.SlashContext, user: ipy.BaseUser = None):
+    await commands.UserAvatar.create(ctx).run(user)
 
-  @ipy.component_callback(CustomIDs.INFO_AVATAR_GLOBAL.string_id_pattern())
+  @ipy.component_callback(customids.USER_AVATAR.string_id_pattern())
   @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
+  async def avatar_btn(self, ctx: "ipy.ComponentContext"):
+    await commands.UserAvatar.create(ctx).run(CustomID.get_snowflake_from(ctx))
+
+  @ipy.component_callback(customids.USER_AVATAR_GLOBAL.string_id_pattern())
   async def avatar_global_btn(self, ctx: "ipy.ComponentContext"):
-    await commands.AvatarInfo.create(ctx).run_global(CustomID.get_snowflake_from(ctx))
+    await commands.UserAvatar.create(ctx).run_global(CustomID.get_snowflake_from(ctx))
 
-  @ipy.component_callback(CustomIDs.INFO_AVATAR_SERVER.string_id_pattern())
-  @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
+  @ipy.component_callback(customids.USER_AVATAR_SERVER.string_id_pattern())
   async def avatar_server_btn(self, ctx: "ipy.ComponentContext"):
-    await commands.AvatarInfo.create(ctx).run_server(CustomID.get_snowflake_from(ctx))
+    await commands.UserAvatar.create(ctx).run_server(CustomID.get_snowflake_from(ctx))
