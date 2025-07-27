@@ -16,6 +16,20 @@ from typing import Optional
 from mitsuki import init_event
 from . import commands, customids, presencer
 
+import os
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+try:
+  SYSTEM_GUILD_ID = ipy.Snowflake(os.environ.get("SYSTEM_GUILD_ID"))
+except Exception:
+  SYSTEM_GUILD_ID = None
+
+if SYSTEM_GUILD_ID:
+  SYSTEM_GUILD_ID = [SYSTEM_GUILD_ID]
+
 
 class SystemModule(ipy.Extension):
   @ipy.listen(ipy.events.Ready)
@@ -30,6 +44,8 @@ class SystemModule(ipy.Extension):
   system_cmd = ipy.SlashCommand(
     name="system",
     description="System commands (requires bot owner)",
+    scopes=SYSTEM_GUILD_ID,
+    contexts=[ipy.ContextType.GUILD],
   )
 
   # ===============================================================================================
@@ -100,3 +116,9 @@ class SystemModule(ipy.Extension):
   )
   async def system_templates_cmd(self, ctx: ipy.SlashContext):
     await commands.ReloadTemplates.create(ctx).run()
+
+
+def setup(bot: ipy.Client):
+  if not SYSTEM_GUILD_ID:
+    logger.warning("System guild is not specified, which is needed to restrict scope of system commands")
+  SystemModule(bot)
