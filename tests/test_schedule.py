@@ -42,9 +42,9 @@ async def db_created_schedule(mock_ctx: ipy.BaseContext, mock_schedule: userdata
 
 @pytest_asyncio.fixture(params=[
   None,
-  (TEST_DATETIME).timestamp(),
-  (TEST_DATETIME - timedelta(hours=12)).timestamp(),
-  (TEST_DATETIME - timedelta(days=1)).timestamp(),
+  TEST_DATETIME,
+  TEST_DATETIME - timedelta(hours=12),
+  TEST_DATETIME - timedelta(days=1),
 ])
 async def db_active_schedule(
   mock_ctx: ipy.BaseContext, mock_channel: ipy.BaseChannel, db_created_schedule: userdata.Schedule,
@@ -56,10 +56,11 @@ async def db_active_schedule(
   schedule.discoverable = True
 
   schedule.active = True
-  schedule.last_fire = request.param
+  if request.param:
+    schedule.last_fire = request.param.timestamp()
 
   text = "Which anime school uniform is your favorite?"
-  tags = "anime education fashion"
+  tags = "fashion anime education"
 
   message = schedule.create_message(mock_ctx.author.id, text)
   message.set_tags(tags)
