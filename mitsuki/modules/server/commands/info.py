@@ -74,9 +74,9 @@ class ServerInfo(libcmd.ReaderCommand):
       ))
     if banner_url:
       components.append(ipy.Button(
-        style=ipy.Button.LINK,
+        style=ipy.ButtonStyle.LINK,
         label="Banner",
-        url=icon_url,
+        url=banner_url,
       ))
     return components
 
