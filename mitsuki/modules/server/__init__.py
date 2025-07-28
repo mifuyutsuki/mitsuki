@@ -85,13 +85,13 @@ class ServerModule(ipy.Extension):
   async def server_emoji_cmd(self, ctx: ipy.SlashContext, animated: bool = False, sort: str = "name"):
     return await commands.ServerEmoji.create(ctx).run(animated=animated, sort=sort)
 
-  # @ipy.component_callback(customids.SERVER_EMOJIS_STATIC.string_id_pattern())
-  # async def server_emoji_static_btn(self, ctx: ipy.ComponentContext):
-  #   return await commands.ServerEmoji.create(ctx).run(animated=False, sort="name")
+  @ipy.component_callback(customids.SERVER_EMOJIS_STATIC.string_id_pattern())
+  async def server_emoji_static_btn(self, ctx: ipy.ComponentContext):
+    return await commands.ServerEmoji.create(ctx).run(animated=False, sort="name")
 
-  # @ipy.component_callback(customids.SERVER_EMOJIS_ANIMATED.string_id_pattern())
-  # async def server_emoji_animated_btn(self, ctx: ipy.ComponentContext):
-  #   return await commands.ServerEmoji.create(ctx).run(animated=True, sort="name")
+  @ipy.component_callback(customids.SERVER_EMOJIS_ANIMATED.string_id_pattern())
+  async def server_emoji_animated_btn(self, ctx: ipy.ComponentContext):
+    return await commands.ServerEmoji.create(ctx).run(animated=True, sort="name")
 
   # ===============================================================================================
   # Server Stickers
