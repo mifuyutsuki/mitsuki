@@ -28,7 +28,9 @@ except Exception:
   SYSTEM_GUILD_ID = None
 
 if SYSTEM_GUILD_ID:
-  SYSTEM_GUILD_ID = [SYSTEM_GUILD_ID]
+  SYSTEM_GUILDS = [SYSTEM_GUILD_ID]
+else:
+  SYSTEM_GUILDS = [ipy.GLOBAL_SCOPE]
 
 
 class SystemModule(ipy.Extension):
@@ -44,7 +46,7 @@ class SystemModule(ipy.Extension):
   system_cmd = ipy.SlashCommand(
     name="system",
     description="System commands (requires bot owner)",
-    scopes=SYSTEM_GUILD_ID,
+    scopes=SYSTEM_GUILDS,
     contexts=[ipy.ContextType.GUILD],
   )
 
