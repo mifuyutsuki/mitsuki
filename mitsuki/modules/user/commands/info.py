@@ -112,12 +112,14 @@ class UserInfo(libcmd.TargetMixin, libcmd.ReaderCommand):
     ]
 
     # Obtain banner
+    banner = None
     try:
       # This can AttributeError, but then let it set banner to None
-      banner = target.banner.as_url()
+      # Workaround: Due to library bug with storing empty banners, check if banner hash is not None
+      banner = target.banner.as_url() if target.banner.hash else None
     except Exception:
       banner = None
-    
+
     avatar = target.avatar.as_url()
 
     data = {
@@ -155,11 +157,12 @@ class UserInfo(libcmd.TargetMixin, libcmd.ReaderCommand):
     # Obtain banner (for user, requires fetching with force=True)
     try:
       # This can AttributeError, but then let it set banner to None
+      # Workaround: Due to library bug with storing empty banners, check if banner hash is not None
       if view_global or not target.guild_banner:
         _user = await self.bot.fetch_user(target.id, force=True)
-        banner = _user.banner.as_url()
+        banner = _user.banner.as_url() if _user.banner.hash else None
       else:
-        banner = target.banner.as_url()
+        banner = target.banner.as_url() if target.banner.hash else None
     except AttributeError:
       banner = None
 
