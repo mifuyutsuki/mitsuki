@@ -172,6 +172,8 @@ async def test_presencer_run_empty(init_db, mock_presencer: presencer.Presencer)
   assert len(pr.presences) == 0
   assert pr.current is None
 
+  await pr.stop()
+
 
 async def test_presencer_run_single(init_db, mock_presencer: presencer.Presencer, single_presence: api.Presence):
   pr, p = mock_presencer, single_presence
@@ -191,6 +193,8 @@ async def test_presencer_run_single(init_db, mock_presencer: presencer.Presencer
 
   assert current_1.name == current_0.name
 
+  await pr.stop()
+
 
 async def test_presencer_run_multiple(init_db, mock_presencer: presencer.Presencer, multiple_presences: list[api.Presence]):
   pr, ps = mock_presencer, multiple_presences
@@ -205,3 +209,5 @@ async def test_presencer_run_multiple(init_db, mock_presencer: presencer.Presenc
   current_1 = pr.current
 
   assert current_1.name != current_0.name
+
+  await pr.stop()
