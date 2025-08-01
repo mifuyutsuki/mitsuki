@@ -11,7 +11,7 @@
 # GNU Affero General Public License for more details.
 
 from dotenv import load_dotenv
-load_dotenv(override=True)
+load_dotenv()
 
 # Init Mitsuki logging first - may be used by other Mitsuki modules
 import logging
