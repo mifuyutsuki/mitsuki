@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import (
 from attrs import asdict as _asdict
 from os import environ
 from urllib.parse import quote_plus
+from typing import Optional
 from mitsuki import settings
 
 __all__ = (
@@ -28,6 +29,7 @@ __all__ = (
   "engine",
   "initialize",
   "new_session",
+  "begin_session",
 )
 
 _dev_mode = environ.get("ENABLE_DEV_MODE") == "1"
@@ -48,6 +50,8 @@ else:
   )
 
 
+_engine = None
+_session = None
 new_session = async_sessionmaker(engine, expire_on_commit=False)
 
 
@@ -66,10 +70,42 @@ class Base(DeclarativeBase, AsyncAttrs):
     return [c.name for c in self.__table__.columns]
 
 
+def init(db_url: Optional[str] = None):
+  global _engine, _session
+  db_url = db_url or environ.get("DB_URL")
+
+  if not db_url:
+    raise ValueError("Required environment variable DB_URL is empty or not set")
+  if db_url.startswith("sqlite:///"):
+    db_url = db_url.replace("sqlite:///", "sqlite+aiosqlite:///")
+  elif db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://")
+  else:
+    raise ValueError("Database type for DB_URL is invalid or unsupported")
+
+  _engine = create_async_engine(db_url)
+  _session = async_sessionmaker(_engine, expire_on_commit=False)
+
+
+# def engine():
+#   global _engine
+#   if not _engine:
+#     raise RuntimeError("Database engine is uninitialized, cannot run db operations")
+
+
+def begin_session():
+  global _session
+  if not _session:
+    raise RuntimeError("Database engine is uninitialized, cannot run db operations")
+
+  return _session.begin()
+
+
 async def initialize():
   global engine
-  async with engine.begin() as conn:
+  en = engine
+  async with en.begin() as conn:
     await conn.run_sync(Base.metadata.create_all)
 
-    if "sqlite" in engine.url.drivername:
+    if "sqlite" in en.url.drivername:
       await conn.exec_driver_sql("PRAGMA foreign_keys=ON")
