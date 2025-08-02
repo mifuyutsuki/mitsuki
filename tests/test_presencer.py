@@ -112,6 +112,8 @@ async def test_presencer_add_empty(init_db, mock_presencer: presencer.Presencer)
   assert len(pr.presences) == 1
   assert pr.current is not None
 
+  await pr.stop()
+
 
 async def test_presencer_add_nonempty(init_db, mock_presencer: presencer.Presencer, single_presence: api.Presence):
   pr = mock_presencer
@@ -132,6 +134,8 @@ async def test_presencer_add_nonempty(init_db, mock_presencer: presencer.Presenc
   await pr.cycle()
   assert pr.current.name == p.name
 
+  await pr.stop()
+
 
 async def test_presencer_delete_empty(init_db, mock_presencer: presencer.Presencer, single_presence: api.Presence):
   pr, p = mock_presencer, single_presence
@@ -145,6 +149,8 @@ async def test_presencer_delete_empty(init_db, mock_presencer: presencer.Presenc
   await pr.sync()
   assert len(pr.presences) == 0
   assert pr.current is None
+
+  await pr.stop()
 
 
 async def test_presencer_delete_nonempty(
@@ -162,6 +168,8 @@ async def test_presencer_delete_nonempty(
   await pr.sync()
   assert len(pr.presences) < len(ps)
   assert pr.current.name != p.name
+
+  await pr.stop()
 
 
 async def test_presencer_run_empty(init_db, mock_presencer: presencer.Presencer):
