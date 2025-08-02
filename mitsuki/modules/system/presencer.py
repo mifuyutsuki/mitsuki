@@ -20,7 +20,7 @@ from typing import Optional
 
 from mitsuki import settings
 from mitsuki.settings2 import Settings
-from mitsuki.lib.userdata import new_session
+from mitsuki.lib.userdata import begin_session
 
 from . import api
 

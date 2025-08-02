@@ -15,13 +15,10 @@ from typing import Optional, Any
 import attrs
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.dialects.sqlite import insert as slinsert
-from sqlalchemy.dialects.postgresql import insert as pginsert
 
-from mitsuki.lib.userdata import engine, new_session
+from mitsuki.lib.userdata import begin_session, sa_insert
 from .schema import SettingTypes, SettingData, Setting
 
-insert = pginsert if "postgresql" in engine.url.drivername else slinsert
 
 def _hhmm_validator(hhmm: str):
   try:
@@ -78,7 +75,7 @@ def _convert(setting: SettingData, value: str):
 
 async def get(setting: SettingData, no_default: bool = False):
   statement = sa.select(Setting.value).where(Setting.name == setting.name)
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     result = await session.scalar(statement)
 
   if not result:
@@ -90,7 +87,7 @@ async def get(setting: SettingData, no_default: bool = False):
 
 async def get_all() -> dict[str, Any]:
   statement = sa.select(Setting)
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     results = (await session.scalars(statement)).all()
 
   output = {}
@@ -124,7 +121,7 @@ async def set(session: AsyncSession, setting: SettingData, value):
     raise ValueError(f"Value is invalid for setting {setting.name}: {value!r}")
 
   statement = (
-    sa.insert(Setting)
+    sa_insert(Setting)
     .values(name=setting.name, value=setting.value)
     .on_conflict_do_update(index_elements=["value"], set_={"value": setting.value})
   )

@@ -70,7 +70,7 @@ from mitsuki.lib.errors import (
   BadInputRange,
   BadLength,
 )
-from mitsuki.lib.userdata import new_session
+from mitsuki.lib.userdata import begin_session
 
 from ..userdata import (
   Schedule,

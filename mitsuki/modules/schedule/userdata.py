@@ -35,7 +35,7 @@ from . import schema
 
 from mitsuki import settings
 from mitsuki.lib.checks import has_bot_channel_permissions
-from mitsuki.lib.userdata import new_session, AsDict
+from mitsuki.lib.userdata import begin_session, AsDict
 from mitsuki.utils import process_text, ratio, escape_like_text, truncate
 
 
@@ -199,7 +199,7 @@ class Schedule(AsDict):
       .where(schema.Schedule.guild == guild)
       .where(schema.Schedule.title == title)
     )
-    async with new_session() as session:
+    async with begin_session() as session:
       result = await session.scalar(query)
     if result is None:
       return None
@@ -216,7 +216,7 @@ class Schedule(AsDict):
     if guild:
       query = query.where(schema.Schedule.guild == guild)
 
-    async with new_session() as session:
+    async with begin_session() as session:
       result = await session.scalar(query)
     if result is None:
       return None
@@ -252,7 +252,7 @@ class Schedule(AsDict):
       case _:
         raise ValueError(f"Unknown sort option '{sort}'")
 
-    async with new_session() as session:
+    async with begin_session() as session:
       results = (await session.scalars(query)).all()
     return [cls(**result.asdict()) for result in results]
 
@@ -269,7 +269,7 @@ class Schedule(AsDict):
       .where(schema.Schedule.guild == guild)
       .where(schema.Schedule.title == title)
     )
-    async with new_session() as session:
+    async with begin_session() as session:
       return ScheduleTypes(await session.scalar(query))
 
 
@@ -280,7 +280,7 @@ class Schedule(AsDict):
       .where(schema.Schedule.guild == guild)
       .where(schema.Schedule.title == title)
     )
-    async with new_session() as session:
+    async with begin_session() as session:
       return await session.scalar(query)
 
 
@@ -317,7 +317,7 @@ class Schedule(AsDict):
         raise ValueError(f"Unknown schedule type '{self.type}'")
     query = query.limit(1)
 
-    async with new_session() as session:
+    async with begin_session() as session:
       result = (await session.scalars(query)).first()
     if not result:
       return None
@@ -365,7 +365,7 @@ class Schedule(AsDict):
       .where(schema.Schedule.guild == guild)
       .where(schema.Schedule.title == title)
     )
-    async with new_session() as session:
+    async with begin_session() as session:
       return await session.scalar(query) is not None
 
 
@@ -564,7 +564,7 @@ class ScheduleTag(AsDict):
 
     query = query.order_by(schema.ScheduleTag.name)
 
-    async with new_session() as session:
+    async with begin_session() as session:
       result = (await session.execute(query)).first()
 
     if not result:
@@ -605,7 +605,7 @@ class ScheduleTag(AsDict):
 
     query = query.order_by(schema.ScheduleTag.name)
 
-    async with new_session() as session:
+    async with begin_session() as session:
       results = (await session.execute(query)).all()
 
     return [cls(
@@ -799,7 +799,7 @@ class Message(AsDict):
     if limit:
       search_query = search_query.limit(limit)
 
-    async with new_session() as session:
+    async with begin_session() as session:
       results = (await session.execute(search_query)).all()
 
     return [
@@ -839,7 +839,7 @@ class Message(AsDict):
 
     query = query.order_by(schema.Message.date_posted.desc())
 
-    async with new_session() as session:
+    async with begin_session() as session:
       result = (await session.execute(query)).first()
 
     if not result:
@@ -878,7 +878,7 @@ class Message(AsDict):
 
     query = query.order_by(schema.Message.date_posted.desc())
 
-    async with new_session() as session:
+    async with begin_session() as session:
       results = (await session.execute(query)).all()
 
     return [
@@ -944,7 +944,7 @@ class Message(AsDict):
       if offset:
         query = query.offset(offset)
 
-    async with new_session() as session:
+    async with begin_session() as session:
       results = (await session.execute(query)).all()
 
     return [
@@ -972,7 +972,7 @@ class Message(AsDict):
     elif backlog == False:
       query = query.where(schema.Message.message_id != None)
 
-    async with new_session() as session:
+    async with begin_session() as session:
       return await session.scalar(query) or 0
 
 
@@ -990,7 +990,7 @@ class Message(AsDict):
     elif backlog == False:
       query = query.where(schema.Message.message_id != None)
 
-    async with new_session() as session:
+    async with begin_session() as session:
       return await session.scalar(query) or 0
 
 

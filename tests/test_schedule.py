@@ -13,7 +13,7 @@ import mitsuki
 
 from mitsuki import settings, utils
 from mitsuki.lib import checks
-from mitsuki.lib.userdata import new_session
+from mitsuki.lib.userdata import begin_session
 
 # Required to load in schema definitions
 from mitsuki.modules import gacha, schedule
@@ -33,10 +33,10 @@ def mock_schedule(mock_ctx: ipy.BaseContext):
 
 @pytest_asyncio.fixture()
 async def db_created_schedule(mock_ctx: ipy.BaseContext, mock_schedule: userdata.Schedule):
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     await mock_schedule.add(session)
 
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     return await userdata.Schedule.fetch(mock_ctx.guild.id, "Test Schedule")
 
 
@@ -65,21 +65,21 @@ async def db_active_schedule(
   message = schedule.create_message(mock_ctx.author.id, text)
   message.set_tags(tags)
 
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     await message.add(session)
     await schedule.update(session)
 
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     return await userdata.Schedule.fetch(mock_ctx.guild.id, "Test Schedule")
 
 
 async def test_schedule_create(init_db, mock_ctx: ipy.BaseContext, mock_schedule: userdata.Schedule):
   statement = sa.select(sa.func.count()).select_from(schema.Schedule)
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     assert await session.scalar(statement) == 0
 
   schedule = mock_schedule
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     await schedule.add(session)
 
   schedule = await userdata.Schedule.fetch(mock_ctx.guild.id, "Test Schedule")
@@ -100,7 +100,7 @@ async def test_schedule_modify(init_db, mock_ctx: ipy.BaseContext, db_created_sc
   schedule.discoverable = True
   await asyncio.sleep(0.1)
 
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     await schedule.update_modify(session, mock_ctx.author.id)
 
   schedule = await userdata.Schedule.fetch(mock_ctx.guild.id, "Test Schedule")
@@ -124,7 +124,7 @@ async def test_schedule_ready(init_db, mock_ctx: ipy.BaseContext, db_active_sche
 
 async def test_message_create(init_db, mock_ctx: ipy.BaseContext, db_created_schedule: userdata.Schedule):
   statement = sa.select(sa.func.count()).select_from(schema.Message)
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     assert await session.scalar(statement) == 0
 
   schedule = db_created_schedule
@@ -135,7 +135,7 @@ async def test_message_create(init_db, mock_ctx: ipy.BaseContext, db_created_sch
   message = schedule.create_message(mock_ctx.author.id, text)
   message.set_tags(tags)
 
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     await message.add(session)
 
   messages = await userdata.Message.fetch_by_schedule(mock_ctx.guild.id, "Test Schedule")

@@ -23,7 +23,7 @@ from mitsuki import utils
 from mitsuki.lib import commands as libcmd
 from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
-from mitsuki.lib.userdata import new_session
+from mitsuki.lib.userdata import begin_session
 
 
 from .. import schema
@@ -44,7 +44,7 @@ class Presence(libcmd.AsDict):
   async def fetch(cls, id: int):
     statement = sa.select(schema.Presence).where(schema.Presence.id == id)
 
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       return await session.scalar(statement)
 
 
@@ -52,7 +52,7 @@ class Presence(libcmd.AsDict):
   async def fetch_all(cls):
     statement = sa.select(schema.Presence).order_by(schema.Presence.name)
 
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       results = (await session.scalars(statement)).all()
     return [cls(id=result.id, name=result.name) for result in results]
 
@@ -64,7 +64,7 @@ class Presence(libcmd.AsDict):
       statement = statement.where(schema.Presence.id != prev.id)
     statement = statement.order_by(sa.func.random()).limit(1)
 
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       if result := await session.scalar(statement):
         return cls(**result.asdict())
 

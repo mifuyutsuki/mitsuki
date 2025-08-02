@@ -21,7 +21,7 @@ from mitsuki import utils, settings
 from mitsuki.lib import commands as libcmd
 from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
-from mitsuki.lib.userdata import new_session
+from mitsuki.lib.userdata import begin_session
 
 
 from .. import customids, api, presencer, commands
@@ -72,7 +72,7 @@ class SystemPresencesDelete(libcmd.WriterCommand):
     await self.check()
     await self.defer(ephemeral=True, edit_origin=self.has_origin, suppress_error=True)
 
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       _ = await api.Presence.delete_id(session, presence_id)
 
     await presencer.presencer().sync()

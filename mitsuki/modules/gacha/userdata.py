@@ -17,17 +17,13 @@ from interactions import Snowflake
 from sqlalchemy import select
 from sqlalchemy.sql.functions import func
 from sqlalchemy.sql.expression import case
-from sqlalchemy.dialects.sqlite import insert as slinsert
-from sqlalchemy.dialects.postgresql import insert as pginsert
 from sqlalchemy.ext.asyncio import AsyncSession
 from rapidfuzz import fuzz
 
 from mitsuki import settings
-from mitsuki.lib.userdata import engine, new_session
+from mitsuki.lib.userdata import begin_session, sa_insert
 
 from .schema import *
-
-insert = pginsert if "postgresql" in engine.url.drivername else slinsert
 
 
 # ===================================================================
@@ -84,14 +80,14 @@ async def daily_check(user_id: Snowflake, reset_time: Optional[str] = None):
 async def daily_last(user_id: Snowflake):
   statement = select(Currency.last_daily).where(Currency.user == user_id)
 
-  async with new_session() as session:
+  async with begin_session() as session:
     return await session.scalar(statement)
 
 
 async def daily_first_check(user_id: Snowflake):
   statement = select(Currency.first_daily).where(Currency.user == user_id)
 
-  async with new_session() as session:
+  async with begin_session() as session:
     result = await session.scalar(statement)
 
   return not bool(result)
@@ -125,7 +121,7 @@ async def card_count(user_id: int, card_id: str):
     .where(Inventory.user == user_id)
     .where(Inventory.card == card_id)
   )
-  async with new_session() as session:
+  async with begin_session() as session:
     count = await session.scalar(statement)
 
   return count or 0
@@ -138,7 +134,7 @@ async def card_roster(card_id: str):
     .where(Card.id == card_id)
   )
 
-  async with new_session() as session:
+  async with begin_session() as session:
     result = (await session.execute(statement)).first()
 
   if not result:
@@ -157,7 +153,7 @@ async def card_user(user_id: int, card_id: str):
     .where(Inventory.user == user_id)
   )
 
-  async with new_session() as session:
+  async with begin_session() as session:
     result = (await session.execute(statement)).first()
 
   return UserCard.create(result) if result else None
@@ -205,7 +201,7 @@ async def cards_user(
     if offset:
       statement = statement.offset(offset)
 
-  async with new_session() as session:
+  async with begin_session() as session:
     results = (await session.execute(statement)).all()
 
   return UserCard.create_many(results)
@@ -214,7 +210,7 @@ async def cards_user(
 async def cards_user_count(user_id: Optional[Snowflake]):
   statement = select(func.count(Inventory.card)).where(Inventory.user == user_id)
 
-  async with new_session() as session:
+  async with begin_session() as session:
     result = (await session.scalar(statement))
 
   return result or 0
@@ -255,7 +251,7 @@ async def cards_roster(
     if offset:
       statement = statement.offset(offset)
 
-  async with new_session() as session:
+  async with begin_session() as session:
     results = (await session.execute(statement)).all()
 
   return RosterCard.from_db_many(results)
@@ -268,7 +264,7 @@ async def cards_roster_count(unobtained: bool = False):
   else:
     statement = select(func.count(Card.id))
 
-  async with new_session() as session:
+  async with begin_session() as session:
     result = (await session.scalar(statement))
 
   return result or 0
@@ -356,7 +352,7 @@ async def cards_stats(
     if offset:
       statement = statement.offset(offset)
 
-  async with new_session() as session:
+  async with begin_session() as session:
     results = (await session.execute(statement)).all()
 
   return StatsCard.from_db_many(results)
@@ -488,7 +484,7 @@ async def card_key_search(
     .order_by(func.lower(search_column))
   )
 
-  async with new_session() as session:
+  async with begin_session() as session:
     card_names = (await session.execute(search_statement)).all()
 
   return SearchCard.from_db_many(card_names, search_key, cutoff=cutoff, ratio=ratio, processor=processor)
@@ -499,7 +495,7 @@ async def card_give(session: AsyncSession, user_id: Snowflake, card_id: str):
   current_time = time()
 
   inventory_statement = (
-    insert(Inventory)
+    sa_insert(Inventory)
       .values(user=user_id, card=card_id, first_acquired=current_time, count=1)
       .on_conflict_do_update(
         index_elements=["user", "card"],
@@ -507,7 +503,7 @@ async def card_give(session: AsyncSession, user_id: Snowflake, card_id: str):
       )
   )
   rolls_statement = (
-    insert(Rolls)
+    sa_insert(Rolls)
     .values(user=user_id, card=card_id, time=current_time)
   )
 
@@ -527,7 +523,7 @@ async def pity_get(user_id: Snowflake):
     .where(Pity2.user == user_id)
   )
 
-  async with new_session() as session:
+  async with begin_session() as session:
     results = (await session.scalars(statement)).all()
 
   # Standard pity output is a Dict[int, int]
@@ -563,7 +559,7 @@ async def pity_update(
       continue
 
     statement = (
-      insert(Pity2)
+      sa_insert(Pity2)
       .values(user=user_id, rarity=rarity, count=1)
       .on_conflict_do_update(
         index_elements=["user", "rarity"],
@@ -615,7 +611,7 @@ async def stats_user(user_id: Snowflake):
     .join(subq_cards, subq_cards.c.rarity == Settings.rarity, isouter=True)
   )
 
-  async with new_session() as session:
+  async with begin_session() as session:
     results = (await session.execute(query)).all()
   
   return UserStats.from_db_many(results)
@@ -629,7 +625,7 @@ async def stats_user(user_id: Snowflake):
 
 async def _shards_get(user_id: Snowflake):
   statement = select(Currency.amount).where(Currency.user == user_id)
-  async with new_session() as session:
+  async with begin_session() as session:
     amount = await session.scalar(statement)
 
   return amount or 0
@@ -650,7 +646,7 @@ async def _shards_set(
   assign_first_daily = {"first_daily": current_time} if first else {}
 
   statement = (
-    insert(Currency)
+    sa_insert(Currency)
     .values(user=user_id, amount=amount, **assign_last_daily, **assign_first_daily)
     .on_conflict_do_update(
       index_elements=['user'],
@@ -685,7 +681,7 @@ async def _daily_add(session: AsyncSession, user_id: Snowflake, amount: int):
 async def _daily_last(user_id: Snowflake):
   statement = select(Currency.last_daily).where(Currency.user == user_id)
 
-  async with new_session() as session:
+  async with begin_session() as session:
     return await session.scalar(statement)
 
 
@@ -721,7 +717,7 @@ def _insertion_order(column, items: List[Any]):
 
 async def add_card(session: AsyncSession, card: SourceCard):
   statement = (
-    insert(Card)
+    sa_insert(Card)
     .values(
       id=card.id,
       name=card.name,
@@ -746,7 +742,7 @@ async def add_card(session: AsyncSession, card: SourceCard):
 
 
 async def add_cards(cards: List[SourceCard]):
-  async with new_session() as session:
+  async with begin_session() as session:
     for card in cards:
       await add_card(session, card)
 
@@ -755,7 +751,7 @@ async def add_cards(cards: List[SourceCard]):
 
 async def add_setting(session: AsyncSession, setting: SourceSettings):
   statement = (
-    insert(Settings)
+    sa_insert(Settings)
     .values(
       rarity=setting.rarity,
       rate=setting.rate,
@@ -780,7 +776,7 @@ async def add_setting(session: AsyncSession, setting: SourceSettings):
 
 
 async def add_settings(settings: List[SourceSettings]):
-  async with new_session() as session:
+  async with begin_session() as session:
     for setting in settings:
       await add_setting(session, setting)
 

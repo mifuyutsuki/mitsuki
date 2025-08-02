@@ -11,7 +11,8 @@
 # GNU Affero General Public License for more details.
 
 from sqlalchemy.orm import DeclarativeBase
-# from sqlalchemy.event import listens_for
+from sqlalchemy.dialects.sqlite import insert as insert_sqlite
+from sqlalchemy.dialects.postgresql import insert as insert_postgresql
 from sqlalchemy.ext.asyncio import (
   create_async_engine,
   async_sessionmaker,
@@ -21,38 +22,19 @@ from attrs import asdict as _asdict
 from os import environ
 from urllib.parse import quote_plus
 from typing import Optional
-from mitsuki import settings
 
 __all__ = (
   "Base",
   "AsDict",
+  "sa_insert",
   "engine",
-  "initialize",
-  "new_session",
   "begin_session",
+  "db_migrate",
 )
-
-_dev_mode = environ.get("ENABLE_DEV_MODE") == "1"
-
-if settings.mitsuki.db_use == "sqlite":
-  host_db = settings.dev.db_path if _dev_mode else settings.mitsuki.db_path
-  engine = create_async_engine(f"sqlite+aiosqlite:///{host_db}")
-
-elif settings.mitsuki.db_use == "postgresql":
-  host_db = settings.dev.db_pg_path if _dev_mode else settings.mitsuki.db_pg_path
-  username = environ.get("DB_USERNAME")
-  password = quote_plus(environ.get("DB_PASSWORD"))
-  engine = create_async_engine(f"postgresql+asyncpg://{username}:{password}@{host_db}")
-
-else:
-  raise SystemExit(
-    f"Database '{settings.mitsuki.db_use}' not recognized or supported"
-  )
 
 
 _engine = None
 _session = None
-new_session = async_sessionmaker(engine, expire_on_commit=False)
 
 
 class AsDict:
@@ -70,7 +52,7 @@ class Base(DeclarativeBase, AsyncAttrs):
     return [c.name for c in self.__table__.columns]
 
 
-def init(db_url: Optional[str] = None):
+def db_init(db_url: Optional[str] = None):
   global _engine, _session
   db_url = db_url or environ.get("DB_URL")
 
@@ -87,23 +69,29 @@ def init(db_url: Optional[str] = None):
   _session = async_sessionmaker(_engine, expire_on_commit=False)
 
 
-# def engine():
-#   global _engine
-#   if not _engine:
-#     raise RuntimeError("Database engine is uninitialized, cannot run db operations")
+def sa_insert(table):
+  en = engine()
+  if "postgresql" in en.url.drivername:
+    return insert_postgresql(table)
+  return insert_sqlite(table)
+
+
+def engine():
+  global _engine
+  if not _engine:
+    raise RuntimeError("Database engine is uninitialized, cannot run db operations")
+  return _engine
 
 
 def begin_session():
   global _session
   if not _session:
     raise RuntimeError("Database engine is uninitialized, cannot run db operations")
-
   return _session.begin()
 
 
-async def initialize():
-  global engine
-  en = engine
+async def db_migrate():
+  en = engine()
   async with en.begin() as conn:
     await conn.run_sync(Base.metadata.create_all)
 

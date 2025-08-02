@@ -18,7 +18,7 @@ Mitsuki messages library (mitsuki.lib.messages).
 from mitsuki import bot
 from mitsuki.lib import messages
 from mitsuki.lib.paginators import Paginator, SelectionPaginator
-from mitsuki.lib.userdata import new_session
+from mitsuki.lib.userdata import begin_session
 
 from attrs import define, asdict as _asdict
 from typing import Optional, Union, List, Dict, Any, Callable, ParamSpec, TypeVar
@@ -362,7 +362,7 @@ class WriterCommand(Command):
       else:
         raise RuntimeError("Unspecified message template or state")
 
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       await self.transaction(session)
       self.message = await self.send(
         template, other_data=other_data, template_kwargs=template_kwargs, edit_origin=edit_origin, **kwargs

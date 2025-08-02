@@ -22,7 +22,7 @@ from datetime import datetime
 
 from mitsuki import bot, logger
 from mitsuki.lib.autopost import autosend
-from mitsuki.lib.userdata import new_session
+from mitsuki.lib.userdata import begin_session
 from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes, timestamp_now
 
 
@@ -138,7 +138,7 @@ class DaemonTask:
     else:
       schedule.last_fire = max(time, schedule.cron(schedule.last_fire).next(float))
 
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       if is_ready and message and posted_message:
         schedule.posted_number += 1
         await message.add_posted_message(posted_message).update(session)

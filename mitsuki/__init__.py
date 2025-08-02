@@ -75,7 +75,7 @@ from mitsuki import settings, settings2
 
 from mitsuki.lib.errors import MitsukiSoftException
 from mitsuki.lib.messages import load_message
-from mitsuki.lib.userdata import initialize
+from mitsuki.lib.userdata import db_init, db_migrate
 from mitsuki.lib.emoji import init_emoji
 from mitsuki.version import __version__
 
@@ -126,7 +126,7 @@ class Bot(Client):
 
   @listen(Startup)
   async def on_startup(self):
-    await initialize()
+    await db_migrate()
     await init_emoji(self)
     # self.cycle_status.start()
     init_event.set()
@@ -259,6 +259,7 @@ bot.del_unused_app_cmd = True
 
 def run():
   global bot
+  db_init()
 
   curr_time = datetime.now(tz=timezone.utc).isoformat(sep=" ")
   print(f"Mitsuki v{__version__}")

@@ -13,7 +13,7 @@ import mitsuki
 
 from mitsuki import settings, utils
 from mitsuki.lib import checks
-from mitsuki.lib.userdata import new_session
+from mitsuki.lib.userdata import begin_session
 
 # Required to load in schema definitions
 from mitsuki.modules import gacha, schedule, system
@@ -24,7 +24,7 @@ from mitsuki.modules.system import presencer, api
 @pytest_asyncio.fixture()
 async def single_presence():
   p = api.Presence.create("Spice Market")
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     await p.add(session)
   return p
 
@@ -37,7 +37,7 @@ async def multiple_presences(request: pytest.FixtureRequest):
   names = request.param
   ps = [api.Presence.create(name) for name in names]
 
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     for p in ps:
       await p.add(session)
 
@@ -57,7 +57,7 @@ async def test_presence_add(init_db):
   p = api.Presence.create("Spice Market")
   assert p.id is None
 
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     await p.add(session)
 
   # Presence.add() modifies id upon db add
@@ -76,7 +76,7 @@ async def test_presence_delete(init_db, single_presence: api.Presence):
   p = single_presence
   assert p.id is not None
 
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     await p.delete(session)
 
   assert p.id is None
@@ -88,7 +88,7 @@ async def test_presence_delete(init_db, single_presence: api.Presence):
 async def test_presence_delete_id(init_db, single_presence: api.Presence):
   p = single_presence
 
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     p_deleted = await api.Presence.delete_id(session, p.id)
 
   assert p_deleted.id is None
@@ -105,7 +105,7 @@ async def test_presencer_add_empty(init_db, mock_presencer: presencer.Presencer)
   assert pr.current is None
 
   p = api.Presence.create("Spice Market")
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     await p.add(session)
 
   await pr.sync()
@@ -124,7 +124,7 @@ async def test_presencer_add_nonempty(init_db, mock_presencer: presencer.Presenc
   assert pr.current.name == single_presence.name
 
   p = api.Presence.create("Connected Sky")
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     await p.add(session)
 
   await pr.sync()
@@ -143,7 +143,7 @@ async def test_presencer_delete_empty(init_db, mock_presencer: presencer.Presenc
   await pr.init()
   assert pr.current is not None
 
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     await p.delete(session)
 
   await pr.sync()
@@ -162,7 +162,7 @@ async def test_presencer_delete_nonempty(
   assert pr.current is not None
 
   p = pr.current
-  async with new_session.begin() as session:
+  async with begin_session() as session:
     await p.delete(session)
 
   await pr.sync()
