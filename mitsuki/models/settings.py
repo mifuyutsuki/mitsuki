@@ -13,11 +13,14 @@
 from sqlalchemy import UniqueConstraint, text, types
 from sqlalchemy.orm import Mapped, mapped_column
 from rapidfuzz import fuzz
-from typing import Optional, List, Callable, Any
+from typing import Optional, List, Callable, Any, Union, TypeAlias
 from enum import Enum
 import attrs
 
 from mitsuki.lib.userdata import Base
+
+
+SettingValueType: TypeAlias = Union[bool, int, float, str]
 
 
 class SettingTypes(Enum):
@@ -31,8 +34,8 @@ class SettingTypes(Enum):
 class SettingData:
   type: SettingTypes
   name: str
-  default: Optional[Any] = None
-  validator: Optional[Callable[..., bool]] = None
+  default: Optional["SettingValueType"] = None
+  validator: Optional[Callable[["SettingValueType"], bool]] = None
 
 
 class Setting(Base):

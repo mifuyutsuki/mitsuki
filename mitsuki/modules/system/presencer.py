@@ -10,7 +10,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-
 import interactions as ipy
 import attrs
 import asyncio
@@ -19,7 +18,7 @@ import random
 from typing import Optional
 
 from mitsuki import settings
-from mitsuki.settings2 import Settings
+from mitsuki.core.settings import Setting
 from mitsuki.lib.userdata import begin_session
 
 from . import api

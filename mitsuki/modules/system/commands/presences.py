@@ -17,7 +17,7 @@ from enum import StrEnum
 from interactions.client.errors import HTTPException
 
 from mitsuki import utils, settings
-from mitsuki.settings2 import Settings
+from mitsuki.core.settings import Setting
 from mitsuki.lib import commands as libcmd
 from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks

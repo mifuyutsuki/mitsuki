@@ -10,14 +10,14 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from typing import Optional, Any
+from typing import Optional, Any, Union
 
 import attrs
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mitsuki.lib.userdata import begin_session, sa_insert
-from .schema import SettingTypes, SettingData, Setting
+from mitsuki.models.settings import SettingTypes, SettingData, Setting, SettingValueType
 
 
 def _hhmm_validator(hhmm: str):
@@ -50,15 +50,15 @@ class Settings:
 
   @staticmethod
   async def get(setting: SettingData, no_default: bool = False):
-    return await get(setting, no_default=no_default)
+    return await get_setting(setting, no_default=no_default)
 
   @staticmethod
   async def get_all():
-    return await get_all()
+    return await get_settings()
 
   @staticmethod
-  async def set(session: AsyncSession, setting: SettingData, value):
-    return await set(session, setting, value)
+  async def set(session: "AsyncSession", setting: SettingData, value):
+    return await set_setting(session, setting, value)
 
 
 def _convert(setting: SettingData, value: str):
@@ -73,7 +73,7 @@ def _convert(setting: SettingData, value: str):
       return value
 
 
-async def get(setting: SettingData, no_default: bool = False):
+async def get_setting(setting: SettingData, no_default: bool = False) -> Optional["SettingValueType"]:
   statement = sa.select(Setting.value).where(Setting.name == setting.name)
   async with begin_session() as session:
     result = await session.scalar(statement)
@@ -85,7 +85,7 @@ async def get(setting: SettingData, no_default: bool = False):
   return _convert(setting, result)
 
 
-async def get_all() -> dict[str, Any]:
+async def get_settings() -> dict[str, "SettingValueType"]:
   statement = sa.select(Setting)
   async with begin_session() as session:
     results = (await session.scalars(statement)).all()
@@ -95,14 +95,14 @@ async def get_all() -> dict[str, Any]:
   for setting in attrs.astuple(Settings(), recurse=False):
     if not isinstance(setting, SettingData):
       continue
-    if setting.name in results:
-      output[setting.name] = _convert(results[setting.name])
+    if result := results.get(setting.name):
+      output[setting.name] = _convert(result)
     else:
       output[setting.name] = setting.default
   return output
 
 
-async def set(session: AsyncSession, setting: SettingData, value):
+async def set_setting(session: "AsyncSession", setting: SettingData, value: "SettingValueType"):
   try:
     # Type validation and conversion
     match setting.type:
