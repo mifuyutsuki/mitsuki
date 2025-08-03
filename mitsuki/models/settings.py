@@ -33,6 +33,7 @@ class SettingTypes(Enum):
 @attrs.frozen()
 class SettingData:
   type: SettingTypes
+  id: str
   name: str
   default: Optional["SettingValueType"] = None
   validator: Optional[Callable[["SettingValueType"], bool]] = None

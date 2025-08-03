@@ -13,11 +13,16 @@
 from typing import Optional, Any, Union
 
 import attrs
+import interactions as ipy
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mitsuki.lib.userdata import begin_session, sa_insert
+from mitsuki.lib.commands import CustomID
 from mitsuki.models.settings import SettingTypes, SettingData, Setting, SettingValueType
+
+
+SETTINGS_EDIT = CustomID("settings_edit")
 
 
 def _hhmm_validator(hhmm: str):
@@ -40,21 +45,41 @@ def _tz_validator(tz: str):
 
 @attrs.frozen()
 class Settings:
-  StatusCycle = SettingData(SettingTypes.INTEGER, "runtime.status_cycle", 300, lambda s: s >= 60)
+  StatusCycle = SettingData(
+    SettingTypes.INTEGER, "runtime.status_cycle_seconds", "Mitsuki: Status Cycle", 300, validator=lambda s: s >= 60
+  )
+  "Duration of each status message (presence) in seconds before cycling to the next message."
 
-  DailyShards = SettingData(SettingTypes.INTEGER, "gacha.shards.daily", 120)
-  FirstTimeShards = SettingData(SettingTypes.INTEGER, "gacha.shards.first_time", 625)
+  DailyShards = SettingData(
+    SettingTypes.INTEGER, "gacha.shards.daily", "Gacha: Daily Shards", 120
+  )
+  "Amount of Shards to give as a daily."
 
-  DailyResetTime = SettingData(SettingTypes.INTEGER, "gacha.daily.reset_time", "00:00", _hhmm_validator)
-  DailyResetTimeZone = SettingData(SettingTypes.INTEGER, "gacha.daily.reset_tz", "+0000", _tz_validator)
+  FirstTimeShards = SettingData(
+    SettingTypes.INTEGER, "gacha.shards.first_time", "Gacha: First-time Shards", 625
+  )
+  "Amount of Shards to give as a daily when claimed for the first time."
+
+  DailyResetTime = SettingData(
+    SettingTypes.INTEGER, "gacha.daily.reset_time", "Gacha: Daily Reset Time", "00:00", validator=_hhmm_validator
+  )
+  "Time on which the next gacha daily can be claimed, in 24-hour HH:MM format."
+
+  DailyResetTimeZone = SettingData(
+    SettingTypes.INTEGER, "gacha.daily.reset_tz", "Gacha: Daily Reset Timezone", "+0000", validator=_tz_validator
+  )
+  "Timezone on which the next gacha daily can be claimed, in ±HHMM offset format from UTC."
+
 
   @staticmethod
   async def get(setting: SettingData, no_default: bool = False):
     return await get_setting(setting, no_default=no_default)
 
+
   @staticmethod
   async def get_all():
     return await get_settings()
+
 
   @staticmethod
   async def set(session: "AsyncSession", setting: SettingData, value):
@@ -74,7 +99,7 @@ def _convert(setting: SettingData, value: str):
 
 
 async def get_setting(setting: SettingData, no_default: bool = False) -> Optional["SettingValueType"]:
-  statement = sa.select(Setting.value).where(Setting.name == setting.name)
+  statement = sa.select(Setting.value).where(Setting.name == setting.id)
   async with begin_session() as session:
     result = await session.scalar(statement)
 
@@ -85,44 +110,81 @@ async def get_setting(setting: SettingData, no_default: bool = False) -> Optiona
   return _convert(setting, result)
 
 
-async def get_settings() -> dict[str, "SettingValueType"]:
+async def get_settings() -> dict[str, tuple["SettingData", "SettingValueType"]]:
   statement = sa.select(Setting)
   async with begin_session() as session:
     results = (await session.scalars(statement)).all()
 
   output = {}
   results = {result.name: result.value for result in results}
+
   for setting in attrs.astuple(Settings(), recurse=False):
     if not isinstance(setting, SettingData):
       continue
-    if result := results.get(setting.name):
-      output[setting.name] = _convert(result)
+    if result := results.get(setting.id):
+      output[setting.id] = (setting, _convert(result))
     else:
-      output[setting.name] = setting.default
+      output[setting.id] = (setting, setting.default)
+
   return output
 
 
-async def set_setting(session: "AsyncSession", setting: SettingData, value: "SettingValueType"):
+async def set_setting(session: "AsyncSession", setting: SettingData, value: "SettingValueType") -> None:
   try:
     # Type validation and conversion
     match setting.type:
       case SettingTypes.BOOLEAN:
-        value = "1" if bool(value) else "0"
+        text, _value = ("1" if bool(value) else "0"), bool(value)
       case SettingTypes.INTEGER:
-        value, _ = str(value), int(value)
+        text, _value = str(value), int(value)
       case SettingTypes.FLOAT:
-        value, _ = str(value), float(value)
+        text, _value = str(value), float(value)
       case SettingTypes.STRING:
-        value = str(value)
+        text = _value = str(value)
   except (ValueError, TypeError):
-    raise ValueError(f"Value has incorrect type for setting {setting.name}: {value!r}") from None
+    raise ValueError(f"Value has incorrect type for setting {setting.id}: {value!r}") from None
 
-  if setting.validator and not setting.validator(value):
-    raise ValueError(f"Value is invalid for setting {setting.name}: {value!r}")
+  if setting.validator and not setting.validator(_value):
+    raise ValueError(f"Value is invalid for setting {setting.id}: {value!r}")
 
   statement = (
     sa_insert(Setting)
-    .values(name=setting.name, value=setting.value)
-    .on_conflict_do_update(index_elements=["value"], set_={"value": setting.value})
+    .values(name=setting.id, value=text)
+    .on_conflict_do_update(index_elements=["value"], set_={"value": text})
   )
   await session.execute(statement)
+
+
+def is_valid_value(setting: SettingData, value: "SettingValueType") -> bool:
+  try:
+    # Type validation and conversion
+    match setting.type:
+      case SettingTypes.BOOLEAN:
+        _value = bool(value)
+      case SettingTypes.INTEGER:
+        _value = int(value)
+      case SettingTypes.FLOAT:
+        _value = float(value)
+      case SettingTypes.STRING:
+        _value = str(value)
+  except (ValueError, TypeError):
+    return False
+
+  return not setting.validator or setting.validator(_value)
+
+
+async def create_modal(setting: SettingData):
+  current_value = await get_setting(setting, no_default=False)
+
+  return ipy.Modal(
+    ipy.InputText(
+      label=setting.name,
+      style=ipy.TextStyles.SHORT,
+      custom_id="value",
+      placeholder=setting.default,
+      value=current_value,
+      required=False,
+    ),
+    title="Edit Settings",
+    custom_id=SETTINGS_EDIT.id(setting.id),
+  )
