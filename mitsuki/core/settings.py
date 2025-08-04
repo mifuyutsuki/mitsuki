@@ -45,6 +45,8 @@ def _tz_validator(tz: str):
 
 @attrs.frozen()
 class Settings:
+  """A collection of application settings with their metadata."""
+
   StatusCycle = SettingData(
     SettingTypes.INTEGER, "runtime.status_cycle_seconds", "Mitsuki: Status Cycle", 300, validator=lambda s: s >= 60
   )
@@ -73,16 +75,51 @@ class Settings:
 
   @staticmethod
   async def get(setting: SettingData, no_default: bool = False):
+    """
+    Get an application setting from the database, returning the default value if not set.
+
+    Settings are given by `SettingData` instances in `Settings`, which contain metadata about the setting,
+    including its type and default value.
+
+    Args:
+      setting: Setting to be retrieved
+      no_default: Whether to return `None` if the setting is not set, instead of the default value
+
+    Returns:
+      Setting value, or `None` if not set and `no_default` is `True`
+    """
     return await get_setting(setting, no_default=no_default)
 
 
   @staticmethod
   async def get_all():
+    """
+    Get all application settings and its values.
+
+    Returns:
+      Map of setting IDs to tuples of `SettingData` and the current value, or its default if not set.
+    """
     return await get_settings()
 
 
   @staticmethod
-  async def set(session: "AsyncSession", setting: SettingData, value):
+  async def set(session: "AsyncSession", setting: SettingData, value: Optional["SettingValueType"] = None) -> None:
+    """
+    Set an application setting to the database.
+
+    Settings are given by `SettingData` instances in `Settings`, which contain metadata about the setting,
+    including its type and default value.
+
+    If value is `None`, the default value will be used based on the setting's metadata.
+
+    Args:
+      session: The current database session
+      setting: Setting to be set
+      value: Value to set the setting to, or the default if `None`  
+
+    Raises:
+      ValueError: Value is of an incorrect type or does not pass validation
+    """
     return await set_setting(session, setting, value)
 
 
@@ -99,6 +136,19 @@ def _convert(setting: SettingData, value: str):
 
 
 async def get_setting(setting: SettingData, no_default: bool = False) -> Optional["SettingValueType"]:
+  """
+  Get an application setting from the database, returning the default value if not set.
+
+  Settings are given by `SettingData` instances in `Settings`, which contain metadata about the setting,
+  including its type and default value.
+
+  Args:
+    setting: Setting to be retrieved
+    no_default: Whether to return `None` if the setting is not set, instead of the default value
+
+  Returns:
+    Setting value, or `None` if not set and `no_default` is `True`
+  """
   statement = sa.select(Setting.value).where(Setting.name == setting.id)
   async with begin_session() as session:
     result = await session.scalar(statement)
@@ -111,6 +161,12 @@ async def get_setting(setting: SettingData, no_default: bool = False) -> Optiona
 
 
 async def get_settings() -> dict[str, tuple["SettingData", "SettingValueType"]]:
+  """
+  Get all application settings and its values.
+
+  Returns:
+    Map of setting IDs to tuples of `SettingData` and the current value, or its default if not set.
+  """
   statement = sa.select(Setting)
   async with begin_session() as session:
     results = (await session.scalars(statement)).all()
@@ -138,15 +194,15 @@ async def set_setting(
   Settings are given by `SettingData` instances in `Settings`, which contain metadata about the setting,
   including its type and default value.
 
-  If value is None, the default value will be used based on the setting's metadata.
+  If value is `None`, the default value will be used based on the setting's metadata.
 
   Args:
     session: The current database session
     setting: Setting to be set
-    value: Value to set the setting to, or the default if None  
+    value: Value to set the setting to, or the default if `None`  
 
   Raises:
-    ValueError: Value is of an incorrect type or does not pass validation.
+    ValueError: Value is of an incorrect type or does not pass validation
   """
 
   try:
@@ -177,6 +233,18 @@ async def set_setting(
 
 
 def is_valid_value(setting: SettingData, value: "SettingValueType") -> bool:
+  """
+  Check if a value is valid for a given setting.
+
+  If the setting has a validator, it will be used to check the value.  
+
+  Args:
+    setting: Setting to validate against
+    value: Value to check
+  
+  Returns:
+    `True` if the value is valid for the setting, `False` otherwise.
+  """
   try:
     # Type validation and conversion
     match setting.type:
@@ -194,7 +262,16 @@ def is_valid_value(setting: SettingData, value: "SettingValueType") -> bool:
   return not setting.validator or setting.validator(_value)
 
 
-async def create_modal(setting: SettingData):
+async def create_modal(setting: SettingData) -> ipy.Modal:
+  """
+  Create a Discord modal for editing a setting.
+
+  Args:
+    setting: Setting to create a modal for
+  
+  Returns:
+    interactions.py `Modal` object 
+  """
   current_value = await get_setting(setting, no_default=False)
 
   return ipy.Modal(
