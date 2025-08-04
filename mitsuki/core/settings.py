@@ -129,17 +129,38 @@ async def get_settings() -> dict[str, tuple["SettingData", "SettingValueType"]]:
   return output
 
 
-async def set_setting(session: "AsyncSession", setting: SettingData, value: "SettingValueType") -> None:
+async def set_setting(
+  session: "AsyncSession", setting: SettingData, value: Optional["SettingValueType"] = None
+) -> None:
+  """
+  Set an application setting to the database.
+
+  Settings are given by `SettingData` instances in `Settings`, which contain metadata about the setting,
+  including its type and default value.
+
+  If value is None, the default value will be used based on the setting's metadata.
+
+  Args:
+    session: The current database session
+    setting: Setting to be set
+    value: Value to set the setting to, or the default if None  
+
+  Raises:
+    ValueError: Value is of an incorrect type or does not pass validation.
+  """
+
   try:
     # Type validation and conversion
-    match setting.type:
-      case SettingTypes.BOOLEAN:
+    match value, setting.type:
+      case None, _:
+        text, _value = str(setting.default), setting.default
+      case _, SettingTypes.BOOLEAN:
         text, _value = ("1" if bool(value) else "0"), bool(value)
-      case SettingTypes.INTEGER:
+      case _, SettingTypes.INTEGER:
         text, _value = str(value), int(value)
-      case SettingTypes.FLOAT:
+      case _, SettingTypes.FLOAT:
         text, _value = str(value), float(value)
-      case SettingTypes.STRING:
+      case _, SettingTypes.STRING:
         text = _value = str(value)
   except (ValueError, TypeError):
     raise ValueError(f"Value has incorrect type for setting {setting.id}: {value!r}") from None
