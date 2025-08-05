@@ -20,17 +20,22 @@ from croniter import croniter
 from typing import Dict, List, Optional, Union
 from datetime import datetime
 
-from mitsuki import bot, logger
+from mitsuki import logger
 from mitsuki.lib.autopost import autosend
 from mitsuki.lib.userdata import begin_session
 from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes, timestamp_now
 
 
 class DaemonTask:
-  def __init__(self, bot: Client, schedule: Schedule):
-    self.bot      = bot
+  def __init__(self, client: Client, schedule: Schedule):
+    self.client   = client
     self.schedule = schedule
     self.task     = self.create_task()
+
+
+  @property
+  def bot(self):
+    return self.client
 
 
   @property
@@ -80,22 +85,22 @@ class DaemonTask:
         return
       self.schedule = schedule
 
-      return await self.post(self.bot, self.schedule)
+      return await self.post(self.client, self.schedule)
     return post
 
 
   @staticmethod
-  async def post(bot: Client, schedule: Schedule, force: bool = False, time: Optional[float] = None):
+  async def post(client: Client, schedule: Schedule, force: bool = False, time: Optional[float] = None):
     # Validation: schedule is active unless force-posted
     if not force and not schedule.active:
       return
 
     # Validation: schedule is valid (channel exists, perms check, etc.)
-    if not await schedule.is_valid(bot):
+    if not await schedule.is_valid(client):
       return
 
     # Validation: channel exists (also caught by is_valid())
-    channel = await bot.fetch_channel(schedule.post_channel)
+    channel = await client.fetch_channel(schedule.post_channel)
     if not channel:
       return
 
@@ -158,52 +163,77 @@ class DaemonTask:
       )
 
 
+_daemon = None
+
+
+def daemon():
+  global _daemon
+  if not _daemon:
+    raise RuntimeError("Schedule Daemon is uninitialized, cannot run daemon")
+  return _daemon
+
+
+async def init_daemon(client: Client):
+  global _daemon
+  _daemon = await Daemon.init(client)
+
+
 class Daemon:
+  client: Client
   active_schedules: Dict[int, DaemonTask] = {}
 
 
   @property
   def server_list(self):
-    return [guild.id for guild in self.bot.guilds]
+    return [guild.id for guild in self.client.guilds]
 
 
-  def __init__(self, bot: Client):
-    self.bot = bot
+  @property
+  def bot(self):
+    return self.client
 
 
-  async def init(self):
+  @classmethod
+  async def init(cls, client: Client):
+    global _daemon
+    d = cls()
+    d.client = client
+
     active_schedules = await Schedule.fetch_many(active=True)
     if len(active_schedules) <= 0:
-      return
+      return d
 
     for schedule in active_schedules:
-      if not schedule.active or not await schedule.is_valid(self.bot):
+      if not schedule.active or not await schedule.is_valid(client):
         continue
 
       # post unsent backlog
       if schedule.has_unsent():
-        await DaemonTask.post(self.bot, schedule)
+        await DaemonTask.post(client, schedule)
 
       # post task
-      task = DaemonTask(self.bot, schedule)
+      task = DaemonTask(client, schedule)
       task.start()
-      self.active_schedules[schedule.id] = task
+      d.active_schedules[schedule.id] = task
+
+    _daemon = d
+    return d
 
 
   async def force_post(self, schedule: Union[Schedule, int], time: Optional[float] = None):
     if isinstance(schedule, int):
       schedule = await Schedule.fetch_by_id(schedule)
-    if not schedule or not await schedule.is_valid(self.bot):
+    if not schedule or not await schedule.is_valid(self.client):
       raise ValueError("Schedule not ready or doesn't exist")
 
     if schedule.has_unsent():
-      await DaemonTask.post(self.bot, schedule, force=True, time=time)
+      await DaemonTask.post(self.client, schedule, force=True, time=time)
 
 
   async def activate(self, schedule: Union[Schedule, int]):
     if isinstance(schedule, int):
       schedule = await Schedule.fetch_by_id(schedule)
-    if not schedule or not await schedule.is_valid(self.bot):
+    if not schedule or not await schedule.is_valid(self.client):
       raise ValueError("Schedule not ready or doesn't exist")
 
     if active_schedule := self.active_schedules.get(schedule.id):
@@ -211,7 +241,7 @@ class Daemon:
         active_schedule.stop()
       self.active_schedules.pop(schedule.id)
 
-    task = DaemonTask(self.bot, schedule)
+    task = DaemonTask(self.client, schedule)
     task.start()
     self.active_schedules[schedule.id] = task
 
@@ -227,11 +257,8 @@ class Daemon:
   async def reactivate(self, schedule: Union[Schedule, int]):
     if isinstance(schedule, int):
       schedule = await Schedule.fetch_by_id(schedule)
-    if not schedule or not await schedule.is_valid(self.bot):
+    if not schedule or not await schedule.is_valid(self.client):
       raise ValueError("Schedule not ready or doesn't exist")
 
     if schedule_task := self.active_schedules.get(schedule.id):
       schedule_task.refresh(schedule)
-
-
-daemon = Daemon(bot)

@@ -15,7 +15,6 @@ Mitsuki commands framework. Eases creation of stateful commands with the
 Mitsuki messages library (mitsuki.lib.messages).
 """
 
-from mitsuki import bot
 from mitsuki.lib import messages
 from mitsuki.lib.paginators import Paginator, SelectionPaginator
 from mitsuki.lib.userdata import begin_session
@@ -460,7 +459,7 @@ class MultifieldMixin:
     template_kwargs = template_kwargs or {}
 
     message = self.message_multifield(template, other_data, per_page, **template_kwargs)
-    paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
+    paginator = Paginator.create_from_embeds(self.bot, *message.embeds, timeout=timeout)
     paginator.show_select_menu = True
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
@@ -512,7 +511,7 @@ class MultifieldMixin:
     template_kwargs = template_kwargs or {}
 
     message = self.message_multipage(template, other_data, **template_kwargs)
-    paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
+    paginator = Paginator.create_from_embeds(self.bot, *message.embeds, timeout=timeout)
     paginator.show_select_menu = True
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
@@ -564,7 +563,7 @@ class MultifieldMixin:
     template_kwargs = template_kwargs or {}
 
     message = self.message_multiline(template, other_data, per_page, **template_kwargs)
-    paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
+    paginator = Paginator.create_from_embeds(self.bot, *message.embeds, timeout=timeout)
     paginator.show_select_menu = True
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
@@ -626,7 +625,7 @@ class SelectionMixin(MultifieldMixin):
     template_kwargs = template_kwargs or {}
 
     message = self.message_multifield(template, other_data, per_page=self.selection_per_page, **template_kwargs)
-    paginator = SelectionPaginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
+    paginator = SelectionPaginator.create_from_embeds(self.bot, *message.embeds, timeout=timeout)
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
 
@@ -660,7 +659,7 @@ class SelectionMixin(MultifieldMixin):
     template_kwargs = template_kwargs or {}
 
     message = self.message_multiline(template, other_data, per_page=self.selection_per_page, **template_kwargs)
-    paginator = SelectionPaginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
+    paginator = SelectionPaginator.create_from_embeds(self.bot, *message.embeds, timeout=timeout)
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
 

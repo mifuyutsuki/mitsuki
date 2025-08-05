@@ -45,7 +45,7 @@ from string import Template
 
 from mitsuki import init_event
 
-from .daemon import daemon
+from .daemon import init_daemon
 from .customids import CustomIDs
 from .commands import *
 
@@ -54,7 +54,7 @@ class ScheduleModule(Extension):
   @listen(Startup)
   async def on_startup(self):
     await init_event.wait()
-    await daemon.init()
+    await init_daemon(self.client)
 
   @slash_command(
     name="schedule",

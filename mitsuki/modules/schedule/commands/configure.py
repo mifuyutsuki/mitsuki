@@ -400,12 +400,12 @@ class ConfigureSchedule(WriterCommand):
     schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     if schedule.active:
-      await daemon.deactivate(schedule)
+      await daemon().deactivate(schedule)
       schedule.deactivate()
     elif not await schedule.is_valid(self.bot):
       return await self.send(self.Templates.ERROR_NOT_READY, ephemeral=True)
     else:
-      await daemon.activate(schedule)
+      await daemon().activate(schedule)
       schedule.activate()
 
     # Activation toggles don't modify the schedule itself

@@ -16,8 +16,6 @@ from attrs import frozen, field
 from os import environ, PathLike
 from interactions import PartialEmoji
 
-from mitsuki import logger
-
 __all__ = (
   "settings",
   "mitsuki",

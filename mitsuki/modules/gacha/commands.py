@@ -29,7 +29,7 @@ from interactions import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mitsuki import bot, settings
+from mitsuki import settings
 from mitsuki.utils import escape_text, process_text, truncate, get_member_color_value, ratio
 from mitsuki.lib.commands import (
   userlock,
