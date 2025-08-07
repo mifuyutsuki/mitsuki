@@ -197,5 +197,5 @@ class ClientHandlerMixin:
       message = ctx_load_message(Templates.ERROR, data={"error_repr": error_repr})
       ephemeral = False
 
-    if isinstance(event.ctx, ipy.SendMixin):
+    if isinstance(event.ctx, ipy.InteractionContext):
       await event.ctx.send(**message.to_dict(), components=[], ephemeral=ephemeral)
