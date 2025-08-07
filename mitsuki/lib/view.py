@@ -43,27 +43,27 @@ _timeouts: dict[ipy.Snowflake, "Timeout"] = {}
 _timeout_lock = asyncio.Lock()
 
 
-async def add_timeout(ctx: ipy.InteractionContext, seconds: float, *, hide: bool = False):
-  _ = await Timeout.add(ctx, seconds, hide=hide)
+async def add_timeout(view: "View", seconds: float, *, hide: bool = False):
+  _ = await Timeout.add(view, seconds, hide=hide)
 
 
-async def reset_timeout(ctx: ipy.InteractionContext):
+async def reset_timeout(message_id: ipy.Snowflake):
   global _timeouts
-  if timeout := _timeouts.get(ctx.message_id):
+  if timeout := _timeouts.get(message_id):
     if timeout.running:
       await timeout.reset()
 
 
-async def force_timeout(ctx: ipy.InteractionContext):
+async def force_timeout(message_id: ipy.Snowflake):
   global _timeouts
-  if timeout := _timeouts.get(ctx.message_id):
+  if timeout := _timeouts.get(message_id):
     if timeout.running:
       await timeout.timeout()
 
 
-async def clear_timeout(ctx: ipy.InteractionContext):
+async def clear_timeout(message_id: ipy.Snowflake):
   global _timeouts
-  if timeout := _timeouts.get(ctx.message_id):
+  if timeout := _timeouts.get(message_id):
     if timeout.running:
       await timeout.clear()
 
@@ -73,11 +73,11 @@ def timeout_resetter[T](callback: Awaitable[T]) -> Callable[[ipy.ComponentContex
   Wrap a component callback to make it reset (refresh) its origin message's timeout when called.
 
   Args:
-    callback: Callback coroutine with a ComponentContext argument
+    callback: Component callback coroutine
   """
-  async def _callback[T](ctx: ipy.ComponentContext) -> T:
-    result = await callback(ctx=ctx)
-    await reset_timeout(ctx)
+  async def _callback[T](self, ctx: ipy.ComponentContext, *args, **kwargs) -> T:
+    result = await callback(self, ctx=ctx, *args, **kwargs)
+    await reset_timeout(ctx.message_id)
     return result
 
   return _callback
@@ -88,10 +88,10 @@ def timeout_clearer[T](callback: Awaitable[T]) -> Callable[[ipy.ComponentContext
   Wrap a component callback to make it clear (remove) its origin message's timeout when called.
 
   Args:
-    callback: Callback coroutine with a ComponentContext argument
+    callback: Component callback coroutine
   """
-  async def _callback[T](ctx: ipy.ComponentContext) -> T:
-    result = await callback(ctx=ctx)
+  async def _callback[T](self, ctx: ipy.ComponentContext) -> T:
+    result = await callback(self, ctx=ctx)
     await reset_timeout(ctx)
     return result
 
@@ -112,7 +112,7 @@ class Timeout:
   def __attrs_post_init__(self):
     self.running = True
     self.reset_event = asyncio.Event()
-    self.task = asyncio.create_task(self._timeout_task)
+    self.task = asyncio.create_task(self._timeout_task())
 
 
   @property
@@ -146,13 +146,13 @@ class Timeout:
       raise ValueError(f"Timeout cannot be less than zero ('{seconds}' was given)")
 
     timeout = cls(view=view, duration=seconds, hide=hide)
-    if view.ctx.message_id in _timeouts:
-      await _timeouts[view.ctx.message_id].clear()
+    if view.message.id in _timeouts:
+      await _timeouts[view.message.id].clear()
 
     # Adding a timeout with seconds=0 is equivalent to Timeout.clear()
     async with _timeout_lock:
       if seconds > 0.0:
-        _timeouts[view.ctx.message_id] = timeout
+        _timeouts[view.message.id] = timeout
 
     return timeout
 
@@ -209,12 +209,14 @@ class View:
   ctx: ipy.InteractionContext = attrs.field(kw_only=False)
   """Interaction context for this view."""
 
+  _message: Optional[ipy.Message] = attrs.field(init=False, repr=False)
   _is_disabled: bool = attrs.field(init=False, repr=False)
   _is_preloaded: bool = attrs.field(init=False, repr=False)
   _send_kwargs: dict = attrs.field(init=False, repr=False)
 
 
   def __attrs_post_init__(self):
+    self._message = None
     self._is_disabled = False
     self._is_preloaded = False
     self._send_kwargs = None
@@ -230,6 +232,12 @@ class View:
   def caller(self) -> Union[ipy.Member, ipy.User]:
     """The user who called the interaction."""
     return self.ctx.author
+
+
+  @property
+  def message(self) -> Optional[ipy.Message]:
+    """Message instance that was sent to Discord, if any."""
+    return self._message
 
 
   @property
@@ -432,6 +440,7 @@ class View:
       HTTPException: Could not send the message to Discord
     """
     send_kwargs = self._send_kwargs or self._generate()
+    mention_users = mention_users or []
 
     if self.has_origin:
       send = self.ctx.edit_origin
@@ -441,9 +450,11 @@ class View:
       send = self.ctx.send
 
     message = await send(ephemeral=ephemeral, allowed_mentions=ipy.AllowedMentions(users=mention_users), **send_kwargs)
+    self._message = message
+    self._send_kwargs = send_kwargs
 
     if timeout and timeout > 0 and len(send_kwargs["components"]) > 0:
-      await add_timeout(self.ctx, timeout, hide=hide_on_timeout)
+      await add_timeout(self, timeout, hide=hide_on_timeout)
 
     return message
 
@@ -464,6 +475,8 @@ class View:
 
     if send_kwargs != self._send_kwargs:
       message = await self.ctx.edit(**send_kwargs)
+      self._send_kwargs = send_kwargs
+      self._message = message
 
     await reset_timeout(self.ctx)
     return message
@@ -475,7 +488,7 @@ class View:
 
     Args:
       hide: Whether to hide instead of disabling the interactable components
-    
+
     Raises:
       ValueError: Disabling would create an empty message due to `hide=True`
       HTTPException: Could not edit the message in Discord
@@ -483,52 +496,17 @@ class View:
     if not self.is_sent:
       return
 
-    new_components = []
     old_components = self.sent_components
     if not old_components or len(old_components) == 0:
       return
 
-    for old_component in old_components:
-      add_component = old_component
-
-      if isinstance(old_component, ipy.ActionRow):
-        action_row = []
-
-        for c in old_component.components:
-          if isinstance(c, ipy.BaseSelectMenu) or (isinstance(c, ipy.Button) and c.style != ipy.ButtonStyle.LINK):
-            if hide:
-              continue
-            c.disabled = True
-          action_row.append(c)
-
-        if len(action_row) == 0:
-          continue
-        add_component = ipy.ActionRow(*action_row)
-
-      elif isinstance(old_component, ipy.Button):
-        if not old_component.style == ipy.ButtonStyle.LINK:
-          old_component.disabled = True
-
-      elif isinstance(old_component, ipy.BaseSelectMenu):
-        old_component.disabled = True
-
-      elif (
-        isinstance(old_component, ipy.SectionComponent)
-        and isinstance(old_component.accessory, ipy.Button)
-      ):
-        if hide:
-          add_component = ipy.TextDisplayComponent("\n".join([c.content for c in old_component.components]))
-        else:
-          old_component.accessory.disabled = True
-
-      new_components.append(add_component)
-
+    new_components = _disable_components(old_components, hide=hide)
     if len(new_components) == 0 and self.is_components_v2:
       raise ValueError("Cannot disable View with hide=True resulting in an empty message")
 
     try:
       self._is_disabled = True
-      await self.ctx.edit(components=new_components)
+      await self.ctx.edit(components=new_components, allowed_mentions=ipy.AllowedMentions())
     except ipy.errors.HTTPException:
       self._is_disabled = False
       raise
@@ -547,7 +525,8 @@ class View:
 
     if components := self.components():
       for idx, component in enumerate(components):
-        components[idx] = _subst_component(component, context)
+        if substd_component := _subst_component(component, context):
+          components[idx] = substd_component
 
     return {
       "content": content,
@@ -592,6 +571,57 @@ class TargetMixin:
     }
 
 
+def _disable_components(components: List[ipy.BaseComponent], hide: bool = False) -> List[ipy.BaseComponent]:
+  new_components = []
+
+  for component in components:
+    add_component = component
+
+    if isinstance(component, ipy.ContainerComponent):
+      add_component = ipy.ContainerComponent(
+        *_disable_components(component.components, hide=hide),
+        accent_color=component.accent_color,
+        spoiler=component.spoiler
+      )
+
+    if isinstance(component, ipy.ActionRow):
+      action_row = []
+
+      for c in component.components:
+        if isinstance(c, ipy.BaseSelectMenu) or (isinstance(c, ipy.Button) and c.style != ipy.ButtonStyle.LINK):
+          if hide:
+            continue
+          c.disabled = True
+        action_row.append(c)
+
+      if len(action_row) == 0:
+        continue
+      add_component = ipy.ActionRow(*action_row)
+
+    elif isinstance(component, ipy.Button):
+      if component.style != ipy.ButtonStyle.LINK:
+        if hide:
+          continue
+        component.disabled = True
+
+    elif isinstance(component, ipy.BaseSelectMenu):
+      if hide:
+        continue
+      component.disabled = True
+
+    elif (
+      isinstance(component, ipy.SectionComponent)
+      and isinstance(component.accessory, ipy.Button)
+    ):
+      if hide:
+        add_component = ipy.TextDisplayComponent("\n".join([c.content for c in component.components]))
+      else:
+        component.accessory.disabled = True
+
+    new_components.append(add_component)
+  return new_components
+
+
 def _subst[T](data: dict, target: Optional[T] = None) -> Optional[T]:
   if isinstance(target, str):
     return Template(target).safe_substitute(**data)
@@ -605,7 +635,7 @@ def _subst_component(component: ipy.BaseComponent, context: dict):
 
   match result:
     case ipy.ActionRow():
-      result.components = [_subst_component(c, context) for c in result.components]
+      result.components = [_subst_component(c, context) for c in result.components if c is not None]
 
     case ipy.Button():
       result.label = _subst(context, result.label)
@@ -616,16 +646,27 @@ def _subst_component(component: ipy.BaseComponent, context: dict):
       result.placeholder = _subst(context, result.placeholder)
 
     case ipy.ContainerComponent():
-      result.components = [_subst_component(c, context) for c in result.components]
+      result.components = [_subst_component(c, context) for c in result.components if c is not None]
 
     case ipy.TextDisplayComponent():
       result.content = _subst(context, result.content)
+
+    case ipy.MediaGalleryComponent():
+      result.items = [
+        ipy.MediaGalleryItem(
+          ipy.UnfurledMediaItem(_subst(context, c.media.url)),
+          description=_subst(context, c.description),
+          spoiler=c.spoiler
+        ) for c in result.items if _get_valid_url(_subst(context, c.media.url))
+      ]
+      if len(result.items) == 0:
+        return None
 
     case ipy.SectionComponent():
       # ThumbnailComponent is also handled here, as it can only exist inside a SectionComponent
       # If the thumbnail is an invalid url, this component would be rerendered as a text display
       if isinstance(result.accessory, ipy.ThumbnailComponent):
-        if valid_media_url := _get_valid_url(_subst(result.accessory.media.url)):
+        if valid_media_url := _get_valid_url(_subst(context, result.accessory.media.url)):
           # Valid URL, render as SectionComponent
           result.accessory.media = ipy.UnfurledMediaItem(valid_media_url)
           result.components = [_subst_component(c, context) for c in result.components]
@@ -639,7 +680,7 @@ def _subst_component(component: ipy.BaseComponent, context: dict):
         # Button accessory, render as SectionComponent
         result.accessory = _subst_component(result.accessory, context)
         result.components = [_subst_component(c, context) for c in result.components]
-    
+
     case _:
       # (ipy.SeparatorComponent, ipy.FileComponent, ...)
       pass
@@ -693,7 +734,5 @@ def _subst_embed(embed: ipy.Embed, context: dict):
 
 def _get_valid_url(url: str) -> Optional[str]:
   parsed = urlparse(url)
-  return (
-    parsed.scheme in ("http", "https", "ftp", "ftps") and
-    len(parsed.netloc) > 0
-  )
+  if parsed.scheme in ("http", "https", "ftp", "ftps") and len(parsed.netloc) > 0:
+    return url
