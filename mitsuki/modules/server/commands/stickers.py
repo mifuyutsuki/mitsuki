@@ -21,7 +21,7 @@ from mitsuki.lib import commands as libcmd
 from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
 
-from .. import customids
+from .. import customids, views
 
 
 class ServerStickers(libcmd.MultifieldMixin, libcmd.ReaderCommand):
@@ -40,34 +40,7 @@ class ServerStickers(libcmd.MultifieldMixin, libcmd.ReaderCommand):
 
     guild = self.ctx.guild
     stickers = await guild.fetch_all_custom_stickers()
-    data = {
-      "guild_name": guild.name,
-      "guild_boost_level": guild.premium_tier or 0,
-      "guild_boost_count": guild.premium_subscription_count,
-      "guild_sticker_count": len(stickers),
-      "guild_sticker_limit": guild.sticker_limit,
-    }
-
-    if len(stickers) == 0:
-      await self.send(self.Templates.EMPTY, other_data=data)
-      return
-
     stickers.sort(key=lambda e: e.id, reverse=True)
     stickers.sort(key=lambda e: e.available, reverse=True)
 
-    self.field_data = [
-      {
-        "sticker_id": s.id,
-        "sticker_name": s.name,
-        "sticker_name_esc": utils.escape_text(s.name),
-        "sticker_description": s.description or "No description set",
-        "sticker_description_esc": utils.escape_text(s.description or "No description set"),
-        "sticker_url": f"{s.url}?size=4096&quality=lossless",
-        "sticker_created_at_f": s.id.created_at.format("f"),
-        "sticker_created_at_r": s.id.created_at.format("R"),
-        "sticker_available": "" if s.available else "(Unavailable)",
-        "sticker_format": s.format_type.name,
-      } for s in stickers
-    ]
-
-    await self.send_multipage(self.Templates.STICKERS, other_data=data, timeout=45)
+    await views.ServerStickersView(self.ctx, guild=guild, stickers=stickers).send(timeout=45, hide_on_timeout=True)

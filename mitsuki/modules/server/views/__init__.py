@@ -12,8 +12,10 @@
 
 from .info import ServerInfoView
 from .emoji import ServerEmojiView
+from .stickers import ServerStickersView
 
 __all__ = (
   "ServerInfoView",
   "ServerEmojiView",
+  "ServerStickersView",
 )
