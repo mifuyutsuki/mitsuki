@@ -17,7 +17,12 @@ from typing import Optional
 
 from mitsuki.utils import escape_text
 from mitsuki.lib.emoji import AppEmoji, get_emoji
-from mitsuki.lib.view import View, SectionPaginatorMixin, PaginatorContentStub, PaginatorNavStub
+from mitsuki.lib.view import (
+  View,
+  SectionPaginatorMixin,
+  SectionPaginatorContentPlaceholder,
+  SectionPaginatorNavPlaceholder,
+)
 
 from .. import customids
 
@@ -80,12 +85,12 @@ class ServerEmojiView(SectionPaginatorMixin, View):
           )
         ),
         ipy.SeparatorComponent(divider=True),
-        PaginatorContentStub(),
+        SectionPaginatorContentPlaceholder(),
         ipy.TextDisplayComponent(
           "-# {}: /server emoji animated={} sort={}".format(self.caller.tag, self.animated, self.sort)
         )
       ),
-      PaginatorNavStub(),
+      SectionPaginatorNavPlaceholder(),
     ]
 
 

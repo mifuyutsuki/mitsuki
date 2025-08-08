@@ -10,13 +10,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-"""
-Mitsuki interactions view framework.
-
-Extends the creation of interaction responses with advanced features, such as
-context loading, pagination, and timeouts.
-"""
-
 import interactions as ipy
 import attrs
 import uuid
@@ -32,15 +25,19 @@ from collections.abc import Callable, Awaitable
 
 from mitsuki.logger import logger
 from mitsuki.lib.emoji import AppEmoji, get_emoji
+from mitsuki.lib.view import utils
 
 __all__ = (
   "add_timeout",
   "reset_timeout",
   "force_timeout",
   "clear_timeout",
+  "timeout_resetter",
+  "timeout_clearer",
   "View",
   "TargetMixin",
 )
+
 
 _timeouts: dict[ipy.Snowflake, "Timeout"] = {}
 _timeout_lock = asyncio.Lock()
@@ -507,7 +504,7 @@ class View:
     if not old_components or len(old_components) == 0:
       return
 
-    new_components = _disable_components(old_components, hide=hide)
+    new_components = utils.disable_components(old_components, hide=hide)
     if len(new_components) == 0 and self.is_components_v2:
       raise ValueError("Cannot disable View with hide=True resulting in an empty message")
 
@@ -532,10 +529,10 @@ class View:
 
     if embeds := self.embeds():
       for embed in embeds:
-        embed = _subst_embed(embed)
+        embed = utils.subst_embed(embed)
 
     if components := self.components():
-      components = _subst_components(components, context)
+      components = utils.subst_components(components, context)
 
     return {
       "content": content,
@@ -543,408 +540,3 @@ class View:
       "components": components,
       "files": self.files(),
     }
-
-
-@attrs.define(slots=False)
-class TargetMixin:
-  """
-  View mixin for commands with a target user.
-
-  Inherit this in your View object before `View` to implement this mixin.
-  """
-
-  target: Union[ipy.User, ipy.Member] = attrs.field(kw_only=True)
-
-
-  def set_target(self, target_user: Optional[Union[ipy.User, ipy.Member]] = None) -> "View":
-    """
-    Set the target user for this view.
-
-    Args:
-      target_user: Target user, or the interaction caller if unset
-
-    Returns:
-      This instance of View
-    """
-    self.target = target_user or self.caller
-    return self
-
-
-  def get_master_context(self) -> dict[str, Any]:
-    return super().get_master_context() | {
-      "target_id": self.target.id,
-      "target_mention": self.target.mention,
-      "target_username": self.target.tag,
-      "target_name": self.target.display_name,
-      "target_avatar_url": self.target.avatar_url,
-    }
-
-
-@attrs.define(slots=False)
-class SectionPaginatorMixin:
-  entries_data: list[dict[str, Any]] = attrs.field(kw_only=True, factory=list)
-  entries_per_page: int = attrs.field(kw_only=True, default=5)
-  page_index: int = attrs.field(kw_only=True, default=0)
-
-  id: uuid.UUID = attrs.field(init=False)
-
-
-  def __attrs_post_init__(self):
-    super().__attrs_post_init__()
-    self.id = uuid.uuid4()
-
-
-  def components_on_empty(self) -> List[ipy.BaseComponent]:
-    return self.components()
-
-
-  def get_master_context(self) -> dict[str, Any]:
-    return super().get_master_context() | {"uuid": self.id}
-
-
-  def get_pages_context(self) -> list[dict[str, Any]]:
-    return []
-
-
-  def section(self) -> List[Union[ipy.SectionComponent, ipy.TextDisplayComponent]]:
-    raise NotImplementedError("Section format is required to use this paginator")
-
-
-  async def _post_send(self, timeout: Optional[float] = None, **kwargs):
-    if timeout and timeout > 0:
-      self.client.add_component_callback(
-        ipy.ComponentCommand(
-          name=f"Paginator:{self.id}",
-          callback=self._nav_callback,
-          listeners=[
-            f"{self.id}|first",
-            f"{self.id}|prev",
-            f"{self.id}|next",
-            f"{self.id}|last",
-            f"{self.id}|pageno",
-          ],
-        )
-      )
-
-
-  async def _nav_callback(self, ctx: ipy.ComponentContext):
-    match custom_id := ctx.custom_id.split("|")[-1]:
-      case "first":
-        self.page_index = 0
-      case "prev":
-        self.page_index = max(0, self.page_index - 1)
-      case "next":
-        self.page_index += 1
-      case "last":
-        self.page_index = -1
-      case "selector":
-        # TODO: "Go to page" modal
-        pass
-      case _:
-        raise ValueError("Unexpected paginator custom id action: '{}'".format(custom_id))
-
-    edit_kwargs = self._generate()
-    message = await ctx.edit_origin(**edit_kwargs)
-    await reset_timeout(message.id)
-    self._send_kwargs = edit_kwargs
-    self._message = message
-
-
-  def _generate(self):
-    if not self.is_components_v2:
-      raise ValueError("Components v2 is required by this paginator")
-
-    pages_context = self.get_pages_context()
-    context = self.get_master_context() | self.get_context()
-
-    if len(pages_context) == 0:
-      components = _subst_components(self.components_on_empty(), context)
-    else:
-      pages = 1 + int((len(pages_context) - 1) / self.entries_per_page)
-
-      # This pattern allows for _nav_callback() to set page_index = -1
-      # without knowing len(pages_context)
-      if not (0 <= self.page_index < len(pages_context)):
-        self.page_index = pages - 1
-
-      context |= {
-        "page": self.page_index + 1,
-        "pages": pages,
-      }
-      components = _subst_components(
-        self.components(), context,
-        pages_context=pages_context,
-        page_index=self.page_index,
-        per_page=self.entries_per_page,
-        section=self.section()
-      )
-
-    # Stub components have been converted and context'd past this point
-    return {"components": components, "files": self.files()}
-
-
-class StubComponent:
-  def subst(self, context: dict[str, Any], *args, **kwargs) -> List[ipy.BaseComponent]:
-    raise NotImplementedError
-
-
-class PaginatorContentStub(StubComponent):
-  def subst(
-    self,
-    context: dict[str, Any],
-    *,
-    pages_context: list[dict[str, Any]],
-    page_index: int,
-    per_page: int,
-    section: List[ipy.BaseComponent]
-  ) -> List[ipy.BaseComponent]:
-    results = []
-
-    for page_context in pages_context[per_page * page_index : per_page * (page_index + 1)]:
-      this_context = context | page_context
-      for c in section:
-        if isinstance(c, StubComponent):
-          raise ValueError("Cannot nest a placeholder component inside another placeholder component")
-
-        add_c = _subst_component(c, this_context)
-        if isinstance(add_c, list):
-          results.extend(add_c)
-        elif add_c:
-          results.append(add_c)
-      results.append(ipy.SeparatorComponent(divider=True))
-
-    return results
-
-
-class PaginatorNavStub(StubComponent):
-  def subst(self, context: dict[str, Any], **kwargs) -> List[ipy.BaseComponent]:
-    id, page, pages = context["uuid"], int(context["page"]), int(context["pages"])
-
-    return [ipy.ActionRow(
-      ipy.Button(
-        style=ipy.ButtonStyle.GRAY,
-        emoji=get_emoji(AppEmoji.PAGE_FIRST),
-        custom_id="{}|first".format(id),
-        disabled=page <= 1
-      ),
-      ipy.Button(
-        style=ipy.ButtonStyle.GRAY,
-        emoji=get_emoji(AppEmoji.PAGE_PREVIOUS),
-        custom_id="{}|prev".format(id),
-        disabled=page <= 1
-      ),
-      ipy.Button(
-        style=ipy.ButtonStyle.GRAY,
-        label="{}/{}".format(page, pages),
-        custom_id="{}|selector".format(id),
-        disabled=True # TODO: pages < 4
-      ),
-      ipy.Button(
-        style=ipy.ButtonStyle.GRAY,
-        emoji=get_emoji(AppEmoji.PAGE_NEXT),
-        custom_id="{}|next".format(id),
-        disabled=page >= pages
-      ),
-      ipy.Button(
-        style=ipy.ButtonStyle.GRAY,
-        emoji=get_emoji(AppEmoji.PAGE_LAST),
-        custom_id="{}|last".format(id),
-        disabled=page >= pages
-      ),
-    )]
-
-
-def _disable_components(components: List[ipy.BaseComponent], hide: bool = False) -> List[ipy.BaseComponent]:
-  new_components = []
-
-  for c in components:
-    if add_c := _disable_component(c, hide=hide):
-      new_components.append(add_c)
-
-  return new_components
-
-
-def _disable_component(component: ipy.BaseComponent, hide: bool = False) -> Optional[ipy.BaseComponent]:
-  result = component
-  match result:
-    case ipy.ActionRow():
-      result.components = _disable_components(result.components, hide=hide)
-      if len(result.components) == 0:
-        result = None  
-
-    case ipy.BaseSelectMenu():
-      if hide:
-        result = None
-      else:
-        result.disabled = True
-
-    case ipy.Button():
-      if result.style == ipy.ButtonStyle.LINK:
-        pass
-      elif hide:
-        result = None
-      else:
-        result.disabled = True
-
-    case ipy.ContainerComponent():
-      result.components = _disable_components(result.components, hide=hide)
-
-    case ipy.SectionComponent():
-      if isinstance(result.accessory, ipy.Button):
-        if hide:
-          result = ipy.TextDisplayComponent("\n".join([c.content for c in result.components]))
-        else:
-          result.accessory.disabled = True
-
-    case _:
-      pass
-  
-  return result
-
-
-def _subst[T](data: dict, target: Optional[T] = None) -> Optional[T]:
-  if isinstance(target, str):
-    return Template(target).safe_substitute(**data)
-  elif target:
-    return target
-  return None
-
-
-def _subst_components(components: list, context: dict[str, Any], **kwargs):
-  results = []
-
-  for c in components:
-    add_c = _subst_component(c, context, **kwargs)
-
-    if isinstance(add_c, list):
-      results.extend(add_c)
-    elif add_c:
-      results.append(add_c)
-
-  return results
-
-
-def _subst_component(component, context: dict, **kwargs):
-  try:
-    result = copy(component)
-  except Exception:
-    result = component
-
-  match result:
-    case ipy.ActionRow():
-      result.components = _subst_components(result.components, context, **kwargs)
-
-    case ipy.Button():
-      result.label = _subst(context, result.label)
-      result.url = _subst(context, result.url)
-      result.custom_id = _subst(context, result.custom_id)
-
-    case ipy.BaseSelectMenu():
-      # ipy.(String|User|Role|Mentionable|Channel)SelectMenu
-      result.placeholder = _subst(context, result.placeholder)
-      result.custom_id = _subst(context, result.custom_id)
-
-    case ipy.ContainerComponent():
-      result.components = _subst_components(result.components, context, **kwargs)
-
-    case ipy.TextDisplayComponent():
-      result.content = _subst(context, result.content)
-
-    case ipy.MediaGalleryComponent():
-      result.items = _subst_components(result.items, context, **kwargs)
-
-    case ipy.MediaGalleryItem():
-      if valid_media_item := _subst_component(result.media, context, **kwargs):
-        result.media = valid_media_item
-        result.description = _subst(context, result.description)
-      else:
-        result = None
-
-    case ipy.ThumbnailComponent():
-      if valid_media_item := _subst_component(result.media, context, **kwargs):
-        result.media = valid_media_item
-        result.description = _subst(context, result.description)
-      else:
-        result = None
-
-    case ipy.UnfurledMediaItem():
-      if valid_media_url := _get_valid_url(_subst(context, result.url)):
-        result.url = valid_media_url
-      else:
-        result = None
-
-    case ipy.SeparatorComponent():
-      pass
-
-    case ipy.FileComponent():
-      pass
-
-    case ipy.SectionComponent():
-      if valid_accessory := _subst_component(result.accessory, context, **kwargs):
-        result.components = _subst_components(result.components, context, **kwargs)
-        result.accessory = valid_accessory
-      else:
-        result = ipy.TextDisplayComponent("\n".join([c.content for c in result.components]))
-
-    case StubComponent():
-      result = result.subst(context, **kwargs)
-
-    case _:
-      # (ipy.SeparatorComponent, ipy.FileComponent, ...)
-      result = None
-
-  return result
-
-
-def _subst_embed(embed: ipy.Embed, context: dict):
-  result = ipy.Embed()
-
-  if embed.author:
-    result.set_author(
-      name=_subst(context, embed.author.name),
-      url=_subst(context, embed.author.url),
-      icon_url=_subst(context, embed.author.icon_url),
-    )
-
-  if embed.title:
-    result.title = _subst(context, embed.title)
-
-  if embed.description:
-    result.description = _subst(context, embed.description)
-
-  if embed.url:
-    result.url = _get_valid_url(_subst(context, embed.url))
-
-  if embed.thumbnail:
-    if valid_url := _get_valid_url(_subst(context, embed.thumbnail.url)):
-      result.set_thumbnail(valid_url)
-
-  if embed.image:
-    if valid_url := _get_valid_url(_subst(context, embed.image.url)):
-      result.set_image(valid_url)
-
-  if embed.footer:
-    result.set_footer(
-      text=_subst(embed.footer.text),
-      icon_url=_get_valid_url(_subst(embed.footer.icon_url)),
-    )
-
-  if embed.color:
-    result.color = _subst(context, embed.color)
-
-  for field in embed.fields:
-    result.add_field(
-      name=_subst(field.name),
-      value=_subst(field.value),
-      inline=field.inline,
-    )
-
-
-def _is_valid_url(url: str) -> bool:
-  parsed = urlparse(url)
-  return parsed.scheme in ("http", "https", "ftp", "ftps") and len(parsed.netloc) > 0
-
-
-def _get_valid_url(url: str) -> Optional[str]:
-  if _is_valid_url(url):
-    return url
