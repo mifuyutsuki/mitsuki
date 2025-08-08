@@ -196,10 +196,11 @@ class View:
 
   Inherit this object with `attrs.define(slots=False)` to create a new message
   view, and override the following methods:
-  - `get_context()` to set the data, given attributes
-  - `content()` to set the text message content
-  - `embeds()` to set the message embeds
+  - `get_context()` to set the data, given attributes (default: `{}`)
+  - `content()` to set the text message content (default: `None`)
+  - `embeds()` to set the message embeds (default: `None`)
   - `components()` to set the message components, including v2 components
+    (default: `None`)
 
   Additional attributes can be added in your inherited view to provide
   information to the view content. These attributes would be set at instance
@@ -328,6 +329,7 @@ class View:
 
     Override this method to set this view's message context data. Define
     additional attributes in your inherited view to include additional data.
+    By default, returns an empty dict `{}`.
 
     The output would be used to string-substitute text in the message content,
     including its text content, embeds, and components using `string.Template`.
@@ -343,7 +345,7 @@ class View:
     Generate the message content of this view.
 
     Override this method to set this view's message content. This method cannot
-    be set when using v2 components.
+    be set when using v2 components. By default, returns `None`.
 
     Text in this message would be string-substituted using `string.Template` on
     sending using data given by `View.get_master_context()` and
@@ -360,7 +362,7 @@ class View:
     Generate message embeds for this view.
 
     Override this method to set this view's message embeds. This method cannot
-    be set when using v2 components.
+    be set when using v2 components. By default, returns `None`.
 
     Text in this message would be string-substituted using `string.Template` on
     sending using data given by `View.get_master_context()` and
@@ -377,7 +379,8 @@ class View:
     Generate message components for this view.
 
     Override this method to set this view's message components. Content and
-    embeds must not be set when using v2 components.
+    embeds must not be set when using v2 components. By default, returns
+    `None`.
 
     Text in this message would be string-substituted using `string.Template` on
     sending using data given by `View.get_master_context()` and
@@ -395,7 +398,8 @@ class View:
 
     Override this method to set this view's file attachments. The interaction
     must be deferred before sending. When using components v2, files are only
-    shown via a file component linking to `attachment://<filename>`.
+    shown via a file component linking to `attachment://<filename>`. By
+    default, returns `None`.
 
     Returns:
       List of files to attach, or `None` to leave unset
