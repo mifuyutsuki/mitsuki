@@ -12,10 +12,12 @@
 
 from .core import BasePaginatorMixin, PaginatorNavPlaceholder
 from .section import SectionPaginatorMixin, SectionPaginatorContentPlaceholder
+from .gallery import GalleryPaginatorMixin
 
 __all__ = (
   "BasePaginatorMixin",
   "PaginatorNavPlaceholder",
   "SectionPaginatorMixin",
   "SectionPaginatorContentPlaceholder",
+  "GalleryPaginatorMixin",
 )
