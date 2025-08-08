@@ -276,6 +276,9 @@ class View:
   def is_components_v2(self) -> bool:
     """Whether this view uses v2 components."""
     components = self.components()
+    if not components:
+      return False
+
     for component in components:
       match component:
         case (ipy.Button(), ipy.BaseSelectMenu()):
