@@ -32,7 +32,21 @@ class ServerEmojiView(SectionPaginatorMixin, View):
   guild: ipy.Guild
   emojis: list[ipy.CustomEmoji]
   sort: str
-  animated: bool = attrs.field(default=False)
+  animated: bool = False
+  entries_per_page: int = 5
+
+
+  def get_context(self):
+    return {
+      "guild_name": self.guild.name,
+      "guild_name_esc": escape_text(self.guild.name),
+      "guild_boost_level": self.guild.premium_tier or 0,
+      "guild_boost_count": self.guild.premium_subscription_count,
+      "guild_emoji_count": len(self.emojis),
+      "guild_emoji_limit": self.guild.emoji_limit,
+      "guild_avatar_url": self.guild.icon.as_url() if self.guild.icon else "-",
+      "view_mode": "Animated" if self.animated else "Static",
+    }
 
 
   def get_pages_context(self):
@@ -44,7 +58,7 @@ class ServerEmojiView(SectionPaginatorMixin, View):
         "emoji_mention": e if e.available else get_emoji(AppEmoji.TIME),
         "emoji_created_at_f": e.id.created_at.format("f"),
         "emoji_created_at_r": e.id.created_at.format("R"),
-        "emoji_available": "" if e.available else "(Unavailable)",
+        "emoji_availability": "" if e.available else "*Unavailable*",
       }
       for e in self.emojis
     ]
@@ -56,8 +70,8 @@ class ServerEmojiView(SectionPaginatorMixin, View):
         components=[
           ipy.TextDisplayComponent(
             "## ${emoji_name}\n"
-            "ID: ${emoji_id}\n"
-            "Created at ${emoji_created_at_f}"
+            "ID: ${emoji_id} ${emoji_availability}\n"
+            "Created at ${emoji_created_at_f} - [Link to emoji image](<${emoji_url}>)"
           ),
         ],
         accessory=ipy.ThumbnailComponent(
@@ -72,17 +86,13 @@ class ServerEmojiView(SectionPaginatorMixin, View):
       ipy.ContainerComponent(
         ipy.SectionComponent(
           components=[
-            ipy.TextDisplayComponent("-# ✦ {}".format(escape_text(self.guild.name))),
+            ipy.TextDisplayComponent("-# ✦ ${guild_name_esc}"),
+            ipy.TextDisplayComponent("# Emoji List: ${view_mode} (${page}/${pages})"),
             ipy.TextDisplayComponent(
-              "# Emoji List: {} ({}/{})".format("Animated" if self.animated else "Static", "${page}", "${pages}")
-            ),
-            ipy.TextDisplayComponent(
-              "**{}**/{} available (Level {})".format(len(self.emojis), self.guild.emoji_limit, self.guild.premium_tier or 0)
+              "**${guild_emoji_count}**/${guild_emoji_limit} available (Level ${guild_boost_level})"
             )
           ],
-          accessory=ipy.ThumbnailComponent(
-            ipy.UnfurledMediaItem("{}".format(self.guild.icon.as_url() if self.guild.icon else ""))
-          )
+          accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${guild_avatar_url}"))
         ),
         ipy.SeparatorComponent(divider=True),
         SectionPaginatorContentPlaceholder(),
@@ -99,15 +109,13 @@ class ServerEmojiView(SectionPaginatorMixin, View):
       ipy.ContainerComponent(
         ipy.SectionComponent(
           components=[
-            ipy.TextDisplayComponent("-# ✦ {}".format(escape_text(self.guild.name))),
-            ipy.TextDisplayComponent("# Emoji List: {}".format("Animated" if self.animated else "Static")),
+            ipy.TextDisplayComponent("-# ✦ ${guild_name_esc}"),
+            ipy.TextDisplayComponent("# Emoji List: ${view_mode} (${page}/${pages})"),
             ipy.TextDisplayComponent(
-              "**{}**/{} available (Level {})".format(0, self.guild.emoji_limit, self.guild.premium_tier or 0)
+              "**{${guild_emoji_count}}**/${guild_emoji_limit} available (Level ${guild_boost_level})"
             )
           ],
-          accessory=ipy.ThumbnailComponent(
-            ipy.UnfurledMediaItem("{}".format(self.guild.icon.as_url() if self.guild.icon else ""))
-          )
+          accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${guild_avatar_url}"))
         ),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent("This server has no emoji of this type."),
