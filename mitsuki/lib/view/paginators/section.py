@@ -28,11 +28,26 @@ class SectionPaginatorMixin:
   page_index: int = attrs.field(kw_only=True, default=0)
 
   id: uuid.UUID = attrs.field(init=False)
+  _entries: int = attrs.field(init=False)
 
 
   def __attrs_post_init__(self):
     super().__attrs_post_init__()
     self.id = uuid.uuid4()
+
+
+  @property
+  def entries(self):
+    try:
+      return self._entries
+    except Exception:
+      self._entries = len(self.get_pages_context())
+      return self._entries
+
+
+  @property
+  def pages(self):
+    return 1 + ((self.entries - 1) // self.entries_per_page)
 
 
   def components_on_empty(self) -> List[ipy.BaseComponent]:
@@ -66,6 +81,15 @@ class SectionPaginatorMixin:
           ],
         )
       )
+      self.client.add_modal_callback(
+        ipy.ModalCommand(
+          name=f"PaginatorGoto:{self.id}",
+          callback=self._pageno_response,
+          listeners=[
+            f"{self.id}|pageno",
+          ],
+        )
+      )
 
 
   async def _nav_callback(self, ctx: ipy.ComponentContext):
@@ -79,8 +103,7 @@ class SectionPaginatorMixin:
       case "last":
         self.page_index = -1
       case "pageno":
-        # TODO: "Go to page" modal
-        pass
+        return await self._pageno_prompt(ctx)
       case _:
         raise ValueError("Unexpected paginator custom id action: '{}'".format(custom_id))
 
@@ -88,6 +111,45 @@ class SectionPaginatorMixin:
     message = await ctx.edit_origin(**edit_kwargs)
     await reset_timeout(message.id)
     self._send_kwargs = edit_kwargs
+    self._message = message
+
+
+  async def _pageno_prompt(self, ctx: ipy.ComponentContext):
+    await ctx.send_modal(
+      modal=ipy.Modal(
+        ipy.ShortText(
+          label="Page number",
+          custom_id="page_no",
+          placeholder=f"Number from 1 to {self.pages}",
+        ),
+        title="Go to Page",
+        custom_id=f"{self.id}|pageno",
+      )
+    )
+    await reset_timeout(self.message.id)
+
+
+  async def _pageno_response(self, ctx: ipy.ModalContext, page_no: str):
+    if self.is_disabled:
+      return await ctx.send("Interaction has timed out.", ephemeral=True)
+
+    try:
+      page_no = int(page_no)
+    except Exception:
+      return await ctx.send("Not a valid page number.", ephemeral=True)
+
+    if not (0 < page_no <= self.pages):
+      return await ctx.send("Page number out of range.", ephemeral=True)
+
+    if page_no - 1 == self.page_index:
+      # Same page
+      message = await ctx.edit(ctx.message)
+    else:
+      self.page_index = page_no - 1
+      edit_kwargs = self._generate()
+      message = await ctx.edit(ctx.message, **edit_kwargs)
+      self._send_kwargs = edit_kwargs
+    await reset_timeout(message)
     self._message = message
 
 
@@ -101,11 +163,11 @@ class SectionPaginatorMixin:
     if len(pages_context) == 0:
       components = utils.subst_components(self.components_on_empty(), context)
     else:
-      pages = 1 + ((len(pages_context) - 1) // self.entries_per_page)
+      pages = 1 + ((self.entries - 1) // self.entries_per_page)
 
       # This pattern allows for _nav_callback() to set page_index = -1
       # without knowing len(pages_context)
-      if not (0 <= self.page_index < len(pages_context)):
+      if not (0 <= self.page_index < self.entries):
         self.page_index = pages - 1
 
       context |= {
@@ -172,7 +234,7 @@ class SectionPaginatorNavPlaceholder(PlaceholderComponent):
         style=ipy.ButtonStyle.GRAY,
         label="{}/{}".format(page, pages),
         custom_id="{}|pageno".format(id),
-        disabled=True # TODO: pages < 4
+        disabled=pages < 4
       ),
       ipy.Button(
         style=ipy.ButtonStyle.GRAY,
