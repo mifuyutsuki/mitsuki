@@ -21,7 +21,7 @@ from mitsuki.lib import commands as libcmd
 from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
 
-from .. import customids
+from .. import customids, views
 
 
 class ServerEmoji(libcmd.MultifieldMixin, libcmd.ReaderCommand):
@@ -88,7 +88,9 @@ class ServerEmoji(libcmd.MultifieldMixin, libcmd.ReaderCommand):
       emojis = [e for e in emojis if not e.animated]
 
     if len(emojis) == 0:
-      await self.send(self.Templates.EMPTY, other_data=data, components=components)
+      await views.ServerEmojiView(
+        self.ctx, guild=guild, emojis=emojis, sort=sort, animated=animated,
+      ).send()
       return
 
     match sort:
@@ -118,7 +120,11 @@ class ServerEmoji(libcmd.MultifieldMixin, libcmd.ReaderCommand):
       } for e in emojis
     ]
 
-    await self.send_multifield(
-      self.Templates.EMOJI_ANIMATED if animated else self.Templates.EMOJI_STATIC,
-      other_data=data, per_page=6, timeout=45, extra_components=components
-    )
+    await views.ServerEmojiView(
+      self.ctx, guild=guild, emojis=emojis, sort=sort, animated=animated,
+    ).send(timeout=45, hide_on_timeout=True)
+
+    # await self.send_multifield(
+    #   self.Templates.EMOJI_ANIMATED if animated else self.Templates.EMOJI_STATIC,
+    #   other_data=data, per_page=6, timeout=45, extra_components=components
+    # )
