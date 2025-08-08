@@ -10,10 +10,12 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from .section import SectionPaginatorMixin, SectionPaginatorContentPlaceholder, SectionPaginatorNavPlaceholder
+from .core import BasePaginatorMixin, PaginatorNavPlaceholder
+from .section import SectionPaginatorMixin, SectionPaginatorContentPlaceholder
 
 __all__ = (
+  "BasePaginatorMixin",
+  "PaginatorNavPlaceholder",
   "SectionPaginatorMixin",
   "SectionPaginatorContentPlaceholder",
-  "SectionPaginatorNavPlaceholder",
 )
