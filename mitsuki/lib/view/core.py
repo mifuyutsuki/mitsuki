@@ -525,7 +525,7 @@ class View:
     context = self.get_master_context() | self.get_context()
 
     if content := self.content():
-      content = Template(content).safe_substitute(**context)
+      content = utils.subst(context, content)
 
     if embeds := self.embeds():
       for embed in embeds:
