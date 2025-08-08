@@ -515,13 +515,19 @@ class View:
     if len(new_components) == 0 and self.is_components_v2:
       raise ValueError("Cannot disable View with hide=True resulting in an empty message")
 
+    if self.message:
+      allowed_mentions = ipy.AllowedMentions(users=self.message._mention_ids, roles=self.message._mention_roles)
+    else:
+      allowed_mentions = ipy.AllowedMentions()
+
     try:
       self._is_disabled = True
-      await self.ctx.edit(components=new_components, allowed_mentions=ipy.AllowedMentions())
+      message = await self.ctx.edit(components=new_components, allowed_mentions=allowed_mentions)
     except ipy.errors.HTTPException:
       self._is_disabled = False
       raise
     self._send_kwargs["components"] = new_components
+    self._message = message
 
 
   async def _post_send(self, *args, **kwargs):
