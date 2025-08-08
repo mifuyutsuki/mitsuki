@@ -71,7 +71,7 @@ class ServerEmojiView(SectionPaginatorMixin, View):
           ipy.TextDisplayComponent(
             "## ${emoji_name}\n"
             "ID: ${emoji_id} ${emoji_availability}\n"
-            "Created at ${emoji_created_at_f} - [Link to emoji image](<${emoji_url}>)"
+            "Created at ${emoji_created_at_f} - [**Link**](<${emoji_url}>)"
           ),
         ],
         accessory=ipy.ThumbnailComponent(
