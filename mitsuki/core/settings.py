@@ -63,12 +63,12 @@ class Settings:
   "Amount of Shards to give as a daily when claimed for the first time."
 
   DailyResetTime = SettingData(
-    SettingTypes.INTEGER, "gacha.daily.reset_time", "Gacha: Daily Reset Time", "00:00", validator=_hhmm_validator
+    SettingTypes.STRING, "gacha.daily.reset_time", "Gacha: Daily Reset Time", "00:00", validator=_hhmm_validator
   )
   "Time on which the next gacha daily can be claimed, in 24-hour HH:MM format."
 
   DailyResetTimeZone = SettingData(
-    SettingTypes.INTEGER, "gacha.daily.reset_tz", "Gacha: Daily Reset Timezone", "+0000", validator=_tz_validator
+    SettingTypes.STRING, "gacha.daily.reset_tz", "Gacha: Daily Reset Timezone", "+0000", validator=_tz_validator
   )
   "Timezone on which the next gacha daily can be claimed, in ±HHMM offset format from UTC."
 
