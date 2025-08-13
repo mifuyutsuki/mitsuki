@@ -25,6 +25,9 @@ from mitsuki.models.settings import SettingTypes, SettingData, Setting, SettingV
 SETTINGS_EDIT = CustomID("settings_edit")
 
 
+_cache: dict[str, SettingValueType] = {}
+
+
 def _hhmm_validator(hhmm: str):
   try:
     hh, mm = hhmm.split(":")
@@ -149,15 +152,23 @@ async def get_setting(setting: SettingData, no_default: bool = False) -> Optiona
   Returns:
     Setting value, or `None` if not set and `no_default` is `True`
   """
+  global _cache
+  if cached_value := _cache.get(setting.id):
+    return cached_value
+
   statement = sa.select(Setting.value).where(Setting.name == setting.id)
   async with begin_session() as session:
-    result = await session.scalar(statement)
+    result_s = await session.scalar(statement)
 
-  if not result:
-    if no_default:
-      return None
-    return setting.default
-  return _convert(setting, result)
+  if result_s:
+    result = _convert(setting, result_s)
+  elif no_default:
+    result = None
+  else:
+    result = setting.default
+
+  _cache[setting.id] = result
+  return result
 
 
 async def get_settings() -> dict[str, tuple["SettingData", "SettingValueType"]]:
@@ -204,6 +215,7 @@ async def set_setting(
   Raises:
     ValueError: Value is of an incorrect type or does not pass validation
   """
+  global _cache
 
   try:
     # Type validation and conversion
@@ -230,6 +242,7 @@ async def set_setting(
     .on_conflict_do_update(index_elements=["value"], set_={"value": text})
   )
   await session.execute(statement)
+  _cache[setting.id] = _value
 
 
 def is_valid_value(setting: SettingData, value: "SettingValueType") -> bool:
