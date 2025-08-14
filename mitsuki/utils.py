@@ -20,7 +20,7 @@ from interactions.api.events import Component
 from rapidfuzz.utils import default_process
 from rapidfuzz import fuzz
 
-from typing import Optional
+from typing import Optional, Callable
 import unicodedata
 import regex as re
 
@@ -34,6 +34,7 @@ __all__ = (
   "is_caller",
   "get_member_color",
   "get_member_color_value",
+  "option",
 )
 
 
@@ -161,3 +162,7 @@ def get_member_color_value(member: Member):
   if color := get_member_color(member):
     return color.value
   return None
+
+
+def option[T](fn: Callable[..., T]) -> Callable[..., Optional[T]]:
+  return lambda s: fn(s) if s else None
