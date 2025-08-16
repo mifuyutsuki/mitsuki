@@ -51,6 +51,7 @@ class GachaUser(AsDict):
   obtained_cards: dict[int, int] = attrs.field(factory=dict)
   """Unique cards rolled by this user in the format {rarity: count}, only set if fetched using `fetch_profile()`."""
 
+
   @classmethod
   async def create(
     cls, session: AsyncSession, user: Union[ipy.BaseUser, ipy.Snowflake], *, now: Optional[ipy.Timestamp] = None
@@ -87,7 +88,7 @@ class GachaUser(AsDict):
 
 
   @classmethod
-  async def fetch(cls, session: AsyncSession, user: Union[ipy.BaseUser, ipy.Snowflake]) -> Optional[Self]:
+  async def fetch(cls, user: Union[ipy.BaseUser, ipy.Snowflake]) -> Optional[Self]:
     """
     Fetch a gacha user.
 
@@ -106,12 +107,42 @@ class GachaUser(AsDict):
       .where(models.GachaUser.user == user)
     )
 
-    if result := await session.scalar(query):
-      return cls(**result.asdict())
+    async with begin_session() as session:
+      if result := await session.scalar(query):
+        return cls(**result.asdict())
+
+
+  @staticmethod
+  async def fetch_guarantee(user: Union[ipy.BaseUser, ipy.Snowflake]) -> Optional[int]:
+    """
+    Fetch the guaranteed rarity for this user, based on their pity counter.
+
+    Args:
+      user: Snowflake or instance of the gacha user
+
+    Returns:
+      Guaranteed rarity, or `None` if user not in pity or the user is registered
+    """
+    if isinstance(user, ipy.BaseUser):
+      user = user.id
+
+    stmt = (
+      select(models.UserPity.rarity, models.UserPity.count, models.CardRarity.pity)
+      .join(models.GachaUser, models.GachaUser.user == models.UserPity.user)
+      .join(models.CardRarity, models.CardRarity.rarity == models.UserPity.rarity)
+      .where(models.CardRarity.pity > 1)
+    )
+
+    async with begin_session() as session:
+      results = (await session.execute(stmt)).all()
+
+    if len(results) > 0:
+      results = sorted(results, key=lambda r: r.rarity, reverse=True)
+      return next([r.rarity for r in results if r.count >= r.pity], None)
 
 
   @classmethod
-  async def fetch_profile(cls, session: AsyncSession, user: Union[ipy.BaseUser, ipy.Snowflake]) -> Optional[Self]:
+  async def fetch_profile(cls, user: Union[ipy.BaseUser, ipy.Snowflake]) -> Optional[Self]:
     """
     Fetch a gacha user's profile, including its pity counters and roll counts.
 
@@ -152,7 +183,9 @@ class GachaUser(AsDict):
       .where(models.GachaUser.user == user)
     )
 
-    results = (await session.execute(query)).all()
+    async with begin_session() as session:
+      results = (await session.execute(query)).all()
+
     if len(results) > 0:
       return cls(
         **results[0].GachaUser.asdict(),
@@ -221,10 +254,19 @@ class GachaUser(AsDict):
 
 
   def has_shards(self, amount: int) -> bool:
+    """
+    Check if this user has at least this amount of shards.
+
+    Args:
+      amount: Amount of shards to check
+
+    Returns:
+      `True` if there are at least said amount, `False` otherwise
+    """
     return self.amount >= amount
 
 
-  async def give(self, session: AsyncSession, amount: int) -> bool:
+  async def give_shards(self, session: AsyncSession, amount: int) -> bool:
     """
     Give gacha shards to this user.
 
@@ -250,7 +292,7 @@ class GachaUser(AsDict):
     return new_amount is not None
 
 
-  async def take(self, session: AsyncSession, amount: int) -> bool:
+  async def take_shards(self, session: AsyncSession, amount: int) -> bool:
     """
     Take gacha shards from this user.
 
@@ -276,3 +318,35 @@ class GachaUser(AsDict):
     if new_amount := await session.scalar(stmt):
       self.amount = new_amount
     return new_amount is not None
+
+
+  @staticmethod
+  async def increment_pity(session: AsyncSession, user: Union[ipy.BaseUser, ipy.Snowflake], rarity: int) -> None:
+    """
+    Increment a gacha user's pity counter.
+
+    The pity counter matching the given rarity is set to 0 if pity is setup for
+    the rarity, whereas counters for other rarities are incremented by 1.
+
+    Args:
+      session: Current database session
+      user: Snowflake or instance of the user
+      rarity: Obtained card rarity whose pity counter is to be reset
+    """
+    if isinstance(user, ipy.BaseUser):
+      user = user.id
+
+    increment_stmt = (
+      update(models.UserPity)
+      .where(models.UserPity.user == user)
+      .values(count=models.UserPity.__table__.c.count + 1)
+    )
+    reset_stmt = (
+      update(models.UserPity)
+      .where(models.UserPity.user == user)
+      .where(models.UserPity.rarity == rarity)
+      .values(count=0)
+    )
+
+    await session.execute(increment_stmt)
+    await session.execute(reset_stmt)
