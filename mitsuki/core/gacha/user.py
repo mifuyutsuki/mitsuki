@@ -16,13 +16,14 @@ from datetime import timezone
 import attrs
 import interactions as ipy
 import sqlalchemy as sa
-from sqlalchemy import select, insert, update, literal
+from sqlalchemy import select, update, delete, literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mitsuki.utils import option
-from mitsuki.lib.userdata import begin_session, AsDict
+from mitsuki.lib.userdata import begin_session, AsDict, sa_insert as insert
 from mitsuki.lib.commands import CustomID
 from mitsuki.core.settings import get_setting, Settings
+
 import mitsuki.models.gacha as models
 
 
@@ -82,8 +83,8 @@ class GachaUser(AsDict):
     user_stmt = insert(models.GachaUser).values(user=user, amount=first_time_shards, last_daily=_now, first_daily=_now)
     user_pity_stmt = insert(models.UserPity).from_select(["user", "rarity", "count"], pity_query)
 
-    await session.scalar(user_stmt)
-    await session.scalar(user_pity_stmt)
+    await session.execute(user_stmt)
+    await session.execute(user_pity_stmt)
     return cls(user=user, amount=first_time_shards, last_daily=_now, first_daily=_now, claimed_first_daily=True)
 
 
@@ -213,7 +214,7 @@ class GachaUser(AsDict):
     Args:
       session: Current database session
       user: Snowflake or instance of the user claiming daily
-      now: 'Now' time to determine if the daily is claimable
+      now: Reference time to determine ability to claim, or current time if unset
 
     Returns:
       Instance of gacha user

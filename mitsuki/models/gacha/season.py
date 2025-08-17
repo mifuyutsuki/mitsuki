@@ -31,5 +31,7 @@ class GachaSeason(Base):
   """ID of the collection containing rate-up cards of this season."""
   pickup_rate: Mapped[float]
   """Rate of rolling this season's rate-up cards over the general pool, out of 1.0."""
+  end_time: Mapped[float]
+  """Time this season ends and the next one begins, in timestamp format."""
   description: Mapped[Optional[str]]
   """Description of this season."""
