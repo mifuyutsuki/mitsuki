@@ -72,21 +72,29 @@ class Card(AsDict):
     }
     if not exclude_id:
       keys.add("id")
-    return {k: v for k, v in self.asdict() if k in keys}
+    return {k: v for k, v in self.asdict().items() if k in keys}
 
 
   @classmethod
-  async def fetch(cls, id: str) -> Optional[Self]:
+  async def fetch(cls, id: str, *, unobtained: bool = False, private: bool = False) -> Optional[Self]:
     """
     Fetch a card by its ID.
 
     Args:
       id: Card ID
-    
+      unobtained: Whether to return unobtained cards (cards without a roll entry)
+      private: Whether to return non-public cards (cards with unlisted=True)
+
     Returns:
       Card instance, or `None` if a card with given ID doesn't exist
     """
-    query = select(models.Card).where(models.Card.id == id)
+    query = select(models.Card)
+    if not unobtained:
+      roll_query = select(models.GachaRoll.card.distinct().label("card")).subquery()
+      query = query.join(roll_query, roll_query.c.card == models.Card.id)
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+    query = query.where(models.Card.id == id)
 
     async with begin_session() as session:
       if result := await session.scalar(query):
@@ -94,15 +102,52 @@ class Card(AsDict):
 
 
   @classmethod
-  async def fetch_all(cls) -> list[Self]:
+  async def fetch_multiple(cls, ids: list[str], *, unobtained: bool = False, private: bool = False) -> list[Self]:
+    """
+    Fetch cards by the given list of IDs.
+
+    The returned list follows the order they are listed in ids.
+
+    Args:
+      ids: List of card IDs
+      unobtained: Whether to return unobtained cards (cards without a roll entry)
+      private: Whether to return non-public cards (cards with unlisted=True)
+    """
+    if len(ids) == 0:
+      return []
+
+    query = select(models.Card)
+    if not unobtained:
+      roll_query = select(models.GachaRoll.card.distinct().label("card")).subquery()
+      query = query.join(roll_query, roll_query.c.card == models.Card.id)
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+    query = query.where(models.Card.id.in_(ids))
+
+    async with begin_session() as session:
+      results = session.scalars(query)
+
+    # Sort the result list to match the order of `ids`
+    return sorted([cls(**r.asdict()) for r in results], key=lambda r: ids.index(r.id))
+
+
+  @classmethod
+  async def fetch_all(cls, *, unobtained: bool = False, private: bool = False) -> list[Self]:
     """
     Fetch all cards.
+
+    Args:
+      private: Whether to return non-public cards (cards with no roll entry or with unlisted=True)
 
     Returns:
       List of card instances
     """
-
     query = select(models.Card)
+    if not unobtained:
+      roll_query = select(models.GachaRoll.card.distinct().label("card")).subquery()
+      query = query.join(roll_query, roll_query.c.card == models.Card.id)
+    if not private:
+      query = query.where(models.Card.unlisted == False)
 
     async with begin_session() as session:
       results = await session.scalars(query)
@@ -201,7 +246,8 @@ class Card(AsDict):
       query = query.where(models.Card.unlisted == False)
 
     async with begin_session() as session:
-      return [cls(**r.asdict()) for r in await session.scalars(query)]
+      results = await session.scalars(query)
+    return [cls(**r.asdict()) for r in results]
 
 
   @staticmethod
