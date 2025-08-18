@@ -13,7 +13,8 @@ from mitsuki import settings
 from mitsuki.lib import userdata
 
 # Required to load in schema definitions
-from mitsuki.modules import gacha, schedule
+from mitsuki.modules import schedule
+from mitsuki.models import gacha
 
 
 async def test_db_empty_init():

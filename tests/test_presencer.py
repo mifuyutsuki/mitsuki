@@ -16,7 +16,8 @@ from mitsuki.lib import checks
 from mitsuki.lib.userdata import begin_session
 
 # Required to load in schema definitions
-from mitsuki.modules import gacha, schedule, system
+from mitsuki.modules import schedule, system
+from mitsuki.models import gacha
 
 from mitsuki.modules.system import presencer, api
 
