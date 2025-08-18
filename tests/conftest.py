@@ -17,6 +17,10 @@ import mitsuki
 from mitsuki import settings, modules
 from mitsuki.lib.userdata import begin_session, db_migrate, db_init
 
+# Required to load in schema definitions
+from mitsuki.modules import schedule, system
+from mitsuki.models import gacha
+
 
 @pytest.fixture(autouse=True)
 def init_empty():

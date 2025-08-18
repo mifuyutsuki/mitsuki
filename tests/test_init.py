@@ -13,7 +13,7 @@ from mitsuki import settings
 from mitsuki.lib import userdata
 
 # Required to load in schema definitions
-from mitsuki.modules import schedule
+from mitsuki.modules import schedule, system
 from mitsuki.models import gacha
 
 
