@@ -57,3 +57,30 @@ async def test_daily_claimed(init_db, mock_user, gacha_user: gacha.GachaUser):
   assert user_after.amount == user_before.amount
   assert not user_after.claimed_daily
   assert not user_after.claimed_first_daily
+
+
+async def test_daily_burst(init_db, mock_user, gacha_user: gacha.GachaUser):
+  # last reset < current time (now - 1d) < last user daily (now)
+  user_before = await gacha.GachaUser.fetch(mock_user.id)
+  assert user_before is not None
+
+  # First call
+  now = ipy.Timestamp.now() + timedelta(days=1, minutes=1)
+  async with begin_session() as session:
+    user_after = await gacha.GachaUser.daily(session, mock_user.id, now=now)
+
+  assert user_after.amount > user_before.amount
+  assert user_after.claimed_daily
+  assert not user_after.claimed_first_daily
+
+  # Subsequent calls
+  for s in range(5):
+    user_before = user_after
+
+    now += timedelta(seconds=s)
+    async with begin_session() as session:
+      user_after = await gacha.GachaUser.daily(session, mock_user.id, now=now)
+
+    assert user_after.amount == user_before.amount
+    assert not user_after.claimed_daily
+    assert not user_after.claimed_first_daily
