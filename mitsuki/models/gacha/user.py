@@ -23,7 +23,7 @@ class GachaUser(Base):
 
   __tablename__ = "gacha_currency"
 
-  user: Mapped[BigInteger] = mapped_column(primary_key=True)
+  user: Mapped[int] = mapped_column(BigInteger, primary_key=True)
   """Gacha user ID."""
   amount: Mapped[int]
   """Shards owned by this user."""

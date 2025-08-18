@@ -23,7 +23,7 @@ class UserPity(Base):
 
   __tablename__ = "gacha_pity2"
 
-  user: Mapped[BigInteger] = mapped_column(primary_key=True)
+  user: Mapped[int] = mapped_column(BigInteger, primary_key=True)
   """Gacha user ID."""
   rarity: Mapped[int] = mapped_column(primary_key=True)
   """Card rarity for the pity counter."""

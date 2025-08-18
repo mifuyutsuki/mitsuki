@@ -23,7 +23,7 @@ class UserCard(Base):
 
   __tablename__ = "gacha_inventory"
 
-  user: Mapped[BigInteger] = mapped_column(primary_key=True)
+  user: Mapped[int] = mapped_column(BigInteger, primary_key=True)
   """Gacha user ID."""
   card: Mapped[str] = mapped_column(primary_key=True)
   """Card ID."""

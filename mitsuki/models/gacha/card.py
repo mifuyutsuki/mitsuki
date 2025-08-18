@@ -43,5 +43,5 @@ class Card(Base):
   unlisted: Mapped[bool] = mapped_column(server_default=text("FALSE"))
   """Whether the card is neither rollable nor viewable, i.e. 'deleted'."""
 
-  convert_to: Mapped[Optional[JSON]]
+  convert_to: Mapped[Optional[dict]] = mapped_column(JSON)
   """Items that duplicates of this card convert to, if set, in the format {id: amount, ...}."""

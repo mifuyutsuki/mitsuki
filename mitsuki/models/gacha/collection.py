@@ -37,7 +37,7 @@ class GachaCollection(Base):
   show_counts: Mapped[bool] = mapped_column(server_default=text("FALSE"))
   """Whether to show total cards in this collection, per rarity and including unobtained, if discoverable is set."""
 
-  roll_cost: Mapped[Optional[JSON]]
+  roll_cost: Mapped[Optional[dict]] = mapped_column(JSON)
   """Items needed to roll once in this collection, if rollable is set, in format {item_id: amount, ...}."""
 
 

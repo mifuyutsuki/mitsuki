@@ -25,7 +25,7 @@ class GachaRoll(Base):
 
   id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
   """ID of this roll."""
-  user: Mapped[BigInteger]
+  user: Mapped[int] = mapped_column(BigInteger)
   """ID of user who rolled this card."""
   card: Mapped[str]
   """ID of card being rolled."""
