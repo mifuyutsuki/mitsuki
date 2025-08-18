@@ -20,7 +20,7 @@ import sqlalchemy as sa
 from sqlalchemy import select, update, delete, literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mitsuki.utils import option
+from mitsuki.utils import option, ratio, process_text
 from mitsuki.lib.userdata import begin_session, AsDict, sa_insert as insert
 from mitsuki.lib.commands import CustomID
 from mitsuki.core.settings import get_setting, Settings
@@ -378,6 +378,8 @@ class CardCache:
   random: SystemRandom = attrs.field(factory=SystemRandom)
   """Randomizer instance for rolls."""
 
+  card_names: dict[str, str] = attrs.field(factory=dict)
+  """Gacha card names in the roster, used for card search."""
   rarities: dict[int, "CardRarity"] = attrs.field(factory=dict)
   """Gacha card rarity settings."""
   season: Optional["GachaSeason"] = attrs.field(default=None)
@@ -423,7 +425,9 @@ class CardCache:
     Returns:
       Card cache instance
     """
-    return await cls().sync(now=now)
+    result = cls()
+    await result.sync(now=now)
+    return result
 
 
   async def sync(self, *, now: Optional[ipy.Timestamp] = None) -> None:
@@ -444,14 +448,18 @@ class CardCache:
 
     # Note: To account for rosters/collections with cardless rarities,
     # these rarity rates are not the final one used in calculation.
-    temp_rarity_rates = {r.rarity: r.rate for r in temp_rarities.values()}
+    temp_rarity_rates = {r.rarity: r.rate for r in temp_rarities}
+    temp_cards = {}
 
     temp_roster_cards = {r.rarity: [] for r in temp_rarities}
     for card in await Card.fetch_all_standard():
+      temp_cards[card.id] = card.name
       temp_roster_cards[card.rarity].append(card.id)
 
     temp_season_cards = {r.rarity: [] for r in temp_rarities}
     for card in await Card.fetch_all_season(now=now):
+      if card.id not in temp_cards:
+        temp_cards[card.id] = card.name
       temp_season_cards[card.rarity].append(card.id)
 
     self.rarities     = temp_rarities
@@ -459,6 +467,39 @@ class CardCache:
     self.rarity_rates = temp_rarity_rates
     self.roster_cards = temp_roster_cards
     self.season_cards = temp_season_cards
+
+
+  @classmethod
+  async def search(cls, key: str, *, private: bool = False, limit: Optional[int] = None):
+    """
+    Search a card by name.
+
+    Args:
+      private: Whether to show non-public cards (cards with unlisted=True)
+    
+    Returns:
+      List of card instances
+    """
+    global _cache
+    if not _cache:
+      _cache = await cls.init()
+    cache = _cache
+
+    if private:
+      card_names = {c.id: c.name for c in await Card.fetch_all(unobtained=True, private=True)}
+    else:
+      card_names = cache.card_names
+
+    scores = [(id, ratio(key, name, processor=process_text)) for id, name in card_names.items()]
+    scores.sort(key=lambda score: score[1], reverse=True)
+
+    # Primary score cutoff
+    scores = [(id, score) for id, score in scores if score > 45.0]
+    if limit:
+      scores = scores[:limit]
+
+    ids = [id for id, _ in scores]
+    return await Card.fetch_multiple(ids, unobtained=private, private=private)
 
 
   @classmethod
