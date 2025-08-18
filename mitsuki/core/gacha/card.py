@@ -59,6 +59,8 @@ class Card(AsDict):
   convert_to: dict[str, int] = attrs.field(factory=dict)
   """Items that duplicates of this card convert to, if set, in the format {id: amount, ...}."""
 
+  roll_time: Optional[ipy.Timestamp] = attrs.field(default=None)
+  """Time when this card was rolled, only set if obtained from a card roll."""
   season_pickup: bool = attrs.field(default=False)
   """Whether this card is a season pickup, only set if obtained from a card roll."""
   collection_pickup: bool = attrs.field(default=False)
@@ -371,6 +373,52 @@ class Card(AsDict):
     return await session.scalar(stmt) is not None
 
 
+  async def give_to(
+    self, session: AsyncSession, user: Union[ipy.BaseUser, ipy.Snowflake], amount: int = 1, *, rolled: bool = False
+  ):
+    """
+    Grant a number of this card to the target user.
+
+    Args:
+      user: Instance or snowflake of the target gacha user
+      amount: Number of this card to give
+      rolled: Whether this card is rolled, and to update user data accordingly
+    """
+    if isinstance(user, ipy.BaseUser):
+      user = user.id
+    if amount < 1:
+      raise ValueError(f"Invalid card give amount of less than 1 ('{amount}')")
+    if rolled and self.roll_time is None:
+      raise ValueError("Instance is missing card roll time, which is required for granting rolled cards")
+
+    inventory_stmt = (
+      insert(models.UserCard)
+      .values(user=user, card=self.id, count=amount)
+      .on_conflict_do_update(
+        index_elements=["user", "card"],
+        set_={"count": models.UserCard.__table__.c.count + amount}
+      )
+    )
+    pity_increment_stmt = (
+      update(models.UserPity).where(models.UserPity.user == user).values(count=models.UserPity.__table__.c.count + 1)
+    )
+    pity_reset_stmt = (
+      update(models.UserPity)
+      .where(models.UserPity.user == user)
+      .where(models.UserPity.rarity == self.rarity)
+      .values(count=0)
+    )
+    roll_entry_stmt = (
+      insert(models.GachaRoll).values(user=user, card=self.id, time=self.roll_time)
+    )
+
+    await session.execute(inventory_stmt)
+    if rolled:
+      await session.execute(pity_increment_stmt)
+      await session.execute(pity_reset_stmt)
+      await session.execute(roll_entry_stmt)
+
+
 @attrs.define(kw_only=True)
 class CardCache:
   """Gacha card cache, primarily used for rolls."""
@@ -512,18 +560,19 @@ class CardCache:
 
     Args:
       min_rarity: Lowest card rarity to obtain
-      now: Reference time to determine the current season, or current time if unset
+      now: Reference time to determine roll time and current season, or current time if unset
 
     Returns:
       Card instance with additional roll-related data set
     """
     global _cache
+    now = now or ipy.Timestamp.now()
+
     if not _cache:
       _cache = await cls.init()
     cache = _cache
 
     # Is season still current?
-    now = now or ipy.Timestamp.now()
     if cache.season_ends and now >= cache.season_ends:
       await cache.sync(now=now)
 
@@ -541,6 +590,7 @@ class CardCache:
 
     # Roll
     if result := await cls._roll(cards, min_rarity=min_rarity):
+      result.roll_time = now
       result.season_pickup = season_pickup
       return result
     else:
@@ -548,18 +598,23 @@ class CardCache:
 
 
   @classmethod
-  async def roll_collection(cls, collection_id: str, *, min_rarity: Optional[int] = None):
+  async def roll_collection(
+    cls, collection_id: str, *, min_rarity: Optional[int] = None, now: Optional[ipy.Timestamp] = None
+  ):
     """
     Roll a card from a collection.
 
     Args:
       collection_id: Card collection ID
       min_rarity: Lowest card rarity to obtain
+      now: Reference time to determine roll time, or current time if unset
 
     Returns:
       Card instance with additional roll-related data set
     """
     global _cache
+    now = now or ipy.Timestamp.now()
+
     if not _cache:
       _cache = await cls.init()
 
@@ -568,6 +623,7 @@ class CardCache:
       raise RuntimeError("Failed to roll a card - collection has no cards")
 
     if result := await cls._roll(cards, min_rarity=min_rarity):
+      result.roll_time = now
       result.collection_pickup = True
       return result
     else:
