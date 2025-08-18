@@ -85,7 +85,10 @@ class GachaUser(AsDict):
 
     await session.execute(user_stmt)
     await session.execute(user_pity_stmt)
-    return cls(user=user, amount=first_time_shards, last_daily=_now, first_daily=_now, claimed_first_daily=True)
+    return cls(
+      user=user, amount=first_time_shards, last_daily=_now, first_daily=_now,
+      claimed_daily=True, claimed_first_daily=True
+    )
 
 
   @classmethod
@@ -219,11 +222,12 @@ class GachaUser(AsDict):
     Returns:
       Instance of gacha user
     """
-    now = now or ipy.Timestamp.now(tz=timezone.utc)
+    now = now or ipy.Timestamp.now()
+
     if isinstance(user, ipy.BaseUser):
       user = user.id
 
-    gacha_user = await cls.fetch(session, user)
+    gacha_user = await cls.fetch(user)
     if not gacha_user:
       return await cls.create(session, user, now=now)
 
@@ -231,9 +235,10 @@ class GachaUser(AsDict):
 
     daily_reset = await get_setting(Settings.DailyResetTime)
     daily_reset_h, daily_reset_m = daily_reset.split(":")
+
     last_reset = now.replace(hour=int(daily_reset_h), minute=int(daily_reset_m), second=0, microsecond=0)
 
-    if last_reset <= now:
+    if gacha_user.last_daily and last_reset < gacha_user.last_daily:
       return gacha_user
 
     # -----
