@@ -98,7 +98,7 @@ class Card(AsDict):
 
     async with begin_session() as session:
       if result := await session.scalar(query):
-        return cls(**result)
+        return cls(**result.asdict())
 
 
   @classmethod
@@ -594,4 +594,4 @@ class CardCache:
         card_rarity -= 1
         continue
 
-    return await Card.fetch(card_get)
+    return await Card.fetch(card_get, unobtained=True, private=False)
