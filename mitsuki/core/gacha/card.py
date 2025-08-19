@@ -367,7 +367,7 @@ class Card(AsDict):
     stmt = (
       update(models.Card)
       .where(models.Card.id == self.id)
-      .values(**self.asdict(db_only=True, exclude_id=True))
+      .values(**self.db_dict(exclude_id=True))
       .returning(models.Card.id)
     )
     return await session.scalar(stmt) is not None
