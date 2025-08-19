@@ -19,10 +19,26 @@ from mitsuki.lib.userdata import begin_session
 from mitsuki.core import gacha
 
 
-async def test_new_user(init_db, mock_user, gacha_user: gacha.GachaUser):
+async def test_fetch_user(init_db, mock_user, gacha_user: gacha.GachaUser):
   created = gacha_user
   fetched = await gacha.GachaUser.fetch(mock_user.id)
 
+  assert fetched is not None
+  assert fetched.user == created.user
+  assert fetched.first_daily == fetched.last_daily
+  assert fetched.amount > 0
+
+  # Note: The gacha_user fixture instance is created using GachaUser.daily(),
+  # and thus includes daily claim information.
+  assert created.claimed_first_daily
+  assert created.claimed_daily
+
+
+async def test_fetch_profile(init_db, mock_user, gacha_user: gacha.GachaUser):
+  created = gacha_user
+  fetched = await gacha.GachaUser.fetch_profile(mock_user.id)
+
+  assert fetched is not None
   assert fetched.user == created.user
   assert fetched.first_daily == fetched.last_daily
   assert fetched.amount > 0
