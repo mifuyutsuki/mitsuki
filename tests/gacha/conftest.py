@@ -35,10 +35,13 @@ async def card_rarities():
 
 
 @pytest_asyncio.fixture()
-async def cards(card_rarities: list[gacha.CardRarity]):
+def card_data():
   with open("exampleassets/gacha_roster.yaml", "r") as f:
-    card_data: dict = yaml.safe_load(f)
+    return yaml.safe_load(f)
 
+
+@pytest_asyncio.fixture()
+async def cards(card_rarities: list[gacha.CardRarity], card_data: dict):
   cards = [
     gacha.Card(id=id, name=card["name"], rarity=card["rarity"], type=card["type"], series=card["series"])
     for id, card in card_data.items()
