@@ -23,9 +23,9 @@ from mitsuki.core import gacha
 async def card_rarities():
   rarities = [
     gacha.CardRarity(rarity=1, rate=0.615, dupe_shards=75, color=0, pity=None, emoji=None),
-    gacha.CardRarity(rarity=2, rate=0.315, dupe_shards=120, color=0, pity=None, emoji=None),
-    gacha.CardRarity(rarity=3, rate=0.055, dupe_shards=300, color=0, pity=None, emoji=None),
-    gacha.CardRarity(rarity=4, rate=0.015, dupe_shards=600, color=0, pity=None, emoji=None),
+    gacha.CardRarity(rarity=2, rate=0.315, dupe_shards=120, color=0, pity=5, emoji=None),
+    gacha.CardRarity(rarity=3, rate=0.055, dupe_shards=300, color=0, pity=25, emoji=None),
+    gacha.CardRarity(rarity=4, rate=0.015, dupe_shards=600, color=0, pity=75, emoji=None),
   ]
   async with begin_session() as session:
     for rarity in rarities:
