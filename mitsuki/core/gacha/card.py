@@ -380,8 +380,9 @@ class Card(AsDict):
     Grant a number of this card to the target user.
 
     Args:
+      session: Current database session
       user: Instance or snowflake of the target gacha user
-      amount: Number of this card to give
+      amount: Number of this card to give, default 1
       rolled: Whether this card is rolled, and to update user data accordingly
     """
     if isinstance(user, ipy.BaseUser):
@@ -408,12 +409,12 @@ class Card(AsDict):
       .where(models.UserPity.rarity == self.rarity)
       .values(count=0)
     )
-    roll_entry_stmt = (
-      insert(models.GachaRoll).values(user=user, card=self.id, time=self.roll_time)
-    )
 
     await session.execute(inventory_stmt)
     if rolled:
+      roll_entry_stmt = (
+        insert(models.GachaRoll).values(user=user, card=self.id, time=self.roll_time.timestamp())
+      )
       await session.execute(pity_increment_stmt)
       await session.execute(pity_reset_stmt)
       await session.execute(roll_entry_stmt)
