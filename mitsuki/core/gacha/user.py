@@ -175,14 +175,14 @@ class GachaUser(AsDict):
       select(
         models.GachaUser,
         subquery.c.rarity,
-        subquery.c.obtained,
-        subquery.c.rolled,
+        sa.func.coalesce(subquery.c.obtained, 0).label("obtained"),
+        sa.func.coalesce(subquery.c.rolled, 0).label("rolled"),
         models.UserPity.count.label("pity"),
       )
-      .join(subquery, subquery.c.user == models.GachaUser.user)
+      .join(subquery, subquery.c.user == models.GachaUser.user, isouter=True)
       .join(models.UserPity,
-        (models.UserPity.user == subquery.c.user)
-        & (models.UserPity.rarity == subquery.c.rarity)
+        (models.UserPity.user == subquery.c.user) & (models.UserPity.rarity == subquery.c.rarity),
+        isouter=True
       )
       .where(models.GachaUser.user == user)
     )
