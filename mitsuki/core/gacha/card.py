@@ -127,7 +127,7 @@ class Card(AsDict):
     query = query.where(models.Card.id.in_(ids))
 
     async with begin_session() as session:
-      results = session.scalars(query)
+      results = await session.scalars(query)
 
     # Sort the result list to match the order of `ids`
     return sorted([cls(**r.asdict()) for r in results], key=lambda r: ids.index(r.id))
@@ -464,7 +464,31 @@ class CardCache:
 
 
   @classmethod
-  async def init(cls, *, now: Optional[ipy.Timestamp] = None) -> Self:
+  async def get_cache(cls) -> Self:
+    global _cache
+    if not _cache:
+      _cache = await cls.create()
+    return _cache
+
+
+  @classmethod
+  async def create(cls, *, now: Optional[ipy.Timestamp] = None) -> Self:
+    """
+    Create the card cache.
+
+    Args:
+      now: Reference time to determine the current season, or current time if unset
+
+    Returns:
+      Card cache instance
+    """
+    cache = cls()
+    await cache._sync(now=now)
+    return cache
+
+
+  @classmethod
+  async def init(cls, *, now: Optional[ipy.Timestamp] = None) -> None:
     """
     Initialize the card cache.
 
@@ -474,12 +498,12 @@ class CardCache:
     Returns:
       Card cache instance
     """
-    result = cls()
-    await result.sync(now=now)
-    return result
+    global _cache
+    _cache = await cls.create(now=now)
 
 
-  async def sync(self, *, now: Optional[ipy.Timestamp] = None) -> None:
+  @classmethod
+  async def sync(cls, *, now: Optional[ipy.Timestamp] = None) -> None:
     """
     Synchronize the card cache with the database.
 
@@ -489,6 +513,11 @@ class CardCache:
     Returns:
       Card cache instance
     """
+    cache = await cls.get_cache()
+    await cache._sync(now=now)
+
+
+  async def _sync(self, *, now: Optional[ipy.Timestamp] = None) -> None:
     now = now or ipy.Timestamp.now()
 
     # Store fetch results in temp vars to avoid incomplete syncing
@@ -519,6 +548,18 @@ class CardCache:
 
 
   @classmethod
+  async def place_card(cls, card: "Card"):
+    """
+    Register the given card, making it searchable by CardCache.search().
+
+    Args:
+      card: Card instance
+    """
+    cache = await cls.get_cache()
+    cache.card_names[card.id] = card.name
+
+
+  @classmethod
   async def search(cls, key: str, *, private: bool = False, limit: Optional[int] = None):
     """
     Search a card by name.
@@ -529,10 +570,7 @@ class CardCache:
     Returns:
       List of card instances
     """
-    global _cache
-    if not _cache:
-      _cache = await cls.init()
-    cache = _cache
+    cache = await cls.get_cache()
 
     if private:
       card_names = {c.id: c.name for c in await Card.fetch_all(unobtained=True, private=True)}
@@ -566,12 +604,8 @@ class CardCache:
     Returns:
       Card instance with additional roll-related data set
     """
-    global _cache
-    now = now or ipy.Timestamp.now()
-
-    if not _cache:
-      _cache = await cls.init()
-    cache = _cache
+    now   = now or ipy.Timestamp.now()
+    cache = await cls.get_cache()
 
     # Is season still current?
     if cache.season_ends and now >= cache.season_ends:
@@ -613,11 +647,8 @@ class CardCache:
     Returns:
       Card instance with additional roll-related data set
     """
-    global _cache
     now = now or ipy.Timestamp.now()
-
-    if not _cache:
-      _cache = await cls.init()
+    _   = await cls.get_cache()
 
     cards = await Card.fetch_all_collection_roll(collection_id, private=False)
     if len(cards) == 0:
@@ -633,10 +664,7 @@ class CardCache:
 
   @classmethod
   async def _roll(cls, choices: dict[int, list[str]], *, min_rarity: Optional[int] = None) -> Optional["Card"]:
-    global _cache
-    if not _cache:
-      _cache = await cls.init()
-    cache = _cache
+    cache = await cls.get_cache()
 
     # Rates are normalized; only rates with corresponding card choices are
     # considered. As an example:
