@@ -59,11 +59,11 @@ class Card(AsDict):
   convert_to: dict[str, int] = attrs.field(factory=dict)
   """Items that duplicates of this card convert to, if set, in the format {id: amount, ...}."""
 
-  roll_time: Optional[ipy.Timestamp] = attrs.field(default=None)
+  roll_time: Optional[ipy.Timestamp] = attrs.field(default=None, eq=False)
   """Time when this card was rolled, only set if obtained from a card roll."""
-  season_pickup: bool = attrs.field(default=False)
+  season_pickup: bool = attrs.field(default=False, eq=False)
   """Whether this card is a season pickup, only set if obtained from a card roll."""
-  collection_pickup: bool = attrs.field(default=False)
+  collection_pickup: bool = attrs.field(default=False, eq=False)
   """Whether this card is obtained from a collection ticket, only set if obtained from a card roll."""
 
 
