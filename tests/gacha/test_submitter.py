@@ -52,15 +52,24 @@ async def test_roster_add(init_db, cards: list[gacha.Card], card_data: dict):
     "c00.01.1": {"name": "Mitsuki", "rarity": 1, "type": "Character", "series": "Mitsuki"}
   }
   submitter = await CardSubmitter.from_rosc2y_yaml(card_data | other_card_data)
-
   assert submitter.add_count == len(other_card_data)
   assert submitter.edit_count == 0
   assert submitter.delist_count == 0
   assert submitter.original_count == len(cards)
   assert sum(submitter.error_counts.values()) == 0
 
+  # -----
+
   fetched_submitter = CardSubmitter.fetch(submitter.id)
   assert fetched_submitter == submitter
+
+  async with begin_session() as session:
+    await fetched_submitter.execute(session)
+
+  # -----
+
+  new_cards = await gacha.Card.fetch_all(unobtained=True, private=False)
+  assert len(new_cards) == len(cards) + len(other_card_data)
 
 
 async def test_roster_edit(init_db, cards: list[gacha.Card], card_data: dict):
@@ -77,8 +86,18 @@ async def test_roster_edit(init_db, cards: list[gacha.Card], card_data: dict):
   assert submitter.original_count == len(cards)
   assert sum(submitter.error_counts.values()) == 0
 
+  # -----
+
   fetched_submitter = CardSubmitter.fetch(submitter.id)
   assert fetched_submitter == submitter
+
+  async with begin_session() as session:
+    await fetched_submitter.execute(session)
+
+  # -----
+
+  new_cards = await gacha.Card.fetch_all(unobtained=True, private=False)
+  assert len(new_cards) == len(cards)
 
 
 async def test_roster_overwrite(init_db, cards: list[gacha.Card], card_data: dict):
@@ -93,5 +112,15 @@ async def test_roster_overwrite(init_db, cards: list[gacha.Card], card_data: dic
   assert submitter.original_count == len(cards)
   assert sum(submitter.error_counts.values()) == 0
 
+  # -----
+
   fetched_submitter = CardSubmitter.fetch(submitter.id)
   assert fetched_submitter == submitter
+
+  async with begin_session() as session:
+    await fetched_submitter.execute(session)
+
+  # -----
+
+  new_cards = await gacha.Card.fetch_all(unobtained=True, private=False)
+  assert len(new_cards) == len(other_card_data)
