@@ -40,7 +40,7 @@ class UserPity(AsDict):
 
 
   @classmethod
-  async def fetch(cls, session: AsyncSession, user: Union[ipy.BaseUser, ipy.Snowflake]) -> list[Self]:
+  async def fetch(cls, user: Union[ipy.BaseUser, ipy.Snowflake]) -> list[Self]:
     """
     Fetch pity counters of a given gacha user.
 
@@ -62,7 +62,6 @@ class UserPity(AsDict):
       .where(models.CardRarity.pity > 1)
     )
 
-    results = await session.scalars(query)
-    if len(results) > 0:
-      return [cls(**r.asdict()) for r in results]
-    return []
+    async with begin_session() as session:
+      results = await session.scalars(query)
+    return [cls(**r.asdict()) for r in results]
