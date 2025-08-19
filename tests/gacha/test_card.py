@@ -43,5 +43,20 @@ async def test_roll(init_db, cards: list[gacha.Card]):
   card_ids = [card.id for card in cards]
 
   rolled = await gacha.CardCache.roll()
-
   assert rolled.id in card_ids
+
+
+async def test_roll_give(init_db, mock_user, cards: list[gacha.Card]):
+  card_ids = [card.id for card in cards]
+
+  rolls = await gacha.Card.fetch_all(unobtained=False)
+  assert len(rolls) == 0
+
+  rolled = await gacha.CardCache.roll()
+  assert rolled.id in card_ids
+
+  async with begin_session() as session:
+    await rolled.give_to(session, mock_user.id, rolled=True)
+
+  rolls = await gacha.Card.fetch_all(unobtained=False)
+  assert len(rolls) > 0
