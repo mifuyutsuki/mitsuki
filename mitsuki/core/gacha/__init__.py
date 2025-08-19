@@ -17,6 +17,7 @@ from .season import GachaSeason
 from .rarity import CardRarity
 from .card import Card, CardCache
 from .inventory import UserCard
+from .stats import CardStats
 
 __all__ = (
   "UserPity",
@@ -27,4 +28,5 @@ __all__ = (
   "Card",
   "CardCache",
   "UserCard",
+  "CardStats",
 )
