@@ -23,7 +23,8 @@ from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
 
 
-from .. import customids, api, commands
+from mitsuki.core.presences import Presence, get_presencer
+from mitsuki.modules.system import customids, commands
 
 
 class SystemPresences(libcmd.SelectionMixin, libcmd.ReaderCommand):
@@ -57,7 +58,7 @@ class SystemPresences(libcmd.SelectionMixin, libcmd.ReaderCommand):
     await self.check()
     await self.defer(ephemeral=True, edit_origin=self.has_origin, suppress_error=True)
 
-    presences = await api.Presence.fetch_all()
+    presences = await Presence.fetch_all()
     data = {
       "total_presences": len(presences),
       "cycle_time": settings.mitsuki.status_cycle,

@@ -14,7 +14,9 @@ import interactions as ipy
 from typing import Optional
 
 from mitsuki import init_event
-from . import commands, customids, presencer
+from mitsuki.core.presences import set_presencer, get_presencer
+
+from . import commands, customids
 
 import os
 import logging
@@ -38,8 +40,8 @@ class SystemModule(ipy.Extension):
   async def on_ready(self, event: ipy.events.Ready):
     await init_event.wait()
 
-    presencer.set_presencer(self.bot)
-    await presencer.presencer().init()
+    set_presencer(self.bot)
+    await get_presencer().init()
 
 
   # TODO: Make this module DM only (ContextType.BOT_DM)

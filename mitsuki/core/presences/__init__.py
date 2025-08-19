@@ -10,4 +10,12 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from .presences import Presence
+from .presence import Presence
+from .presencer import Presencer, get_presencer, set_presencer
+
+__all__ = (
+  "Presence",
+  "Presencer",
+  "get_presencer",
+  "set_presencer",
+)

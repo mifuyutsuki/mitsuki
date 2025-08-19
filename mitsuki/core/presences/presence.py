@@ -25,8 +25,7 @@ from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
 from mitsuki.lib.userdata import begin_session
 
-
-from .. import schema
+from mitsuki.models.presences import Presence as PresenceModel
 
 
 @attrs.define(kw_only=True)
@@ -42,7 +41,7 @@ class Presence(libcmd.AsDict):
 
   @classmethod
   async def fetch(cls, id: int):
-    statement = sa.select(schema.Presence).where(schema.Presence.id == id)
+    statement = sa.select(PresenceModel).where(PresenceModel.id == id)
 
     async with begin_session() as session:
       return await session.scalar(statement)
@@ -50,7 +49,7 @@ class Presence(libcmd.AsDict):
 
   @classmethod
   async def fetch_all(cls):
-    statement = sa.select(schema.Presence).order_by(schema.Presence.name)
+    statement = sa.select(PresenceModel).order_by(PresenceModel.name)
 
     async with begin_session() as session:
       results = (await session.scalars(statement)).all()
@@ -59,9 +58,9 @@ class Presence(libcmd.AsDict):
 
   @classmethod
   async def fetch_next(cls, prev: Optional["Presence"] = None):
-    statement = sa.select(schema.Presence)
+    statement = sa.select(PresenceModel)
     if prev and prev.id:
-      statement = statement.where(schema.Presence.id != prev.id)
+      statement = statement.where(PresenceModel.id != prev.id)
     statement = statement.order_by(sa.func.random()).limit(1)
 
     async with begin_session() as session:
@@ -73,24 +72,24 @@ class Presence(libcmd.AsDict):
 
   async def add(self, session: AsyncSession):
     """Add a new presence to the rotation."""
-    statement = sa.insert(schema.Presence).values(name=self.name).returning(schema.Presence.id)
+    statement = sa.insert(PresenceModel).values(name=self.name).returning(PresenceModel.id)
     self.id = await session.scalar(statement)
 
 
   async def edit(self, session: AsyncSession, name: str):
     """Edit an existing presence in the rotation."""
-    statement = sa.update(schema.Presence).where(schema.Presence.id == self.id).values(name=name)
+    statement = sa.update(PresenceModel).where(PresenceModel.id == self.id).values(name=name)
     await session.execute(statement)
 
 
   async def delete(self, session: AsyncSession):
     """Delete a presence out of the rotation."""
-    statement = sa.delete(schema.Presence).where(schema.Presence.id == self.id)
+    statement = sa.delete(PresenceModel).where(PresenceModel.id == self.id)
     await session.execute(statement)
     self.id = None
 
 
   @classmethod
   async def delete_id(cls, session: AsyncSession, id: int):
-    statement = sa.delete(schema.Presence).where(schema.Presence.id == id).returning(schema.Presence.name)
+    statement = sa.delete(PresenceModel).where(PresenceModel.id == id).returning(PresenceModel.name)
     return cls(name=await session.scalar(statement))

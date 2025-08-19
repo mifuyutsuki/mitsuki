@@ -10,8 +10,17 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from .presences import Presence
+from sqlalchemy import UniqueConstraint, text
+from sqlalchemy.types import String
+from sqlalchemy.orm import Mapped, mapped_column
+from rapidfuzz import fuzz
+from typing import Optional, List, Callable
 
-__all__ = (
-  "Presence",
-)
+from mitsuki.lib.userdata import Base
+
+
+class Presence(Base):
+  __tablename__ = "system_presences"
+
+  id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+  name: Mapped[str] = mapped_column(String)

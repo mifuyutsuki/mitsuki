@@ -24,7 +24,8 @@ from mitsuki.lib import checks as checks
 from mitsuki.lib.userdata import begin_session
 
 
-from .. import customids, api, presencer, commands
+from mitsuki.core.presences import Presence, get_presencer
+from mitsuki.modules.system import customids, commands
 
 
 class SystemPresencesDelete(libcmd.WriterCommand):
@@ -57,7 +58,7 @@ class SystemPresencesDelete(libcmd.WriterCommand):
     await self.check()
     await self.defer(ephemeral=True, edit_origin=self.has_origin, suppress_error=True)
 
-    presence = await api.Presence.fetch(presence_id)
+    presence = await Presence.fetch(presence_id)
     if not presence:
       raise liberr.ObjectNotFound("Presence")
 
@@ -73,7 +74,7 @@ class SystemPresencesDelete(libcmd.WriterCommand):
     await self.defer(ephemeral=True, edit_origin=self.has_origin, suppress_error=True)
 
     async with begin_session() as session:
-      _ = await api.Presence.delete_id(session, presence_id)
+      _ = await Presence.delete_id(session, presence_id)
 
-    await presencer.presencer().sync()
+    await get_presencer().sync()
     await commands.SystemPresences.create(self.ctx).run()

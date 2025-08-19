@@ -21,16 +21,16 @@ from mitsuki import settings
 from mitsuki.core.settings import Setting
 from mitsuki.lib.userdata import begin_session
 
-from . import api
+from mitsuki.core.presences import Presence
 
 
 @attrs.define()
 class Presencer:
   bot: ipy.Client                  = attrs.field()
-  presences: list[api.Presence]    = attrs.field(factory=list)
+  presences: list[Presence]    = attrs.field(factory=list)
   cycle_time: Optional[int]        = attrs.field(default=None)
   _task: Optional[ipy.Task]        = attrs.field(default=None)
-  _current: Optional[api.Presence] = attrs.field(default=None)
+  _current: Optional[Presence] = attrs.field(default=None)
   _random: random.Random           = attrs.field(default=random.Random())
 
 
@@ -39,7 +39,7 @@ class Presencer:
     return self._current
 
 
-  def get_next(self, prev: Optional[api.Presence] = None):
+  def get_next(self, prev: Optional[Presence] = None):
     if prev:
       ps = [p for p in self.presences if p.id != prev.id]
       if len(ps) == 0:
@@ -51,7 +51,7 @@ class Presencer:
   async def init(self):
     # TODO: use new settings system (requires settings management commands)
     self.cycle_time = self.cycle_time or settings.mitsuki.status_cycle
-    self.presences = await api.Presence.fetch_all()
+    self.presences = await Presence.fetch_all()
     self._current = None
 
     if len(self.presences) == 0:
@@ -89,7 +89,7 @@ class Presencer:
 
 
   async def sync(self):
-    self.presences = await api.Presence.fetch_all()
+    self.presences = await Presence.fetch_all()
 
     if len(self.presences) == 0:
       # Presences list is empty, stop rotation
@@ -114,7 +114,7 @@ def set_presencer(bot: ipy.Client, cycle_time: Optional[int] = None):
   _presencer = Presencer(bot, cycle_time=cycle_time)
 
 
-def presencer():
+def get_presencer():
   global _presencer
   if not _presencer:
     raise RuntimeError("Presencer is uninitialized")
