@@ -106,7 +106,11 @@ class CardSubmitter(BaseSubmitter):
         continue
 
       if card_data_id not in cards:
+        # If card_data says unlisted=True, don't add to db
+        if this_card.unlisted:
+          continue
         result.to_add.append(this_card)
+
       elif this_card != (existing_card := cards.pop(card_data_id)):
         # If equal, do nothing, but still pop the card from `cards`
         if existing_card.unlisted and not this_card.unlisted:
@@ -115,7 +119,10 @@ class CardSubmitter(BaseSubmitter):
           result.edit_count += 1
         result.to_edit.append(this_card)
 
-    result.to_delist.extend(cards.values())
+    for card in cards.values():
+      if not card.unlisted:
+        result.to_delist.append(card)
+
     result.save()
     return result
 
