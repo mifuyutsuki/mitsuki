@@ -546,12 +546,18 @@ class CardCache:
 
     Args:
       now: Reference time to determine the current season, or current time if unset
-
-    Returns:
-      Card cache instance
     """
     cache = await cls.get_cache()
     await cache._sync(now=now)
+
+
+  @classmethod
+  async def sync_search(cls) -> None:
+    """
+    Synchronize obtained cards in the card cache with the database.
+    """
+    cache = await cls.get_cache()
+    cache.card_names = {c.id: c.name for c in await Card.fetch_all(unobtained=False)}
 
 
   async def _sync(self, *, now: Optional[ipy.Timestamp] = None) -> None:
@@ -582,6 +588,7 @@ class CardCache:
     self.rarity_rates = temp_rarity_rates
     self.roster_cards = temp_roster_cards
     self.season_cards = temp_season_cards
+    self.card_names   = {c.id: c.name for c in await Card.fetch_all(unobtained=False)}
 
 
   @classmethod
