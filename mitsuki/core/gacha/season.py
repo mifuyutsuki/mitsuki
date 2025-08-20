@@ -81,7 +81,7 @@ class GachaSeason(AsDict):
     await session.execute(stmt)
 
 
-  async def add(self, session: AsyncSession) -> None:
+  async def delete(self, session: AsyncSession) -> None:
     """
     Delete this gacha season.
 
