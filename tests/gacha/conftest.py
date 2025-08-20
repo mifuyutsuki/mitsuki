@@ -3,6 +3,7 @@ import pytest_asyncio
 
 import os
 import asyncio
+import random
 from datetime import datetime, timedelta, timezone
 
 import sqlalchemy as sa
@@ -96,3 +97,28 @@ async def card_season_ended(card_collection: gacha.CardCollection):
   async with begin_session() as session:
     await season.add(session)
   return season
+
+
+@pytest.fixture()
+async def card_rolls(cards: list[gacha.Card], mock_user):
+  rand = random.Random(33550306)
+  random_time = lambda: (
+    ipy.Timestamp.now() - timedelta(
+      days=rand.randrange(1, 15), hours=rand.randrange(0, 23), minutes=rand.randrange(0, 59),
+      seconds=rand.randrange(0, 59), microseconds=rand.randrange(0, 999)
+    )
+  )
+
+  card_zero = await gacha.Card.fetch("c00.01.1", unobtained=True)
+  assert card_zero is not None
+
+  rolls = [card_zero.set_roll_time(random_time())]
+  for _ in range(24):
+    rolls.append(await gacha.CardCache.roll(now=random_time()))
+
+  async with begin_session() as session:
+    for roll in rolls:
+      await roll.give_to(session, mock_user.id, rolled=True)
+
+  await gacha.CardCache.sync_search()
+  return rolls

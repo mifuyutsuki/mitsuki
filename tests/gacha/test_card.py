@@ -19,47 +19,24 @@ from mitsuki.lib.userdata import begin_session
 from mitsuki.core import gacha
 
 
-async def test_rarities(init_db, card_rarities: list[gacha.CardRarity]):
+async def test_card_rarities(init_db, card_rarities: list[gacha.CardRarity]):
   created = card_rarities
   fetched = await gacha.CardRarity.fetch_all()
 
   assert len(fetched) == len(created)
 
 
-async def test_create(init_db, cards: list[gacha.Card]):
+async def test_card_create(init_db, cards: list[gacha.Card]):
   created = cards
   fetched = await gacha.Card.fetch_all(unobtained=True, private=True)
 
   assert len(fetched) == len(created)
 
 
-async def test_fetch_no_roll(init_db, cards: list[gacha.Card]):
+async def test_card_fetch_no_roll(init_db, cards: list[gacha.Card]):
   fetched = await gacha.Card.fetch_all()
 
   assert len(fetched) == 0
-
-
-async def test_roll(init_db, cards: list[gacha.Card]):
-  card_ids = [card.id for card in cards]
-
-  rolled = await gacha.CardCache.roll()
-  assert rolled.id in card_ids
-
-
-async def test_roll_give(init_db, mock_user, cards: list[gacha.Card]):
-  card_ids = [card.id for card in cards]
-
-  rolls = await gacha.Card.fetch_all(unobtained=False)
-  assert len(rolls) == 0
-
-  rolled = await gacha.CardCache.roll()
-  assert rolled.id in card_ids
-
-  async with begin_session() as session:
-    await rolled.give_to(session, mock_user.id, rolled=True)
-
-  rolls = await gacha.Card.fetch_all(unobtained=False)
-  assert len(rolls) > 0
 
 
 async def test_user_card(init_db, mock_user, cards: list[gacha.Card]):
@@ -89,20 +66,19 @@ async def test_card_stats(init_db, mock_user, cards: list[gacha.Card]):
   assert card.first_rolled_by == card.last_rolled_by == mock_user.id
 
 
-async def test_search_no_rolls(init_db, mock_user, cards: list[gacha.Card]):
-  card = cards[0]
+async def test_card_search_no_rolls(init_db, mock_user, cards: list[gacha.Card]):
+  card = await gacha.Card.fetch("c00.01.1", unobtained=True)
+  assert card is not None
 
   results = await gacha.CardCache.search(card.name)
   assert len(results) == 0
 
 
-async def test_search_exact_match(init_db, mock_user, cards: list[gacha.Card]):
+async def test_card_search_exact_match(init_db, mock_user, card_rolls: list[gacha.Card]):
   # TODO: fixture containing example rolls
   # c00.01.1: Mitsuki-616
   card = await gacha.Card.fetch("c00.01.1", unobtained=True)
-  async with begin_session() as session:
-    await card.set_roll_time().give_to(session, mock_user.id, rolled=True)
-  await gacha.CardCache.place_card(card)
+  assert card is not None
 
   results = await gacha.CardCache.search(card.name)
   assert len(results) > 0
@@ -111,13 +87,11 @@ async def test_search_exact_match(init_db, mock_user, cards: list[gacha.Card]):
   assert top_result.id == card.id
 
 
-async def test_search_partial_match(init_db, mock_user, cards: list[gacha.Card]):
+async def test_card_search_partial_match(init_db, mock_user, card_rolls: list[gacha.Card]):
   # TODO: fixture containing example rolls
   # c00.01.1: Mitsuki-616
   card = await gacha.Card.fetch("c00.01.1", unobtained=True)
-  async with begin_session() as session:
-    await card.set_roll_time().give_to(session, mock_user.id, rolled=True)
-  await gacha.CardCache.place_card(card)
+  assert card is not None
 
   results = await gacha.CardCache.search("616")
   assert len(results) > 0
@@ -126,7 +100,7 @@ async def test_search_partial_match(init_db, mock_user, cards: list[gacha.Card])
   assert top_result.id == card.id
 
 
-async def test_search_grep_id(init_db, cards: list[gacha.Card]):
+async def test_card_search_grep_id(init_db, cards: list[gacha.Card]):
   mitsuki_cards = [card for card in cards if card.name.startswith("Mitsuki")]
   results = await gacha.Card.grep_id(r"c00\..*", private=False)
 
