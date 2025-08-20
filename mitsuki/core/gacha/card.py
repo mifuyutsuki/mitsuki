@@ -12,7 +12,7 @@
 
 from typing import Optional, Any, Union, Self
 from datetime import timezone
-from random import SystemRandom
+from random import Random, SystemRandom
 
 import attrs
 import interactions as ipy
@@ -461,7 +461,7 @@ class Card(AsDict):
 class CardCache:
   """Gacha card cache, primarily used for rolls."""
 
-  random: SystemRandom = attrs.field(factory=SystemRandom)
+  random: Random = attrs.field(factory=SystemRandom)
   """Randomizer instance for rolls."""
 
   card_names: dict[str, str] = attrs.field(factory=dict)
@@ -634,7 +634,13 @@ class CardCache:
 
 
   @classmethod
-  async def roll(cls, *, min_rarity: Optional[int] = None, now: Optional[ipy.Timestamp] = None):
+  async def roll(
+    cls,
+    *,
+    min_rarity: Optional[int] = None,
+    now: Optional[ipy.Timestamp] = None,
+    random: Optional[Random] = None,
+  ):
     """
     Roll a card from the main roster.
 
@@ -644,12 +650,14 @@ class CardCache:
     Args:
       min_rarity: Lowest card rarity to obtain
       now: Reference time to determine roll time and current season, or current time if unset
+      random: Custom instance of Random to use, or default SystemRandom if unset
 
     Returns:
       Card instance with additional roll-related data set
     """
-    now   = now or ipy.Timestamp.now()
-    cache = await cls.get_cache()
+    now    = now or ipy.Timestamp.now()
+    cache  = await cls.get_cache()
+    random = random or cache.random
 
     # Is season still current?
     if cache.season_ends and now >= cache.season_ends:
@@ -662,13 +670,13 @@ class CardCache:
     if (
       cache.season_rate is not None
       and cache.season_available
-      and cache.random.random() < cache.season_rate
+      and random.random() < cache.season_rate
     ):
       season_pickup = True
       cards = cache.season_cards
 
     # Roll
-    if result := await cls._roll(cards, min_rarity=min_rarity):
+    if result := await cls._roll(cards, min_rarity=min_rarity, random=random):
       result.roll_time = now
       result.season_pickup = season_pickup
       return result
@@ -678,7 +686,12 @@ class CardCache:
 
   @classmethod
   async def roll_collection(
-    cls, collection_id: str, *, min_rarity: Optional[int] = None, now: Optional[ipy.Timestamp] = None
+    cls,
+    collection_id: str,
+    *,
+    min_rarity: Optional[int] = None,
+    now: Optional[ipy.Timestamp] = None,
+    random: Optional[Random] = None,
   ):
     """
     Roll a card from a collection.
@@ -687,18 +700,20 @@ class CardCache:
       collection_id: Card collection ID
       min_rarity: Lowest card rarity to obtain
       now: Reference time to determine roll time, or current time if unset
+      random: Custom instance of Random to use, or default SystemRandom if unset
 
     Returns:
       Card instance with additional roll-related data set
     """
-    now = now or ipy.Timestamp.now()
-    _   = await cls.get_cache()
+    now    = now or ipy.Timestamp.now()
+    cache  = await cls.get_cache()
+    random = random or cache.random
 
     cards = await Card.fetch_all_collection_roll(collection_id, private=False)
     if len(cards) == 0:
       raise RuntimeError("Failed to roll a card - collection has no cards")
 
-    if result := await cls._roll(cards, min_rarity=min_rarity):
+    if result := await cls._roll(cards, min_rarity=min_rarity, random=random):
       result.roll_time = now
       result.collection_pickup = True
       return result
@@ -707,8 +722,11 @@ class CardCache:
 
 
   @classmethod
-  async def _roll(cls, choices: dict[int, list[str]], *, min_rarity: Optional[int] = None) -> Optional["Card"]:
-    cache = await cls.get_cache()
+  async def _roll(
+    cls, choices: dict[int, list[str]], *, min_rarity: Optional[int] = None, random: Optional[Random] = None
+  ) -> Optional["Card"]:
+    cache  = await cls.get_cache()
+    random = random or cache.random
 
     # Rates are normalized; only rates with corresponding card choices are
     # considered. As an example:
@@ -739,7 +757,7 @@ class CardCache:
       }
 
     # Rate finding
-    arona = cache.random.random()
+    arona = random.random()
     card_rarity = None
 
     for rarity, rate in usable_rates.items():
@@ -759,7 +777,7 @@ class CardCache:
       if card_rarity < 1:
         return None
       try:
-        card_get = cache.random.choice(choices[card_rarity])
+        card_get = random.choice(choices[card_rarity])
       except (KeyError, IndexError):
         card_rarity -= 1
         continue
