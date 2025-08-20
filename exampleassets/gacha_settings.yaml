@@ -1,10 +1,16 @@
-# Example gacha settings
+# Example Mitsuki gacha settings.
+#
+# Settings are based on Comfy Camp Club gacha settings with 4 rarities.
+# 
+# NOTE: These settings are deprecated since v5.0. Instead, the settings manager
+# and system submitter is used to manage gacha settings, including these values
+# as well as the gacha roster.
 
 # Cost of gacha currency to roll.
 cost: 120
 
 # Name of gacha currency.
-currency_name: "Shard"
+currency_name: "Mitsuki Shard"
 
 # Emoji denoting gacha currency.
 #
@@ -16,35 +22,30 @@ currency_icon: 💠
 # Amount of claimable daily gacha currency.
 # 
 # Players can claim dailies worth the specified amount with /gacha daily, and
-# can then claim again after 00:00 on the timezone specified by daily_tz.
-daily_shards: 120
-
-# Amount of claimable daily gacha currency for server boosters.
-# 
-# Valid servers are given by the premium_guilds list.
-# Set premium_guilds to a blank list to disable this feature. 
-premium_daily_shards: 210
-
-# Servers (guild IDs) where premium shards are valid.
-# 
-# Set the below setting to blank to disable this feature. 
-premium_guilds:
-- 
+# can then claim again after <daily_reset> UTC, where daily reset is given by.
+# setting gacha.daily.reset_time.
+daily_shards: 135
 
 # Amount of claimable first-timer daily gacha currency.
-first_time_shards: 600
+# 
+# Also counted as first-timers are Mitsuki gacha user who had claimed dailies
+# before Mitsuki 2.0, when first-time dailies are introduced.
+# 
+# Players can claim dailies worth the specified amount with /gacha daily, and
+# can then claim again after <daily_reset> UTC, where daily reset is given by.
+# setting `gacha.daily.reset_time`.
+first_time_shards: 625
 
 # Timezone for daily reset of daily gacha currency.
 # 
-# [WARNING] This setting is now replaced by global setting mitsuki.daily_reset.
-# 
 # Timezone is specified as a fixed offset from UTC in hours, disregarding
 # daylight savings time.
+# 
+# [DEPRECATED] Deprecated since v5.0.
+# Daily reset time is now always defined in UTC.
 daily_tz: 0
 
 # Gacha rates.
-# 
-# [NOTE] Rarity values are no longer limited to 9 as in v1.1.
 # 
 # Rarities, or more technically qualities, are denoted with numbers from 1.
 # Higher numbers indicate higher rarities/qualities. For the settings below,
@@ -52,10 +53,13 @@ daily_tz: 0
 # 
 # For the true rate, each rate value is divided by the sum of all rate values.
 # The below rates will be equal to the true rate if all rate values sum to 1.
+# 
+# Since v1.1, rarity values are no longer limited to 9.
 rates:
-  s1: 0.785
-  s2: 0.185
-  s3: 0.030
+  s1: 0.615
+  s2: 0.315
+  s3: 0.055
+  s4: 0.015
 
 # (Hard) pity value.
 # 
@@ -68,22 +72,25 @@ rates:
 # If two different rarities hit pity at the same time, the higher rarity would
 # be rolled, making it possible for pity counters to go past the pity value. 
 pity:
-  # s2: 10
+  s2: 5
+  s3: 25
+  s4: 75
 
-# Gacha currency obtained on rolling an already owned item (dupe) per rarity.
+# Gacha currency obtained on rolling an already owned card (dupe) per rarity.
 dupe_shards:
   s1: 75
-  s2: 150
+  s2: 120
   s3: 300
+  s4: 600
 
 # Color of gacha rarity.
 # 
-# The colors are used for the color of the embed showing the rolled item.
+# The colors are used for the color of the embed showing the rolled card.
 colors:
   s1: 0x46a1eb # blue
   s2: 0x8e30db # purple
   s3: 0xe6bd37 # orange
-  # s4: 0xf0386c # rose
+  s4: 0xf0386c # rose
   # s5: 0xf52cc3 # hot pink
   # s6: 0x0f080c # black
 
@@ -98,4 +105,5 @@ stars:
     ⭐⭐
   s3: >-
     ⭐⭐⭐
-  
+  s4: >-
+    ⭐⭐⭐⭐

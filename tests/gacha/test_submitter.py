@@ -49,7 +49,7 @@ async def test_card_submitter_fetch(init_db, card_rarities: list[gacha.CardRarit
 
 async def test_roster_add(init_db, cards: list[gacha.Card], card_data: dict):
   other_card_data = {
-    "c00.01.1": {"name": "Mitsuki", "rarity": 1, "type": "Character", "series": "Mitsuki"}
+    "c00.00.1": {"name": "Mitsuki", "rarity": 1, "type": "Character", "series": "Mitsuki"}
   }
   submitter = await CardSubmitter.from_rosc2y_yaml(card_data | other_card_data)
   assert submitter.add_count == len(other_card_data)
@@ -75,10 +75,11 @@ async def test_roster_add(init_db, cards: list[gacha.Card], card_data: dict):
 async def test_roster_edit(init_db, cards: list[gacha.Card], card_data: dict):
   edited_card_data = {}
   for id, entry in card_data.items():
-    entry["name"] = entry["name"] + " (Swimsuit ver.)"
-    edited_card_data[id] = entry
+    if entry["type"] == "Character":
+      entry["name"] = entry["name"] + " (Swimsuit ver.)"
+      edited_card_data[id] = entry
 
-  submitter = await CardSubmitter.from_rosc2y_yaml(edited_card_data)
+  submitter = await CardSubmitter.from_rosc2y_yaml(card_data | edited_card_data)
 
   assert submitter.add_count == 0
   assert submitter.edit_count == len(edited_card_data)
@@ -102,7 +103,7 @@ async def test_roster_edit(init_db, cards: list[gacha.Card], card_data: dict):
 
 async def test_roster_overwrite(init_db, cards: list[gacha.Card], card_data: dict):
   other_card_data = {
-    "c00.01.1": {"name": "Mitsuki", "rarity": 1, "type": "Character", "series": "Mitsuki"}
+    "c00.00.1": {"name": "Mitsuki", "rarity": 1, "type": "Character", "series": "Mitsuki"}
   }
   submitter = await CardSubmitter.from_rosc2y_yaml(other_card_data)
 
