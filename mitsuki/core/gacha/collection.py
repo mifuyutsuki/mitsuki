@@ -36,7 +36,7 @@ class CardCollection(AsDict):
   """ID of this collection."""
   name: str
   """Name of this collection."""
-  description: Optional[str]
+  description: Optional[str] = attrs.field(default=None)
   """Description of this collection."""
 
   rollable: bool = attrs.field(default=False)
