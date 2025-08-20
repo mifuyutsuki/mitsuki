@@ -98,30 +98,32 @@ async def test_search_no_rolls(init_db, mock_user, cards: list[gacha.Card]):
 
 async def test_search_exact_match(init_db, mock_user, cards: list[gacha.Card]):
   # TODO: fixture containing example rolls
-  rolled = await gacha.CardCache.roll()
+  # c00.01.1: Mitsuki-616
+  card = await gacha.Card.fetch("c00.01.1", unobtained=True)
   async with begin_session() as session:
-    await rolled.give_to(session, mock_user.id, rolled=True)
-  await gacha.CardCache.place_card(rolled)
+    await card.set_roll_time().give_to(session, mock_user.id, rolled=True)
+  await gacha.CardCache.place_card(card)
 
-  results = await gacha.CardCache.search(rolled.name)
+  results = await gacha.CardCache.search(card.name)
   assert len(results) > 0
 
   top_result = results[0]
-  assert top_result.id == rolled.id
+  assert top_result.id == card.id
 
 
 async def test_search_partial_match(init_db, mock_user, cards: list[gacha.Card]):
   # TODO: fixture containing example rolls
-  rolled = await gacha.CardCache.roll()
+  # c00.01.1: Mitsuki-616
+  card = await gacha.Card.fetch("c00.01.1", unobtained=True)
   async with begin_session() as session:
-    await rolled.give_to(session, mock_user.id, rolled=True)
-  await gacha.CardCache.place_card(rolled)
+    await card.set_roll_time().give_to(session, mock_user.id, rolled=True)
+  await gacha.CardCache.place_card(card)
 
-  results = await gacha.CardCache.search(rolled.name[:6])
+  results = await gacha.CardCache.search("616")
   assert len(results) > 0
 
   top_result = results[0]
-  assert top_result.id == rolled.id
+  assert top_result.id == card.id
 
 
 async def test_search_grep_id(init_db, cards: list[gacha.Card]):

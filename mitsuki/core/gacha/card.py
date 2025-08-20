@@ -77,6 +77,18 @@ class Card(AsDict):
     return {k: v for k, v in self.asdict().items() if k in keys}
 
 
+  def set_roll_time(self, time: Optional[ipy.Timestamp] = None) -> Self:
+    """
+    Set this card's roll time.
+
+    If this card is obtained through CardCache.roll(), roll time should already
+    be set. This method is available for testing use to provide this instance's
+    `roll_time`, which is required by `give_to()`.
+    """
+    self.roll_time = time or ipy.Timestamp.now()
+    return self
+
+
   @classmethod
   async def fetch(cls, id: str, *, unobtained: bool = False, private: bool = False) -> Optional[Self]:
     """
