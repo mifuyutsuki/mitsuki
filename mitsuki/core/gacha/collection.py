@@ -140,6 +140,23 @@ class CardCollection(AsDict):
       return await session.scalar(query) or 0
 
 
+  async def add_cards_by_grep_id(self, session: AsyncSession, pattern: str):
+    """
+    Add cards to this collection by regex of card IDs.
+
+    Args:
+      session: Current database session
+      pattern: Regex pattern for card ID
+    """
+    cards_query = (
+      select(sa.literal(self.id), models.Card.id)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+      .where(models.Card.id.regexp_match(pattern))
+    )
+    stmt = insert(models.GachaCollectionCard).from_select(["collection", "card"], cards_query)
+    await session.execute(stmt)
+
+
   async def add(self, session: AsyncSession):
     """
     Add this collection.
