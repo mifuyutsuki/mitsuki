@@ -70,6 +70,39 @@ class GachaSeason(AsDict):
         return cls(**result.asdict())
 
 
+  @classmethod
+  async def fetch(cls, id: str) -> Optional[Self]:
+    """
+    Fetch a gacha season by its ID.
+
+    Args:
+      id: Gacha season ID
+
+    Returns:
+      Instance of gacha season, or `None` if doesn't exist
+    """
+    query = select(models.GachaSeason).where(models.GachaSeason.id == id)
+
+    async with begin_session() as session:
+      if result := await session.scalar(query):
+        return cls(**result.asdict())
+
+
+  @classmethod
+  async def fetch_all(cls) -> list[Self]:
+    """
+    Fetch all gacha seasons from the latest (in terms of end time).
+
+    Returns:
+      List of gacha seasons, if any
+    """
+    query = select(models.GachaSeason).order_by(models.GachaSeason.end_time.desc())
+
+    async with begin_session() as session:
+      results = await session.scalars(query)
+    return [cls(**r.asdict()) for r in results]
+
+
   async def add(self, session: AsyncSession) -> None:
     """
     Add this gacha season.
