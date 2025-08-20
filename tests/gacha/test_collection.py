@@ -1,0 +1,37 @@
+import pytest
+import pytest_asyncio
+
+import os
+import asyncio
+from datetime import datetime, timedelta, timezone
+
+import sqlalchemy as sa
+import interactions as ipy
+import attrs
+import yaml
+
+import mitsuki
+
+from mitsuki import settings, utils
+from mitsuki.lib import checks
+from mitsuki.lib.userdata import begin_session
+
+from mitsuki.core import gacha
+
+
+async def test_collection_create(init_db, card_collection: gacha.CardCollection):
+  created = card_collection
+  fetched = await gacha.CardCollection.fetch(card_collection.id)
+
+  assert created == fetched
+
+
+async def test_collection_add_by_regex(init_db, card_collection: gacha.CardCollection):
+  selected = await gacha.Card.grep_id(r"c00\..*")
+
+  async with begin_session() as session:
+    await card_collection.add_cards_by_grep_id(session, r"c00\..*")
+
+  fetched = await gacha.Card.fetch_all_collection(card_collection.id)
+
+  assert len(fetched) == len(selected)

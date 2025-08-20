@@ -19,7 +19,7 @@ from mitsuki.lib.userdata import begin_session
 from mitsuki.core import gacha
 
 
-@pytest_asyncio.fixture()
+@pytest.fixture()
 async def card_rarities():
   rarities = [
     gacha.CardRarity(rarity=1, rate=0.615, dupe_shards=75, color=0, pity=None, emoji=None),
@@ -34,13 +34,13 @@ async def card_rarities():
   return rarities
 
 
-@pytest_asyncio.fixture()
+@pytest.fixture()
 def card_data():
   with open("exampleassets/gacha_roster.yaml", "r") as f:
     return yaml.safe_load(f)
 
 
-@pytest_asyncio.fixture()
+@pytest.fixture()
 async def cards(card_rarities: list[gacha.CardRarity], card_data: dict):
   cards = [
     gacha.Card(id=id, name=card["name"], rarity=card["rarity"], type=card["type"], series=card["series"])
@@ -53,7 +53,20 @@ async def cards(card_rarities: list[gacha.CardRarity], card_data: dict):
   return cards
 
 
-@pytest_asyncio.fixture()
+@pytest.fixture()
 async def gacha_user(mock_user):
   async with begin_session() as session:
     return await gacha.GachaUser.daily(session, mock_user.id)
+
+
+@pytest.fixture()
+async def card_collection(cards: list[gacha.Card]):
+  collection = gacha.CardCollection(
+    id="c00", name="Character: Mitsuki",
+    rollable=True, discoverable=True, show_counts=True,
+    roll_cost={"g.elf.c01": 5},
+  )
+  async with begin_session() as session:
+    await collection.add(session)
+
+  return collection
