@@ -122,3 +122,11 @@ async def test_search_partial_match(init_db, mock_user, cards: list[gacha.Card])
 
   top_result = results[0]
   assert top_result.id == rolled.id
+
+
+async def test_search_grep_id(init_db, cards: list[gacha.Card]):
+  mitsuki_cards = [card for card in cards if card.name.startswith("Mitsuki")]
+  results = await gacha.Card.grep_id(r"c00\..*", private=False)
+
+  assert len(results) > 0
+  assert len(results) == len(mitsuki_cards)

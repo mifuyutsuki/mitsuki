@@ -290,6 +290,31 @@ class Card(AsDict):
 
 
   @classmethod
+  async def grep_id(cls, pattern: str, *, private: bool = False):
+    """
+    Fetch cards by regex matching card IDs.
+
+    Args:
+      pattern: Regex pattern
+      private: Whether to return non-public cards (cards with unlisted=True)
+
+    Returns:
+      List of card instances
+    """
+    query = (
+      select(models.Card)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+      .where(models.Card.id.regexp_match(pattern))
+    )
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+
+    async with begin_session() as session:
+      results = await session.scalars(query)
+    return [cls(**r.asdict()) for r in results]
+
+
+  @classmethod
   async def roll(cls, *, min_rarity: Optional[int] = None):
     """
     Roll a card from the main roster.
