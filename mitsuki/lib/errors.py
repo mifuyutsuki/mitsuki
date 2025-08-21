@@ -16,7 +16,7 @@ from typing import Optional
 __all__ = (
   "MitsukiException",
   "ProviderError",
-  "MitsukiSoftException",
+  "RequestException",
   "UserDenied",
   "BotDenied",
   "InteractionDenied",
@@ -41,17 +41,17 @@ class ProviderError(MitsukiException):
   TEMPLATE: str = "error_provider"
 
 
-class MitsukiSoftException(MitsukiException):
+class RequestException(MitsukiException):
   """
-  Base class for Mitsuki bot exceptions which do not need error logging, such as permission errors.
+  Base class for Mitsuki bot exceptions caused by user requests.
 
-  Exception messages under this class are ephemeral by default.
+  Exception messages under this class are not logged to Sentry and are ephemeral by default.
   """
 
   EPHEMERAL: bool = True
 
 
-class UserDenied(MitsukiSoftException):
+class UserDenied(RequestException):
   """User lacks permissions to do an action, such as running an admin command."""
 
   TEMPLATE: str = "error_denied_user"
@@ -63,7 +63,7 @@ class UserDenied(MitsukiSoftException):
     }
 
 
-class BotDenied(MitsukiSoftException):
+class BotDenied(RequestException):
   """Bot lacks permissions to do an action, such as changing bot's own nickname."""
 
   TEMPLATE: str = "error_denied_bot"
@@ -75,14 +75,14 @@ class BotDenied(MitsukiSoftException):
     }
 
 
-class InteractionDenied(MitsukiSoftException):
-  """User selected a component not meant for the user."""
+class InteractionDenied(RequestException):
+  """User interacted with a component not meant for the user."""
 
   TEMPLATE: str = "error_denied_interaction"
 
 
-class ScopeDenied(MitsukiSoftException):
-  """Scope-restricted command was run outside of its scope."""
+class ScopeDenied(RequestException):
+  """Command was run outside of its scope."""
 
   TEMPLATE: str = "error_denied_scope"
 
@@ -90,13 +90,13 @@ class ScopeDenied(MitsukiSoftException):
     self.data = {"scope": scope}
 
 
-class OutOfGuild(MitsukiSoftException):
+class OutOfGuild(RequestException):
   """Guild-only command was run outside of a guild."""
 
   TEMPLATE: str = "error_out_of_guild"
 
 
-class ObjectNotFound(MitsukiSoftException):
+class ObjectNotFound(RequestException):
   """Could not find object (e.g. Schedule), which may already have been deleted."""
 
   TEMPLATE: str = "error_object_not_found"
@@ -105,7 +105,7 @@ class ObjectNotFound(MitsukiSoftException):
     self.data = {"obj_name": obj_name}
 
 
-class BadInput(MitsukiSoftException):
+class BadInput(RequestException):
   """Not a valid input for a field."""
 
   TEMPLATE: str = "error_bad_input"
@@ -116,7 +116,7 @@ class BadInput(MitsukiSoftException):
     self.data = {"field": field, "message": message}
 
 
-class BadInputRange(MitsukiSoftException):
+class BadInputRange(RequestException):
   """Not a valid input range for a numeric field."""
 
   TEMPLATE: str = "error_bad_input_range"
@@ -125,7 +125,7 @@ class BadInputRange(MitsukiSoftException):
     self.data = {"field": field}
 
 
-class BadLength(MitsukiSoftException):
+class BadLength(RequestException):
   """Input is too long."""
 
   TEMPLATE: str = "error_bad_length_unspecified"

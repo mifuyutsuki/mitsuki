@@ -63,7 +63,7 @@ from mitsuki.lib.checks import (
   has_bot_channel_permissions,
 )
 from mitsuki.lib.errors import (
-  MitsukiSoftException,
+  RequestException,
   UserDenied,
   BadInput,
   BadInputRange,

@@ -21,7 +21,7 @@ from typing import Union
 from enum import StrEnum
 
 from mitsuki.logger import logger
-from mitsuki.lib.errors import MitsukiSoftException
+from mitsuki.lib.errors import RequestException
 from mitsuki.lib.messages import load_message
 from mitsuki.lib.userdata import db_migrate
 from mitsuki.lib.emoji import init_emoji
@@ -166,7 +166,7 @@ class ClientHandlerMixin:
     ephemeral = True
     ctx_load_message = partial(load_message, user=event.ctx.author)
 
-    if isinstance(event.error, MitsukiSoftException):
+    if isinstance(event.error, RequestException):
       ephemeral = event.error.EPHEMERAL
       message = ctx_load_message(event.error.TEMPLATE, data=event.error.data)
 
