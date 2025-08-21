@@ -13,6 +13,8 @@
 import interactions as ipy
 import interactions.api.events as events
 import interactions.client.errors as errors
+import attrs
+import aiohttp
 
 import os
 import sys
@@ -20,12 +22,14 @@ from functools import partial
 from typing import Union
 from enum import StrEnum
 
+from mitsuki import APP_PATH, init_event
+from mitsuki.consts import AccentColors
 from mitsuki.logger import logger
-from mitsuki.lib.errors import RequestException
+from mitsuki.lib.errors import MitsukiException
 from mitsuki.lib.messages import load_message
 from mitsuki.lib.userdata import db_migrate
 from mitsuki.lib.emoji import init_emoji
-from mitsuki import APP_PATH, init_event
+from mitsuki.lib.view import View
 
 
 class Templates(StrEnum):
@@ -98,6 +102,56 @@ def _format_traceback(e: Exception) -> str:
   return error_repr
 
 
+@attrs.define(slots=False)
+class ErrorView(View):
+  exc: Exception
+
+
+  def content(self):
+    return ""
+
+
+  def components(self):
+    # To reset origin components, this is set to [] rather than None
+    return []
+
+
+  def embeds(self):
+    embed = (
+      ipy.Embed(title="Error", color=AccentColors.ERROR)
+      .set_author(self.caller.tag, icon_url=self.caller.avatar_url)
+    )
+
+    match exc := self.exc:
+      case MitsukiException():
+        embed.title       = exc.title
+        embed.description = exc.desc
+        for name, text in exc.fields.items():
+          embed.add_field(name, text)
+        if exc.show_traceback:
+          embed.add_field("Details", "```\n{}```".format(_format_traceback(exc)))
+
+      case ipy.errors.CommandOnCooldown():
+        embed.title       = "In Cooldown"
+        embed.description = "Try again in {} seconds.".format(exc.cooldown.get_cooldown_time())
+
+      case ipy.errors.CommandCheckFailure():
+        embed.title       = "Permission Error"
+        embed.description = "You don't have permissions to run this command."
+
+      case (ipy.errors.DiscordError(), ipy.errors.HTTPException(), aiohttp.ClientError()):
+        embed.title       = "Error"
+        embed.description = "An unexpected error occured, please try again later."
+        embed.add_field("Details", "```\n{}```".format(str(exc)))
+
+      case _:
+        embed.title       = "Error"
+        embed.description = "An unexpected error occured, please contact application owner."
+        embed.add_field("Details", "```\n{}```".format(_format_traceback(exc)))
+
+    return [embed]
+
+
 class ClientHandlerMixin:
   @ipy.listen(events.Startup)
   async def on_startup(self, event: ipy.events.Startup):
@@ -163,39 +217,6 @@ class ClientHandlerMixin:
 
   async def error_handler(self, event: Union[events.CommandError, events.ComponentError, events.ModalError]) -> None:
     # default ephemeral to true unless it's an unknown exception
-    ephemeral = True
-    ctx_load_message = partial(load_message, user=event.ctx.author)
-
-    if isinstance(event.error, RequestException):
-      ephemeral = event.error.EPHEMERAL
-      message = ctx_load_message(event.error.TEMPLATE, data=event.error.data)
-
-    elif isinstance(event.error, errors.CommandOnCooldown):
-      cooldown_seconds = int(event.error.cooldown.get_cooldown_time())
-      message = ctx_load_message(Templates.ERROR_COOLDOWN, data={"cooldown_seconds": cooldown_seconds})
-
-    elif isinstance(event.error, errors.MaxConcurrencyReached):
-      message = ctx_load_message(Templates.ERROR_CONCURRENCY)
-
-    elif isinstance(event.error, errors.CommandCheckFailure):
-      message = ctx_load_message(Templates.ERROR_CHECK)
-
-    elif isinstance(event.error, errors.BadArgument):
-      message = ctx_load_message(Templates.ERROR_ARGUMENT, data={"message": str(event.error)})
-
-    elif isinstance(event.error, errors.HTTPException) and (
-      isinstance(event.error.code, int) and (500 <= event.error.code < 600)
-    ):
-      error_repr = str(event.error)
-      self.logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
-      message = ctx_load_message(Templates.ERROR_SERVER, data={"error_repr": error_repr})
-      ephemeral = False
-
-    else:
-      error_repr = _format_traceback(event.error)
-      self.logger.exception(error_repr, exc_info=(type(event.error), event.error, event.error.__traceback__))
-      message = ctx_load_message(Templates.ERROR, data={"error_repr": error_repr})
-      ephemeral = False
-
     if isinstance(event.ctx, ipy.InteractionContext):
-      await event.ctx.send(**message.to_dict(), components=[], ephemeral=ephemeral)
+      ephemeral = getattr(event.error, "ephemeral", False)
+      await ErrorView(event.ctx).send(ephemeral=ephemeral)
