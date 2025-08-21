@@ -75,7 +75,7 @@ class AppEmoji(Enum):
 
 @attrs.define(kw_only=False)
 class EmojiFinder:
-  bot: ipy.ClientT
+  client: ipy.ClientT
   emoji: dict[str, Union[ipy.CustomEmoji, ipy.PartialEmoji]] = attrs.field(factory=dict)
 
 
@@ -84,61 +84,51 @@ class EmojiFinder:
     return cls(bot=bot)
 
 
-  def get(self, emoji: "AppEmoji") -> Union[ipy.CustomEmoji, ipy.PartialEmoji]:
-    name, default = emoji.value
+  def get(self, emoji: Union["AppEmoji", str]) -> Union[ipy.CustomEmoji, ipy.PartialEmoji]:
+    if isinstance(emoji, AppEmoji):
+      name, default = emoji.value
+    else:
+      name, default = emoji, "⬜"
     return self.emoji.get(name, ipy.PartialEmoji.from_str(default))
 
 
   async def init(self) -> None:
-    app_emoji = await self.bot.app.fetch_all_emoji()
+    app_emoji = await self.client.app.fetch_all_emoji()
     app_emoji.sort(key=lambda e: e.id)
 
     system_guild_emoji = []
     try:
       system_guild_id = ipy.Snowflake(os.environ.get("SYSTEM_GUILD_ID"))
-      system_guild = await self.bot.fetch_guild(system_guild_id)
+      system_guild = await self.client.fetch_guild(system_guild_id)
       system_guild_emoji = await system_guild.fetch_all_custom_emojis()
       system_guild_emoji.sort(key=lambda e: e.id)
     except Exception:
       pass
 
-    app_emoji_use_count = 0
-    system_guild_emoji_use_count = 0
-    default_emoji_use_count = 0
-
-    for en in AppEmoji:
-      name, default = en.value
-      if name in self.emoji:
-        continue
-
-      if this_emoji := next((e for e in app_emoji if e.name == name), None):
-        app_emoji_use_count += 1
-        self.emoji[name] = this_emoji
-      elif this_emoji := next((e for e in system_guild_emoji if e.name == name), None):
-        system_guild_emoji_use_count += 1
-        self.emoji[name] = this_emoji
-      else:
-        default_emoji_use_count += 1
-        self.emoji[name] = ipy.PartialEmoji.from_str(default)
+    # Note the order - app emoji > system guild emoji > default emoji
+    # Due to the above snowflake sort, newer emoji of the same name overwrite
+    # older emoji
+    self.emoji  = {default.value[0]: ipy.PartialEmoji.from_str(default.value[1]) for default in AppEmoji}
+    self.emoji |= {emoji.name: emoji for emoji in system_guild_emoji}
+    self.emoji |= {emoji.name: emoji for emoji in app_emoji}
 
     logger.info(
-      f"Emoji Finder | Loaded {AppEmoji.count()} emoji - "
-      f"{app_emoji_use_count} from app, "
-      f"{system_guild_emoji_use_count} from system guild, "
-      f"{default_emoji_use_count} from default"
+      f"Emoji Finder | Loaded {len(self.emoji)} emoji - "
+      f"{len(app_emoji)} from app, {len(system_guild_emoji)} from system guild"
     )
 
 
 _finder: Optional["EmojiFinder"] = None
 
 
-async def init_emoji(bot: ipy.ClientT) -> None:
+async def init_emoji(client: ipy.ClientT) -> None:
   global _finder
-  _finder = EmojiFinder.create(bot)
-  await _finder.init()
+  new_finder = EmojiFinder.create(client)
+  await new_finder.init()
+  _finder = new_finder
 
 
-def get_emoji(emoji: "AppEmoji") -> Union[ipy.CustomEmoji, ipy.PartialEmoji]:
+def get_emoji(emoji: Union["AppEmoji", str]) -> Union[ipy.CustomEmoji, ipy.PartialEmoji]:
   global _finder
   if not _finder:
     raise RuntimeError("Emoji finder is uninitialized")
