@@ -127,6 +127,26 @@ class ObjectNotFound(RequestException):
     self.desc = "Could not find {} with the specified ID or key.".format(obj_name)
 
 
+class BadFile(RequestException):
+  """Could not process file."""
+
+  desc = "Could not parse or process file."
+
+  def __init__(self, expect: Optional[str] = None):
+    if expect:
+      self.fields = {"Expected file type": expect}
+
+
+class BadFileSize(RequestException):
+  """File is too large for processing."""
+
+  desc = "File is too large."
+
+  def __init__(self, size_mb: Optional[float] = None, max_size_mb: Optional[float] = None):
+    if size_mb is not None and max_size_mb is not None:
+      self.desc = "File is too large ({.2f} > {.2f}).".format(size_mb, max_size_mb)
+
+
 class BadInput(RequestException):
   """Not a valid input for a field."""
 
