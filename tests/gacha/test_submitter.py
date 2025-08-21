@@ -42,7 +42,7 @@ async def test_card_submitter_create_missing_rarity(init_db, card_data: dict):
 
 async def test_card_submitter_fetch(init_db, card_rarities: list[gacha.CardRarity], card_data: dict):
   created = await CardSubmitter.from_rosc2y_yaml(card_data)
-  fetched = CardSubmitter.fetch(created.id)
+  fetched = await CardSubmitter.fetch(created.id)
 
   assert fetched == created
 
@@ -60,7 +60,7 @@ async def test_roster_add(init_db, cards: list[gacha.Card], card_data: dict):
 
   # -----
 
-  fetched_submitter = CardSubmitter.fetch(submitter.id)
+  fetched_submitter = await CardSubmitter.fetch(submitter.id)
   assert fetched_submitter == submitter
 
   async with begin_session() as session:
@@ -89,7 +89,7 @@ async def test_roster_edit(init_db, cards: list[gacha.Card], card_data: dict):
 
   # -----
 
-  fetched_submitter = CardSubmitter.fetch(submitter.id)
+  fetched_submitter = await CardSubmitter.fetch(submitter.id)
   assert fetched_submitter == submitter
 
   async with begin_session() as session:
@@ -115,7 +115,7 @@ async def test_roster_overwrite(init_db, cards: list[gacha.Card], card_data: dic
 
   # -----
 
-  fetched_submitter = CardSubmitter.fetch(submitter.id)
+  fetched_submitter = await CardSubmitter.fetch(submitter.id)
   assert fetched_submitter == submitter
 
   async with begin_session() as session:

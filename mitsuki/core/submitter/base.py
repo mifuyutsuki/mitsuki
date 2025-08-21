@@ -16,6 +16,7 @@ from enum import IntEnum
 import csv
 import yaml
 import uuid
+import asyncio
 
 import attrs
 import interactions as ipy
@@ -37,15 +38,11 @@ class BaseSubmitter:
   id: uuid.UUID = attrs.field(factory=uuid.uuid4)
   data: dict = attrs.field(factory=dict)
   timeout: float = attrs.field(default=300)
-  expires: ipy.Timestamp = attrs.field(factory=ipy.Timestamp.now)
-
-
-  def __attrs_post_init__(self):
-    self.expires = ipy.Timestamp.now() + timedelta(seconds=self.timeout)
+  expires: ipy.Timestamp = attrs.field(init=False)
 
 
   @classmethod
-  def fetch(cls, id: Union[uuid.UUID, str]) -> Optional[Self]:
+  async def fetch(cls, id: Union[uuid.UUID, str]) -> Optional[Self]:
     global _entries
     now = ipy.Timestamp.now()
 
@@ -55,7 +52,7 @@ class BaseSubmitter:
     # Cache expiration
     # Global instance may be altered, so we make a copy of keys()
     for _id in list(_entries.keys()):
-      if _entries[_id].expires < now:
+      if now >= _entries[_id].expires:
         _entries.pop(_id)
 
     return _entries.get(id)
@@ -63,4 +60,5 @@ class BaseSubmitter:
 
   def save(self):
     global _entries
+    self.expires = ipy.Timestamp.now() + timedelta(seconds=self.timeout)
     _entries[self.id] = self
