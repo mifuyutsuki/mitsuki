@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mitsuki.utils import option
 from mitsuki.lib.userdata import begin_session, AsDict, sa_insert as insert
 from mitsuki.lib.commands import CustomID
+from mitsuki.lib.emoji import get_emoji, AppEmoji
 from mitsuki.core.settings import get_setting, Settings
 
 import mitsuki.models.gacha as models
@@ -42,7 +43,17 @@ class CardRarity(AsDict):
   pity: Optional[int] = attrs.field(default=None)
   """Amount of pity before a card of at least this rarity is given, if set."""
   emoji: Optional[str] = attrs.field(default=None)
-  """Emoji name to use as the star, or the default `m_gacha_star` if unset."""
+  """Emoji name to use as the star, or the default `m_gc_star1` if unset."""
+
+
+  @property
+  def get_emoji(self):
+    """
+    Get the 'star' emoji object of this rarity.
+
+    If this object's `emoji` is not set, this returns the AppEmoji `m_gc_star1`.
+    """
+    return get_emoji(self.emoji or AppEmoji.GACHA_STAR_REGULAR)
 
 
   @classmethod
