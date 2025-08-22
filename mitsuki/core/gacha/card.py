@@ -60,11 +60,11 @@ class Card(AsDict):
   convert_to: dict[str, int] = attrs.field(factory=dict)
   """Items that duplicates of this card convert to, if set, in the format {id: amount, ...}."""
 
-  color: int = attrs.field(default=0x46a1eb)
+  color: int = attrs.field(default=0x46a1eb, eq=False)
   """Accent color of this card, which depends on its rarity."""
-  dupe_shards: int = attrs.field(default=75)
+  dupe_shards: int = attrs.field(default=75, eq=False)
   """Amount of shards given on obtaining a duplicate of this rarity."""
-  emoji: Optional[str] = attrs.field(default=None)
+  emoji: Optional[str] = attrs.field(default=None, eq=False)
   """Emoji name to use as the rarity star, or the default `m_gc_star1` if unset."""
 
   roll_time: Optional[ipy.Timestamp] = attrs.field(default=None, eq=False)
