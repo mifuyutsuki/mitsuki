@@ -25,7 +25,7 @@ from enum import StrEnum
 from mitsuki import APP_PATH, init_event
 from mitsuki.consts import AccentColors
 from mitsuki.logger import logger
-from mitsuki.lib.errors import MitsukiException
+from mitsuki.lib.errors import MitsukiException, RequestException
 from mitsuki.lib.messages import load_message
 from mitsuki.lib.userdata import db_migrate
 from mitsuki.lib.emoji import init_emoji
@@ -223,6 +223,16 @@ class ClientHandlerMixin:
 
   async def error_handler(self, event: Union[events.CommandError, events.ComponentError, events.ModalError]) -> None:
     # default ephemeral to true unless it's an unknown exception
+    match exc := event.error:
+      case RequestException():
+        pass
+      case (ipy.errors.CommandOnCooldown(), ipy.errors.MaxConcurrencyReached(), ipy.errors.CommandCheckFailure()):
+        pass
+      case (ipy.errors.DiscordError(), ipy.errors.HTTPException(), aiohttp.ClientError()):
+        self.logger.error("{}: {}".format(type(exc).__name__, str(exc)))
+      case _:
+        self.logger.exception(_format_traceback(exc), exc_info=(type(exc), exc, exc.__traceback__))
+
     if isinstance(event.ctx, ipy.InteractionContext):
       ephemeral = getattr(event.error, "ephemeral", False)
       await ErrorView(event.ctx, event.error).send(ephemeral=ephemeral)
