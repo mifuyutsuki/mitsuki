@@ -30,6 +30,7 @@ from mitsuki.lib.messages import load_message
 from mitsuki.lib.userdata import db_migrate
 from mitsuki.lib.emoji import init_emoji
 from mitsuki.lib.view import View
+from mitsuki.core.presences import get_presencer, set_presencer
 
 
 class Templates(StrEnum):
@@ -161,8 +162,12 @@ class ClientHandlerMixin:
 
 
   @ipy.listen(events.Ready)
-  async def on_ready(self):
+  async def on_ready(self, event: ipy.events.Ready):
     print(f"Serving as {self.user.tag} ({self.user.id}) @ {len(self.guilds)} guild(s)")
+    await init_event.wait()
+
+    set_presencer(self.bot)
+    await get_presencer().init()
 
 
   @ipy.listen(events.CommandCompletion)

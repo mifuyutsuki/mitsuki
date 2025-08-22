@@ -36,14 +36,6 @@ else:
 
 
 class SystemModule(ipy.Extension):
-  @ipy.listen(ipy.events.Ready)
-  async def on_ready(self, event: ipy.events.Ready):
-    await init_event.wait()
-
-    set_presencer(self.bot)
-    await get_presencer().init()
-
-
   # TODO: Make this module DM only (ContextType.BOT_DM)
   system_cmd = ipy.SlashCommand(
     name="system",
