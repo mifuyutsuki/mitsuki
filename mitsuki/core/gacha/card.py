@@ -599,6 +599,25 @@ class CardCache:
     cache.card_names = {c.id: c.name for c in await Card.fetch_all(unobtained=False)}
 
 
+  @classmethod
+  async def sync_season(cls, *, now: Optional[ipy.Timestamp] = None) -> None:
+    """
+    Synchronize the card cache's current season with the database.
+
+    Args:
+      now: Reference time to determine the current season, or current time if unset
+    """
+    cache = await cls.get_cache()
+
+    temp_season       = await GachaSeason.fetch_current(now=now)
+    temp_season_cards = {r.rarity: [] for r in cache.rarities.values()}
+    for card in await Card.fetch_all_season(now=now):
+      temp_season_cards[card.rarity].append(card.id)
+
+    cache.season       = temp_season
+    cache.season_cards = temp_season_cards
+
+
   async def _sync(self, *, now: Optional[ipy.Timestamp] = None) -> None:
     now = now or ipy.Timestamp.now()
 
@@ -700,7 +719,7 @@ class CardCache:
 
     # Is season still current?
     if cache.season_ends and now >= cache.season_ends:
-      await cache.sync(now=now)
+      await cache.sync_season(now=now)
 
     # Season pick-up?
     cards = cache.roster_cards
