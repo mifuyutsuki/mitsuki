@@ -113,44 +113,65 @@ class ErrorView(View):
 
 
   def components(self):
-    # To reset origin components, this is set to [] rather than None
-    return []
+    match exc := self.exc:
+      case MitsukiException():
+        content = [
+          ipy.TextDisplayComponent("## {}\n{}".format(exc.title, exc.desc))
+        ]
+        for name, text in exc.fields.items():
+          content.append(ipy.TextDisplayComponent(name, str(text)))
+        if exc.show_traceback:
+          content.append(ipy.SeparatorComponent(divider=True))
+          content.append(ipy.TextDisplayComponent("```\n{}```".format(_format_traceback(exc))))
+
+      case ipy.errors.CommandOnCooldown():
+        content = [
+          ipy.TextDisplayComponent(
+            "## In Cooldown\n" +
+            "Try again in {} seconds.".format(exc.cooldown.get_cooldown_time())
+          )
+        ]
+
+      case ipy.errors.CommandCheckFailure():
+        content = [
+          ipy.TextDisplayComponent(
+            "## Permission Error\n" +
+            "You don't have permissions to run this command."
+          )
+        ]
+
+      case (ipy.errors.DiscordError(), ipy.errors.HTTPException(), aiohttp.ClientError()):
+        content = [
+          ipy.TextDisplayComponent(
+            "## Error\n" +
+            "An unexpected error occured, please try again later."
+          ),
+          ipy.SeparatorComponent(divider=True),
+          ipy.TextDisplayComponent("```\n{}```".format(str(exc)))
+        ]
+
+      case _:
+        content = [
+          ipy.TextDisplayComponent(
+            "## Error\n" +
+            "An unexpected error occured, please try again later."
+          ),
+          ipy.SeparatorComponent(divider=True),
+          ipy.TextDisplayComponent("```\n{}```".format(_format_traceback(exc)))
+        ]
+
+    return [
+      ipy.ContainerComponent(
+        *content,
+        ipy.SeparatorComponent(divider=True),
+        ipy.TextDisplayComponent("-# {}".format(self.caller.tag)),
+        accent_color=AccentColors.ERROR,
+      )
+    ]
 
 
   def embeds(self):
-    embed = (
-      ipy.Embed(title="Error", color=AccentColors.ERROR)
-      .set_author(self.caller.tag, icon_url=self.caller.avatar_url)
-    )
-
-    match exc := self.exc:
-      case MitsukiException():
-        embed.title       = exc.title
-        embed.description = exc.desc
-        for name, text in exc.fields.items():
-          embed.add_field(name, str(text))
-        if exc.show_traceback:
-          embed.description += "```\n{}```".format(_format_traceback(exc))
-
-      case ipy.errors.CommandOnCooldown():
-        embed.title       = "In Cooldown"
-        embed.description = "Try again in {} seconds.".format(exc.cooldown.get_cooldown_time())
-
-      case ipy.errors.CommandCheckFailure():
-        embed.title       = "Permission Error"
-        embed.description = "You don't have permissions to run this command."
-
-      case (ipy.errors.DiscordError(), ipy.errors.HTTPException(), aiohttp.ClientError()):
-        embed.title        = "Error"
-        embed.description  = "An unexpected error occured, please try again later."
-        embed.description += "```\n{}```".format(str(exc))
-
-      case _:
-        embed.title        = "Error"
-        embed.description  = "An unexpected error occured, please contact application owner."
-        embed.description += "```\n{}```".format(_format_traceback(exc))
-
-    return [embed]
+    return []
 
 
 class ClientHandlerMixin:
