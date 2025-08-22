@@ -13,7 +13,33 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+import interactions as ipy
+import os
+
 APP_PATH = __file__
+
+try:
+  SYSTEM_GUILD_ID = ipy.Snowflake(os.environ.get("SYSTEM_GUILD_ID"))
+except Exception:
+  SYSTEM_GUILD_ID = None
+
+try:
+  EXCLUSIVE_GUILD_ID = ipy.Snowflake(os.environ.get("EXCLUSIVE_GUILD_ID"))
+except Exception:
+  EXCLUSIVE_GUILD_ID = None
+
+
+EXCLUSIVE_GUILDS = []
+
+if SYSTEM_GUILD_ID:
+  EXCLUSIVE_GUILDS.append(SYSTEM_GUILD_ID)
+
+if EXCLUSIVE_GUILD_ID:
+  if EXCLUSIVE_GUILD_ID != SYSTEM_GUILD_ID:
+    EXCLUSIVE_GUILDS.append(EXCLUSIVE_GUILD_ID)
+
+if len(EXCLUSIVE_GUILDS) == 0:
+  EXCLUSIVE_GUILDS = [ipy.GLOBAL_SCOPE]
 
 import asyncio
 init_event = asyncio.Event()
@@ -34,6 +60,10 @@ __all__ = (
   "logger",
   "init_event",
   "APP_PATH",
+  "SYSTEM_GUILD_ID",
+  "SYSTEM_GUILDS",
+  "EXCLUSIVE_GUILD_ID",
+  "EXCLUSIVE_GUILDS",
 )
 
 
