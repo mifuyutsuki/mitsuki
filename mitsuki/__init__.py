@@ -67,61 +67,70 @@ __all__ = (
 )
 
 
-def run():
+def run(prod: bool = False):
   from mitsuki.client import MitsukiClient
 
   bot = MitsukiClient()
   db_init()
 
   curr_time = datetime.now(tz=timezone.utc).isoformat(sep=" ")
-  print(f"Mitsuki v{__version__}")
-  print(f"Copyright (c) 2024-2025 Mifuyu (mifuyutsuki)")
-  print(f"Current time in UTC: {curr_time}")
+  print("Mitsuki v{}".format(__version__))
+  print("Copyright (c) 2024-2025 Mifuyu (mifuyutsuki)")
+  print("Current time in UTC: {}".format(curr_time))
+  print("Running mode: {}".format("Production" if prod else "Development"))
   print("")
 
   sentry_dsn = environ.get("SENTRY_DSN")
-  sentry_env = environ.get("SENTRY_ENV") or "dev"
+  sentry_env = environ.get("SENTRY_ENV", "dev")
+  token      = environ.get("BOT_TOKEN")
 
-  if environ.get("ENABLE_DEV_MODE") == "1":
-    # Activate Jurigged integration with dev-mode (run.py dev)
-    print("Running in dev mode")
+  if not token:
+    raise SystemExit("Cannot run Mitsuki without a bot token. Set environment variable BOT_TOKEN to run")
+
+  if prod:
+    if sentry_dsn:
+      try:
+        import sentry_sdk
+        bot.load_extension("interactions.ext.sentry", token=sentry_dsn, enable_tracing=True, environment=sentry_env)
+      except ImportError:
+        logger.warning("Install sentry_sdk to enable Sentry error tracking (pip install sentry_sdk)")
+      except Exception as e:
+        logger.exception(e)
+        logger.warning("Failed to load Sentry integration")
+      else:
+        print("Sentry logging is active")
+    else:
+      logger.warning("Set environment variable SENTRY_DSN in .env to enable Sentry error tracking")
+
+  if not prod:
     try:
+      import jurigged
       bot.load_extension("interactions.ext.jurigged")
     except ImportError:
-      logger.warning(
-        "Install jurigged to enable hot code reloading (pip install -U -r requirements-dev.txt)"
-      )
+      logger.warning("Install jurigged to enable hot code reloading (pip install -U -r requirements-dev.txt)")
     except Exception as e:
       logger.exception(e)
-      logger.warning("Could not enable hot code reloading (jurigged)")
+      logger.warning("Failed to load jurigged for hot code reloading")
     else:
       print("Hot code reloading (jurigged) is active")
 
-    # TODO: System commands
-    if not settings.dev.scope:
-      logger.warning("Settings property dev.dev_scope is not set. Running commands globally")
-
-    bot.debug_scope = settings.dev.scope
-    token = environ.get("DEV_BOT_TOKEN")
-  else:
-    # Activate Sentry integration with no dev-mode (run.py)
-    if sentry_dsn:
-      bot.load_extension("interactions.ext.sentry", token=sentry_dsn, enable_tracing=True, environment=sentry_env)
-      print("Sentry logging is active")
-    else:
-      logger.warning("Env variable SENTRY_DSN is not set. Sentry logging is off")
-
-    token = environ.get("BOT_TOKEN")
-
-  if not token:
-    raise SystemExit("Token not set. Please add your bot token to .env")
-
   bot.load_extension("mitsuki.modules.about")
-  bot.load_extension("mitsuki.modules.system")
   bot.load_extension("mitsuki.modules.server")
   bot.load_extension("mitsuki.modules.user")
-  bot.load_extension("mitsuki.modules.gacha")
   bot.load_extension("mitsuki.modules.schedule")
+
+  if SYSTEM_GUILD_ID:
+    bot.load_extension("mitsuki.modules.system")
+    bot.load_extension("mitsuki.modules.gacha_admin")
+    logger.info("System Guild: {}".format(SYSTEM_GUILD_ID))
+  else:
+    logger.warning("System Guild (SYSTEM_GUILD_ID) is not set, which is required for system and admin commands")
+
+  if EXCLUSIVE_GUILD_ID:
+    bot.load_extension("mitsuki.modules.gacha")
+    logger.info("Exclusive Guild: {}".format(EXCLUSIVE_GUILD_ID))
+  else:
+    logger.warning("Exclusive Guild (EXCLUSIVE_GUILD_ID) is not set, which is required for Exclusive comands")
 
   # fixes image loading issues?
   # CLIENT_FEATURE_FLAGS["FOLLOWUP_INTERACTIONS_FOR_IMAGES"] = True

@@ -11,12 +11,10 @@
 # GNU Affero General Public License for more details.
 
 from sys import argv
-from os import environ
 
 dev_mode = "dev" in argv
-environ["ENABLE_DEV_MODE"] = "1" if dev_mode else "0"
 
 from mitsuki import run
 
 if __name__ == "__main__":
-  run()
+  run(prod=not dev_mode)
