@@ -199,8 +199,8 @@ def subst_embed(embed: ipy.Embed, context: dict):
 
   if embed.footer:
     result.set_footer(
-      text=subst(embed.footer.text),
-      icon_url=get_valid_url(subst(embed.footer.icon_url)),
+      text=subst(context, embed.footer.text),
+      icon_url=get_valid_url(subst(context, embed.footer.icon_url)),
     )
 
   if embed.color:
@@ -208,8 +208,8 @@ def subst_embed(embed: ipy.Embed, context: dict):
 
   for field in embed.fields:
     result.add_field(
-      name=subst(field.name),
-      value=subst(field.value),
+      name=subst(context, field.name),
+      value=subst(context, field.value),
       inline=field.inline,
     )
 
