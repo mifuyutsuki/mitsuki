@@ -52,7 +52,7 @@ class UserPity(AsDict):
       List of user pity counters, or `None` if either the user has not
       registered, or no rarities have pity
     """
-    if isinstance(user, ipy.BaseUser):
+    if not isinstance(user, int):
       user = user.id
 
     query = (

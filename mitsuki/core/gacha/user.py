@@ -84,7 +84,7 @@ class GachaUser(AsDict):
     """
     _now = now or ipy.Timestamp.now(tz=timezone.utc)
     _now = _now.timestamp()
-    if isinstance(user, ipy.BaseUser):
+    if not isinstance(user, int):
       user = user.id
 
     first_time_shards = await get_setting(Settings.FirstTimeShards)
@@ -115,7 +115,7 @@ class GachaUser(AsDict):
     Returns:
       Instance of gacha user, or `None` if not registered
     """
-    if isinstance(user, ipy.BaseUser):
+    if not isinstance(user, int):
       user = user.id
 
     query = (
@@ -139,7 +139,7 @@ class GachaUser(AsDict):
     Returns:
       Guaranteed rarity, or `None` if user not in pity or the user is registered
     """
-    if isinstance(user, ipy.BaseUser):
+    if not isinstance(user, int):
       user = user.id
 
     stmt = (
@@ -169,7 +169,7 @@ class GachaUser(AsDict):
     Returns:
       Instance of gacha user with additional fields set, or `None` if not registered
     """
-    if isinstance(user, ipy.BaseUser):
+    if not isinstance(user, int):
       user = user.id
 
     subquery = (
@@ -236,7 +236,7 @@ class GachaUser(AsDict):
     """
     now = now or ipy.Timestamp.now()
 
-    if isinstance(user, ipy.BaseUser):
+    if not isinstance(user, int):
       user = user.id
 
     gacha_user = await cls.fetch(user)
@@ -351,7 +351,7 @@ class GachaUser(AsDict):
       user: Snowflake or instance of the user
       rarity: Obtained card rarity whose pity counter is to be reset
     """
-    if isinstance(user, ipy.BaseUser):
+    if not isinstance(user, int):
       user = user.id
 
     increment_stmt = (

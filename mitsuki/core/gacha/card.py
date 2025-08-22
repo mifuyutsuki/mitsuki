@@ -461,7 +461,7 @@ class Card(AsDict):
       amount: Number of this card to give, default 1
       rolled: Whether this card is rolled, and to update user data accordingly
     """
-    if isinstance(user, ipy.BaseUser):
+    if not isinstance(user, int):
       user = user.id
     if amount < 1:
       raise ValueError(f"Invalid card give amount of less than 1 ('{amount}')")
