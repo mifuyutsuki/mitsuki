@@ -641,7 +641,7 @@ class CardCache:
         temp_cards[card.id] = card.name
       temp_season_cards[card.rarity].append(card.id)
 
-    self.rarities     = temp_rarities
+    self.rarities     = {r.rarity: r for r in temp_rarities}
     self.season       = temp_season
     self.rarity_rates = temp_rarity_rates
     self.roster_cards = temp_roster_cards
