@@ -10,7 +10,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from typing import Optional, Any, Union, Self
+from typing import Optional, Any, Union, Self, Tuple, List
 from datetime import timezone
 from random import Random, SystemRandom
 
@@ -21,6 +21,7 @@ from sqlalchemy import select, update, delete, literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mitsuki.utils import option, ratio, process_text
+from mitsuki.lib.emoji import get_emoji, AppEmoji
 from mitsuki.lib.userdata import begin_session, AsDict, sa_insert as insert
 from mitsuki.lib.commands import CustomID
 from mitsuki.core.settings import get_setting, Settings
@@ -59,12 +60,30 @@ class Card(AsDict):
   convert_to: dict[str, int] = attrs.field(factory=dict)
   """Items that duplicates of this card convert to, if set, in the format {id: amount, ...}."""
 
+  color: int = attrs.field(default=0x46a1eb)
+  """Accent color of this card, which depends on its rarity."""
+  dupe_shards: int = attrs.field(default=75)
+  """Amount of shards given on obtaining a duplicate of this rarity."""
+  emoji: Optional[str] = attrs.field(default=None)
+  """Emoji name to use as the rarity star, or the default `m_gc_star1` if unset."""
+
   roll_time: Optional[ipy.Timestamp] = attrs.field(default=None, eq=False)
   """Time when this card was rolled, only set if obtained from a card roll."""
   season_pickup: bool = attrs.field(default=False, eq=False)
   """Whether this card is a season pickup, only set if obtained from a card roll."""
   collection_pickup: bool = attrs.field(default=False, eq=False)
   """Whether this card is obtained from a collection ticket, only set if obtained from a card roll."""
+
+
+  @property
+  def emoji_str(self):
+    """
+    Get the 'star' emoji string of this rarity, multiplied by the rarity value.
+
+    If this object's `emoji` is not set, this uses the AppEmoji `m_gc_star1`.
+    """
+    emoji = get_emoji(self.emoji or AppEmoji.GACHA_STAR_REGULAR)
+    return self.rarity * str(emoji)
 
 
   def db_dict(self, exclude_id: bool = False):
@@ -90,6 +109,16 @@ class Card(AsDict):
 
 
   @classmethod
+  def from_row(cls, row: sa.Row[Tuple["Card", "CardRarity"]]):
+    return cls(
+      **row.Card.asdict(),
+      color=row.CardRarity.color,
+      dupe_shards=row.CardRarity.dupe_shards,
+      emoji=row.CardRarity.emoji,
+    )
+
+
+  @classmethod
   async def fetch(cls, id: str, *, unobtained: bool = False, private: bool = False) -> Optional[Self]:
     """
     Fetch a card by its ID.
@@ -102,7 +131,10 @@ class Card(AsDict):
     Returns:
       Card instance, or `None` if a card with given ID doesn't exist
     """
-    query = select(models.Card)
+    query = (
+      select(models.Card, models.CardRarity)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+    )
     if not unobtained:
       roll_query = select(models.GachaRoll.card.distinct().label("card")).subquery()
       query = query.join(roll_query, roll_query.c.card == models.Card.id)
@@ -111,8 +143,8 @@ class Card(AsDict):
     query = query.where(models.Card.id == id)
 
     async with begin_session() as session:
-      if result := await session.scalar(query):
-        return cls(**result.asdict())
+      if result := (await session.execute(query)).first():
+        return cls.from_row(result)
 
 
   @classmethod
@@ -130,7 +162,10 @@ class Card(AsDict):
     if len(ids) == 0:
       return []
 
-    query = select(models.Card)
+    query = (
+      select(models.Card, models.CardRarity)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+    )
     if not unobtained:
       roll_query = select(models.GachaRoll.card.distinct().label("card")).subquery()
       query = query.join(roll_query, roll_query.c.card == models.Card.id)
@@ -139,10 +174,10 @@ class Card(AsDict):
     query = query.where(models.Card.id.in_(ids))
 
     async with begin_session() as session:
-      results = await session.scalars(query)
+      results = (await session.execute(query)).all()
 
     # Sort the result list to match the order of `ids`
-    return sorted([cls(**r.asdict()) for r in results], key=lambda r: ids.index(r.id))
+    return sorted([cls.from_row(r) for r in results], key=lambda r: ids.index(r.id))
 
 
   @classmethod
@@ -156,7 +191,10 @@ class Card(AsDict):
     Returns:
       List of card instances
     """
-    query = select(models.Card)
+    query = (
+      select(models.Card, models.CardRarity)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+    )
     if not unobtained:
       roll_query = select(models.GachaRoll.card.distinct().label("card")).subquery()
       query = query.join(roll_query, roll_query.c.card == models.Card.id)
@@ -164,8 +202,8 @@ class Card(AsDict):
       query = query.where(models.Card.unlisted == False)
 
     async with begin_session() as session:
-      results = await session.scalars(query)
-    return [cls(**r.asdict()) for r in results]
+      results = (await session.execute(query)).all()
+    return [cls.from_row(r) for r in results]
 
 
   @classmethod
@@ -183,7 +221,7 @@ class Card(AsDict):
       List of card instances
     """
     query = (
-      select(models.Card)
+      select(models.Card, models.CardRarity)
       .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
       .where(models.Card.limited == False)
       .where(models.Card.locked == False)
@@ -192,8 +230,8 @@ class Card(AsDict):
       query = query.where(models.Card.unlisted == False)
 
     async with begin_session() as session:
-      results = await session.scalars(query)
-    return [cls(**r.asdict()) for r in results]
+      results = (await session.execute(query)).all()
+    return [cls.from_row(r) for r in results]
 
 
   @classmethod
@@ -220,7 +258,8 @@ class Card(AsDict):
     )
 
     query = (
-      select(models.Card)
+      select(models.Card, models.CardRarity)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
       .join(models.GachaCollectionCard, models.GachaCollectionCard.card == models.Card.id)
       .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
       .join(season_query, season_query.c.collection == models.GachaCollection.id)
@@ -230,8 +269,8 @@ class Card(AsDict):
       query = query.where(models.Card.unlisted == False)
 
     async with begin_session() as session:
-      results = await session.scalars(query)
-    return [cls(**r.asdict()) for r in results]
+      results = (await session.execute(query)).all()
+    return [cls.from_row(r) for r in results]
 
 
   @classmethod
@@ -250,7 +289,7 @@ class Card(AsDict):
       List of card IDs
     """
     query = (
-      select(models.Card)
+      select(models.Card, models.CardRarity)
       .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
       .join(models.GachaCollectionCard, models.GachaCollectionCard.card == models.Card.id)
       .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
@@ -260,8 +299,8 @@ class Card(AsDict):
       query = query.where(models.Card.unlisted == False)
 
     async with begin_session() as session:
-      results = await session.scalars(query)
-    return [cls(**r.asdict()) for r in results]
+      results = (await session.execute(query)).all()
+    return [cls.from_row(r) for r in results]
 
 
   @staticmethod
@@ -314,7 +353,7 @@ class Card(AsDict):
       List of card instances
     """
     query = (
-      select(models.Card)
+      select(models.Card, models.CardRarity)
       .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
       .where(models.Card.id.regexp_match(pattern))
     )
@@ -322,8 +361,8 @@ class Card(AsDict):
       query = query.where(models.Card.unlisted == False)
 
     async with begin_session() as session:
-      results = await session.scalars(query)
-    return [cls(**r.asdict()) for r in results]
+      results = (await session.execute(query)).all()
+    return [cls.from_row(r) for r in results]
 
 
   @classmethod
@@ -376,7 +415,7 @@ class Card(AsDict):
     await session.execute(stmt)
 
 
-  async def delist(self, session: AsyncSession) -> None:
+  async def delist(self, session: AsyncSession) -> bool:
     """
     Delist this card.
 
