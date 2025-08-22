@@ -15,7 +15,7 @@ import attrs
 
 from typing import Optional
 
-from mitsuki.utils import escape_text
+from mitsuki.utils import escape_text, get_member_color_value
 from mitsuki.lib.emoji import AppEmoji, get_emoji
 from mitsuki.lib.view import (
   View,
@@ -52,21 +52,21 @@ class GachaProfileView(View):
 
     if len(user.pity_counters) > 0:
       fields.append(
-        "### Pity counter\n" + " ".join([
+        "**Pity counter**\n" + " ".join([
           "{} **{}**/{}".format(rarities[r].emoji_str, count, rarities[r].pity)
           for r, count in user.pity_counters.items()
         ])
       )
     if len(user.rolled_cards) > 0:
       fields.append(
-        "### Rolled cards\n**{}** — ".format(user.total_rolled) + " ".join([
+        "**Rolled cards:** {} card(s)\n".format(user.total_rolled) + " ".join([
           "{} **{}**".format(rarities[r].emoji_str, count)
           for r, count in user.rolled_cards.items()
         ])
       )
     if len(user.obtained_cards) > 0:
       fields.append(
-        "### Obtained cards\n**{}** — ".format(user.total_obtained) + " ".join([
+        "**Obtained cards:** {} card(s)\n".format(user.total_obtained) + " ".join([
           "{} **{}**".format(rarities[r].emoji_str, count)
           for r, count in user.obtained_cards.items()
         ])
@@ -86,11 +86,12 @@ class GachaProfileView(View):
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem(self.target_user.avatar_url))
         ),
         ipy.SeparatorComponent(divider=True),
-        ipy.TextDisplayComponent("\n".join(fields)),
+        ipy.TextDisplayComponent("\n\n".join(fields)),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
           "-# {}: /gacha profile user={}".format(self.caller.tag, self.target_user.tag)
-        )
+        ),
+        accent_color=get_member_color_value(self.target_user)
       )
     ]
 
@@ -128,6 +129,7 @@ class GachaProfileEmptyView(View):
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
           "-# {}: /gacha profile user={}".format(self.caller.tag, self.target_user.tag)
-        )
+        ),
+        accent_color=get_member_color_value(self.target_user)
       )
     ]
