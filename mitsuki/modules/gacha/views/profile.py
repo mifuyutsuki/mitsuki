@@ -79,7 +79,7 @@ class GachaProfileView(View):
       ipy.ContainerComponent(
         ipy.SectionComponent(
           components=[
-            ipy.TextDisplayComponent("-# ✦ ${guild_name_esc"),
+            ipy.TextDisplayComponent("-# ✦ ${guild_name_esc}"),
             ipy.TextDisplayComponent("# Gacha Profile: ${user_username}"),
             ipy.TextDisplayComponent("${shard} **${user_shards}**"),
           ],
@@ -116,7 +116,7 @@ class GachaProfileEmptyView(View):
       ipy.ContainerComponent(
         ipy.SectionComponent(
           components=[
-            ipy.TextDisplayComponent("-# ✦ ${guild_name_esc"),
+            ipy.TextDisplayComponent("-# ✦ ${guild_name_esc}"),
             ipy.TextDisplayComponent("# Gacha Profile: ${user_username}"),
             ipy.TextDisplayComponent("${shard} **0**"),
           ],
