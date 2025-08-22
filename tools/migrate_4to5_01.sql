@@ -10,4 +10,18 @@ BEGIN TRANSACTION;
 
 ALTER TABLE "gacha_settings" ADD COLUMN "emoji" VARCHAR;
 
+-- ---------------------------
+-- UserPity [gacha_pity2]
+
+-- Some users from before v2.0 may not have a corresponding UserPity entry.
+
+INSERT INTO "gacha_pity2"
+  ("user", "rarity", "count")
+SELECT
+  "user", "rarity", 0 "count"
+FROM "gacha_currency", "gacha_settings"
+WHERE "pity" > 1
+ORDER BY "user", "rarity"
+ON CONFLICT DO NOTHING;
+
 COMMIT;
