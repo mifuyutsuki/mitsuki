@@ -66,7 +66,7 @@ class AppEmoji(Enum):
   GACHA_STAR_REGULAR = ("m_gc_star1", "⭐")
   GACHA_STAR_RAINBOW = ("m_gc_star2", "🌟")
 
-  ITEM_SHARD = ("m_it_shard", "💠")
+  ITEM_SHARD = ("m_shard", "💠")
 
   @classmethod
   def count(cls):
