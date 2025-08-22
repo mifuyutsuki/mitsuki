@@ -119,3 +119,8 @@ def get_presencer():
   if not _presencer:
     raise RuntimeError("Presencer is uninitialized")
   return _presencer
+
+
+def is_presencer_running():
+  global _presencer
+  return _presencer is not None

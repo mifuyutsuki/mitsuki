@@ -11,11 +11,12 @@
 # GNU Affero General Public License for more details.
 
 from .presence import Presence
-from .presencer import Presencer, get_presencer, set_presencer
+from .presencer import Presencer, get_presencer, set_presencer, is_presencer_running
 
 __all__ = (
   "Presence",
   "Presencer",
   "get_presencer",
   "set_presencer",
+  "is_presencer_running",
 )
