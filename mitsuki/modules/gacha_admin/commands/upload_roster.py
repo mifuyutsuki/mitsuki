@@ -23,6 +23,7 @@ import mitsuki.lib.errors as errors
 import mitsuki.lib.checks as checks
 
 from mitsuki.core.submitter import CardSubmitter
+from mitsuki.core.gacha import CardCache
 from mitsuki.modules.gacha_admin import views
 
 
@@ -64,3 +65,4 @@ class RosterUpload(libcmd.ReaderCommand):
     async with begin_session() as session:
       await submitter.execute(session)
       await views.RosterUploadDoneView(self.ctx, submitter).send(ephemeral=True)
+    await CardCache.sync()
