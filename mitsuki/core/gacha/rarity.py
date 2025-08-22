@@ -56,6 +56,16 @@ class CardRarity(AsDict):
     return get_emoji(self.emoji or AppEmoji.GACHA_STAR_REGULAR)
 
 
+  @property
+  def emoji_str(self):
+    """
+    Get the 'star' emoji string of this rarity, multiplied by the rarity value.
+
+    If this object's `emoji` is not set, this uses the AppEmoji `m_gc_star1`.
+    """
+    return self.rarity * str(self.get_emoji)
+
+
   @classmethod
   async def fetch_all(cls):
     """

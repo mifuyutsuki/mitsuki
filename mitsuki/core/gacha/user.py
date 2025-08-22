@@ -53,6 +53,18 @@ class GachaUser(AsDict):
   """Unique cards rolled by this user in the format {rarity: count}, only set if fetched using `fetch_profile()`."""
 
 
+  @property
+  def total_rolled(self):
+    """Total cards rolled by this user, only set if fetched using `fetch_profile()`."""
+    return sum(self.rolled_cards.values())
+
+
+  @property
+  def total_obtained(self):
+    """Unique cards rolled by this user, only set if fetched using `fetch_profile()`."""
+    return sum(self.obtained_cards.values())
+
+
   @classmethod
   async def create(
     cls, session: AsyncSession, user: Union[ipy.BaseUser, ipy.Snowflake], *, now: Optional[ipy.Timestamp] = None
