@@ -102,6 +102,7 @@ class GachaProfileEmptyView(View):
 
   def get_context(self):
     return {
+      "shard": get_emoji(AppEmoji.ITEM_SHARD),
       "user_id": self.target_user.id,
       "user_mention": self.target_user.mention,
       "user_username": self.target_user.tag,
