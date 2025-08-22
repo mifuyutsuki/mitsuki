@@ -80,8 +80,8 @@ class EmojiFinder:
 
 
   @classmethod
-  def create(cls, bot: ipy.ClientT):
-    return cls(bot=bot)
+  def create(cls, client: ipy.ClientT):
+    return cls(client=client)
 
 
   def get(self, emoji: Union["AppEmoji", str]) -> Union[ipy.CustomEmoji, ipy.PartialEmoji]:

@@ -21,7 +21,7 @@ from mitsuki.lib.view import (
   View,
   SectionPaginatorMixin,
   SectionPaginatorContentPlaceholder,
-  SectionPaginatorNavPlaceholder,
+  PaginatorNavPlaceholder,
 )
 
 from .. import customids
@@ -100,7 +100,7 @@ class ServerEmojiView(SectionPaginatorMixin, View):
           "-# {}: /server emoji animated={} sort={}".format(self.caller.tag, self.animated, self.sort)
         )
       ),
-      SectionPaginatorNavPlaceholder(),
+      PaginatorNavPlaceholder(),
     ]
 
 

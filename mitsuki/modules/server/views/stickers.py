@@ -21,7 +21,7 @@ from mitsuki.lib.view import (
   View,
   SectionPaginatorMixin,
   SectionPaginatorContentPlaceholder,
-  SectionPaginatorNavPlaceholder,
+  PaginatorNavPlaceholder,
 )
 
 from .. import customids
@@ -101,7 +101,7 @@ class ServerStickersView(SectionPaginatorMixin, View):
           "-# {}: /server stickers".format(self.caller.tag)
         )
       ),
-      SectionPaginatorNavPlaceholder(),
+      PaginatorNavPlaceholder(),
     ]
 
 

@@ -33,7 +33,7 @@ from .core import (
 from .paginators import (
   SectionPaginatorMixin,
   SectionPaginatorContentPlaceholder,
-  SectionPaginatorNavPlaceholder,
+  PaginatorNavPlaceholder,
 )
 
 __all__ = (
@@ -48,5 +48,5 @@ __all__ = (
   "timeout_clearer",
   "SectionPaginatorMixin",
   "SectionPaginatorContentPlaceholder",
-  "SectionPaginatorNavPlaceholder",
+  "PaginatorNavPlaceholder",
 )
