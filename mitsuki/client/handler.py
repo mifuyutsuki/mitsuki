@@ -128,9 +128,9 @@ class ErrorView(View):
         embed.title       = exc.title
         embed.description = exc.desc
         for name, text in exc.fields.items():
-          embed.add_field(name, text)
+          embed.add_field(name, str(text))
         if exc.show_traceback:
-          embed.add_field("Details", "```\n{}```".format(_format_traceback(exc)))
+          embed.description += "```\n{}```".format(_format_traceback(exc))
 
       case ipy.errors.CommandOnCooldown():
         embed.title       = "In Cooldown"
@@ -141,14 +141,14 @@ class ErrorView(View):
         embed.description = "You don't have permissions to run this command."
 
       case (ipy.errors.DiscordError(), ipy.errors.HTTPException(), aiohttp.ClientError()):
-        embed.title       = "Error"
-        embed.description = "An unexpected error occured, please try again later."
-        embed.add_field("Details", "```\n{}```".format(str(exc)))
+        embed.title        = "Error"
+        embed.description  = "An unexpected error occured, please try again later."
+        embed.description += "```\n{}```".format(str(exc))
 
       case _:
-        embed.title       = "Error"
-        embed.description = "An unexpected error occured, please contact application owner."
-        embed.add_field("Details", "```\n{}```".format(_format_traceback(exc)))
+        embed.title        = "Error"
+        embed.description  = "An unexpected error occured, please contact application owner."
+        embed.description += "```\n{}```".format(_format_traceback(exc))
 
     return [embed]
 
@@ -167,7 +167,7 @@ class ClientHandlerMixin:
     await init_event.wait()
 
     if not is_presencer_running():
-      set_presencer(self.bot)
+      set_presencer(event.bot)
       await get_presencer().init()
 
 
@@ -225,4 +225,4 @@ class ClientHandlerMixin:
     # default ephemeral to true unless it's an unknown exception
     if isinstance(event.ctx, ipy.InteractionContext):
       ephemeral = getattr(event.error, "ephemeral", False)
-      await ErrorView(event.ctx).send(ephemeral=ephemeral)
+      await ErrorView(event.ctx, event.error).send(ephemeral=ephemeral)
