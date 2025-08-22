@@ -454,14 +454,17 @@ class View:
     send_kwargs = self._send_kwargs or self._generate()
     mention_users = mention_users or []
 
-    if self.has_origin:
-      send = self.ctx.edit_origin
+    if self.ctx.deferred:
+      message = await self.ctx.send(allowed_mentions=ipy.AllowedMentions(users=mention_users), **send_kwargs)
     elif getattr(self.ctx, "editing_origin", False):
-      send = self.ctx.edit_origin
+      message = await self.ctx.edit_origin(allowed_mentions=ipy.AllowedMentions(users=mention_users), **send_kwargs)
+    elif self.has_origin:
+      message = await self.ctx.edit_origin(allowed_mentions=ipy.AllowedMentions(users=mention_users), **send_kwargs)
     else:
-      send = self.ctx.send
+      message = await self.ctx.send(
+        ephemeral=ephemeral, allowed_mentions=ipy.AllowedMentions(users=mention_users), **send_kwargs
+      )
 
-    message = await send(ephemeral=ephemeral, allowed_mentions=ipy.AllowedMentions(users=mention_users), **send_kwargs)
     self._message = message
     self._send_kwargs = send_kwargs
 
