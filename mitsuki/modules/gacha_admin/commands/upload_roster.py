@@ -39,7 +39,7 @@ class RosterUpload(libcmd.ReaderCommand):
     if file.size > 8_000_000:
       raise errors.BadFileSize(size_mb=file.size / 1_000_000, max_size_mb=8.0)
 
-    async with aiohttp.ClientSession(file.url) as session:
+    async with aiohttp.ClientSession() as session:
       async with session.get(file.url) as response:
         response.raise_for_status()
         f = await response.text()
@@ -63,4 +63,4 @@ class RosterUpload(libcmd.ReaderCommand):
 
     async with begin_session() as session:
       await submitter.execute(session)
-      await views.RosterUploadDoneView(self.ctx).send(ephemeral=True)
+      await views.RosterUploadDoneView(self.ctx, submitter).send(ephemeral=True)

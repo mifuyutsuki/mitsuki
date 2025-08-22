@@ -546,7 +546,7 @@ class View:
 
     if embeds := self.embeds():
       for embed in embeds:
-        embed = utils.subst_embed(embed)
+        embed = utils.subst_embed(embed, context)
 
     if components := self.components():
       components = utils.subst_components(components, context)

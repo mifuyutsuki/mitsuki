@@ -33,6 +33,6 @@ class GachaProfile(ReaderCommand):
     cache = await core.CardCache.get_cache()
 
     if gacha_user := await core.GachaUser.fetch_profile(user):
-      await views.GachaProfileView(self.ctx, gacha_user, user, cache).send(timeout=180, hide_on_timeout=True)
+      await views.GachaProfileView(self.ctx, user, gacha_user, cache).send(timeout=180, hide_on_timeout=True)
     else:
       await views.GachaProfileEmptyView(self.ctx, user).send()

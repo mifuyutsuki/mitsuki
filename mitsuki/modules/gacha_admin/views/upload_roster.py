@@ -53,7 +53,7 @@ class RosterUploadPromptView(View):
 
   def components(self):
     return [
-      ipy.ContainerComponent([
+      ipy.ContainerComponent(
         ipy.TextDisplayComponent("## Upload Gacha Roster"),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
@@ -61,19 +61,21 @@ class RosterUploadPromptView(View):
           "After this operation, the roster size will be **${after_count}**.\n"
           "* Cards to add: **${add_count}**\n"
           "* Cards to edit: **${edit_count}**\n"
-          "* Cards to delist: **${delete_count}**\n"
+          "* Cards to delist: **${delist_count}**\n"
           "Proceed with this operation?"
         ),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
           "-# {} [Admin]: /gacha-admin upload".format(self.caller.tag)
         )
-      ]),
-      ipy.Button(
-        style=ipy.ButtonStyle.GREEN,
-        label="Proceed",
-        emoji=get_emoji(AppEmoji.YES),
-        custom_id=customids.ROSTER_UPLOAD.id(self.submitter.id),
+      ),
+      ipy.ActionRow(
+        ipy.Button(
+          style=ipy.ButtonStyle.GREEN,
+          label="Proceed",
+          emoji=get_emoji(AppEmoji.YES),
+          custom_id=customids.ROSTER_UPLOAD.id(self.submitter.id),
+        ),
       )
     ]
 
@@ -95,17 +97,17 @@ class RosterUploadDoneView(View):
 
   def components(self):
     return [
-      ipy.ContainerComponent([
+      ipy.ContainerComponent(
         ipy.TextDisplayComponent("## Uploaded Gacha Roster"),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
           "* Added cards: **${add_count}**\n"
           "* Edited cards: **${edit_count}**\n"
-          "* Delisted cards: **${delete_count}**\n"
+          "* Delisted cards: **${delist_count}**\n"
         ),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
           "-# {} [Admin]: /gacha-admin upload".format(self.caller.tag)
         )
-      ])
+      )
     ]
