@@ -23,6 +23,7 @@ from string import Template
 from typing import Optional, Union, List, Any
 from collections.abc import Callable, Awaitable
 
+from mitsuki.utils import escape_text
 from mitsuki.logger import logger
 from mitsuki.lib.emoji import AppEmoji, get_emoji
 from mitsuki.lib.view import utils
@@ -308,18 +309,21 @@ class View:
       "client_mention": self.client.user.mention,
       "client_username": self.client.user.tag,
       "client_name": self.client.user.display_name,
+      "client_name_esc": escape_text(self.client.user.display_name),
       "client_avatar_url": self.client.user.avatar_url,
 
       "caller_id": self.caller.id,
       "caller_mention": self.caller.mention,
       "caller_username": self.caller.tag,
       "caller_name": self.caller.display_name,
+      "caller_name_esc": escape_text(self.caller.display_name),
       "caller_avatar_url": self.caller.avatar_url,
     }
     if guild := self.ctx.guild:
       result |= {
         "guild_id": guild.id,
         "guild_name": guild.name,
+        "guild_name_esc": escape_text(guild.name),
       }
       if icon := guild.icon:
         result |= {"guild_avatar_url": icon.as_url()}
