@@ -24,4 +24,10 @@ WHERE "pity" > 1
 ORDER BY "user", "rarity"
 ON CONFLICT DO NOTHING;
 
+-- -----------------------
+-- GachaRoll [gacha_rolls]
+
+ALTER TABLE "gacha_rolls" ADD COLUMN "pity_excluded" BOOLEAN DEFAULT FALSE;
+ALTER TABLE "gacha_rolls" ADD COLUMN "collection" VARCHAR;
+
 COMMIT;

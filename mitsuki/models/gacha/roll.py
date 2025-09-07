@@ -31,3 +31,8 @@ class GachaRoll(Base):
   """ID of card being rolled."""
   time: Mapped[float]
   """Time this card was rolled, in timestamp format."""
+
+  pity_excluded: Mapped[bool] = mapped_column(server_default=text("FALSE"))
+  """Whether this card does not count towards the user's pity (e.g. collection rolls)."""
+  collection: Mapped[Optional[str]]
+  """The collection this card is rolled from (including seasons), if any."""

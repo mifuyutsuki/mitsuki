@@ -69,10 +69,10 @@ class Card(AsDict):
 
   roll_time: Optional[ipy.Timestamp] = attrs.field(default=None, eq=False)
   """Time when this card was rolled, only set if obtained from a card roll."""
-  season_pickup: bool = attrs.field(default=False, eq=False)
-  """Whether this card is a season pickup, only set if obtained from a card roll."""
-  collection_pickup: bool = attrs.field(default=False, eq=False)
-  """Whether this card is obtained from a collection ticket, only set if obtained from a card roll."""
+  season: Optional[str] = attrs.field(default=None, eq=False)
+  """The season ID this roll comes from, if any, only set if obtained from a card roll."""
+  collection: Optional[str] = attrs.field(default=None, eq=False)
+  """The collection ID this roll comes from, if any, only set if obtained from a card roll."""
 
 
   @property
@@ -84,6 +84,18 @@ class Card(AsDict):
     """
     emoji = get_emoji(self.emoji or AppEmoji.GACHA_STAR_REGULAR)
     return self.rarity * str(emoji)
+
+
+  @property
+  def season_pickup(self):
+    """Whether this card is a season pickup, only set if obtained from a card roll."""
+    return self.season is not None
+  
+
+  @property
+  def collection_pickup(self):
+    """Whether this card is a colletion pickup, only set if obtained from a card roll."""
+    return self.collection is not None
 
 
   def db_dict(self, exclude_id: bool = False):
@@ -489,7 +501,10 @@ class Card(AsDict):
     await session.execute(inventory_stmt)
     if rolled:
       roll_entry_stmt = (
-        insert(models.GachaRoll).values(user=user, card=self.id, time=self.roll_time.timestamp())
+        insert(models.GachaRoll).values(
+          user=user, card=self.id, time=self.roll_time.timestamp(),
+          pity_excluded=self.collection_pickup, collection=self.collection or self.season,
+        )
       )
       await session.execute(pity_increment_stmt)
       await session.execute(pity_reset_stmt)
@@ -723,20 +738,21 @@ class CardCache:
 
     # Season pick-up?
     cards = cache.roster_cards
-    season_pickup = False
+    season_id = False
 
     if (
-      cache.season_rate is not None
+      cache.season
+      and cache.season_rate is not None
       and cache.season_available
       and random.random() < cache.season_rate
     ):
-      season_pickup = True
+      season_id = cache.season.id
       cards = cache.season_cards
 
     # Roll
     if result := await cls._roll(cards, min_rarity=min_rarity, random=random):
       result.roll_time = now
-      result.season_pickup = season_pickup
+      result.season = season_id
       return result
     else:
       raise RuntimeError("Failed to roll a card - missing setup or roster")
@@ -773,7 +789,7 @@ class CardCache:
 
     if result := await cls._roll(cards, min_rarity=min_rarity, random=random):
       result.roll_time = now
-      result.collection_pickup = True
+      result.collection = collection_id
       return result
     else:
       raise RuntimeError("Failed to roll a card - missing setup or roster")
