@@ -34,7 +34,7 @@ async def test_fetch_user(init_db, mock_user, gacha_user: gacha.GachaUser):
   assert created.claimed_daily
 
 
-async def test_fetch_profile(init_db, mock_user, gacha_user: gacha.GachaUser):
+async def test_fetch_profile(init_db, mock_user, card_rolls: list[gacha.Card], gacha_user: gacha.GachaUser):
   created = gacha_user
   fetched = await gacha.GachaUser.fetch_profile(mock_user.id)
 
@@ -42,6 +42,10 @@ async def test_fetch_profile(init_db, mock_user, gacha_user: gacha.GachaUser):
   assert fetched.user == created.user
   assert fetched.first_daily == fetched.last_daily
   assert fetched.amount > 0
+
+  assert len(fetched.pity_counters) > 0
+  assert len(fetched.rolled_cards) > 0
+  assert len(fetched.recent_rolls) > 0
 
   # Note: The gacha_user fixture instance is created using GachaUser.daily(),
   # and thus includes daily claim information.

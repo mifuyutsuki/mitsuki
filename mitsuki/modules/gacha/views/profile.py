@@ -48,45 +48,52 @@ class GachaProfileView(View):
     user     = self.gacha_user
     rarities = self.card_cache.rarities
 
-    fields = []
+    counter_fields = []
 
     if len(user.pity_counters) > 0:
-      fields.append(
+      counter_fields.append(
         "**Pity counter**\n" + " ".join([
           "{} **{}**/{}".format(rarities[r].emoji_str, count, rarities[r].pity)
           for r, count in user.pity_counters.items()
         ])
       )
     if len(user.rolled_cards) > 0:
-      fields.append(
+      counter_fields.append(
         "**Rolled cards:** {} card(s)\n".format(user.total_rolled) + " ".join([
           "{} **{}**".format(rarities[r].emoji_str, count)
           for r, count in user.rolled_cards.items()
         ])
       )
     if len(user.obtained_cards) > 0:
-      fields.append(
+      counter_fields.append(
         "**Obtained cards:** {} card(s)\n".format(user.total_obtained) + " ".join([
           "{} **{}**".format(rarities[r].emoji_str, count)
           for r, count in user.obtained_cards.items()
         ])
       )
 
-    if len(fields) == 0:
-      fields = ["No information is available for this user."]
+    if len(counter_fields) == 0:
+      counter_fields = ["No information is available for this user."]
+
+    rolls_fields = [
+      "{} {} **{}**".format(rarities[c.rarity].emoji_str, c.time.format("R"), escape_text(c.name))
+      for c in user.recent_rolls
+    ]
 
     return [
       ipy.ContainerComponent(
         ipy.SectionComponent(
           components=[
             ipy.TextDisplayComponent("-# ✦ ${guild_name_esc}"),
-            ipy.TextDisplayComponent("# Gacha Profile: ${user_username}"),
+            ipy.TextDisplayComponent("## ${user_username}'s Gacha Profile"),
             ipy.TextDisplayComponent("${shard} **${user_shards}**"),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem(self.target_user.avatar_url))
         ),
         ipy.SeparatorComponent(divider=True),
-        ipy.TextDisplayComponent("\n\n".join(fields)),
+        ipy.TextDisplayComponent("\n\n".join(counter_fields)),
+        ipy.SeparatorComponent(divider=True),
+        ipy.TextDisplayComponent("### Latest Rolled\n" + "\n".join(rolls_fields)),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
           "-# {}: /gacha profile user={}".format(self.caller.tag, self.target_user.tag)
@@ -119,8 +126,8 @@ class GachaProfileEmptyView(View):
         ipy.SectionComponent(
           components=[
             ipy.TextDisplayComponent("-# ✦ ${guild_name_esc}"),
-            ipy.TextDisplayComponent("# Gacha Profile: ${user_username}"),
-            ipy.TextDisplayComponent("${shard} **0**"),
+            ipy.TextDisplayComponent("## ${user_username}'s Gacha Profile"),
+            ipy.TextDisplayComponent("${shard} **${user_shards}**"),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem(self.target_user.avatar_url))
         ),

@@ -100,7 +100,7 @@ async def card_season_ended(card_collection: gacha.CardCollection):
 
 
 @pytest.fixture()
-async def card_rolls(cards: list[gacha.Card], mock_user):
+async def card_rolls(cards: list[gacha.Card], gacha_user: gacha.GachaUser):
   rand = random.Random(33550306)
   random_time = lambda: (
     ipy.Timestamp.now() - timedelta(
@@ -118,7 +118,7 @@ async def card_rolls(cards: list[gacha.Card], mock_user):
 
   async with begin_session() as session:
     for roll in rolls:
-      await roll.give_to(session, mock_user.id, rolled=True)
+      await roll.give_to(session, gacha_user.user, rolled=True)
 
   await gacha.CardCache.sync_search()
   return rolls

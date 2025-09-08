@@ -25,6 +25,7 @@ from mitsuki.lib.commands import CustomID
 from mitsuki.core.settings import get_setting, Settings
 
 import mitsuki.models.gacha as models
+import mitsuki.core.gacha as core
 
 
 @attrs.define(kw_only=True)
@@ -45,12 +46,14 @@ class GachaUser(AsDict):
   claimed_first_daily: bool = attrs.field(default=False)
   """Whether the user just claimed first-time daily, only set if fetched using `daily()`."""
 
-  pity_counters: dict[int, int] = attrs.field(factory=dict)
+  pity_counters: dict[int, int] = attrs.field(factory=dict, eq=False)
   """This user's pity counters in the format {rarity: count}, only set if fetched using `fetch_profile()`"""
-  rolled_cards: dict[int, int] = attrs.field(factory=dict)
+  rolled_cards: dict[int, int] = attrs.field(factory=dict, eq=False)
   """Total cards rolled by this user in the format {rarity: count}, only set if fetched using `fetch_profile()`."""
-  obtained_cards: dict[int, int] = attrs.field(factory=dict)
+  obtained_cards: dict[int, int] = attrs.field(factory=dict, eq=False)
   """Unique cards rolled by this user in the format {rarity: count}, only set if fetched using `fetch_profile()`."""
+  recent_rolls: list[core.UserCardRoll] = attrs.field(factory=list, eq=False)
+  """Cards recently rolled by this user, only set if fetched using `fetch_profile()`."""
 
 
   @property
@@ -201,6 +204,7 @@ class GachaUser(AsDict):
 
     async with begin_session() as session:
       results = (await session.execute(query)).all()
+      recent_rolls = await core.UserCardRoll.fetch_recent(session, user)
 
     if len(results) > 0:
       return cls(
@@ -208,6 +212,7 @@ class GachaUser(AsDict):
         pity_counters={r.rarity: r.pity for r in results if r.pity is not None},
         obtained_cards={r.rarity: r.obtained for r in results},
         rolled_cards={r.rarity: r.rolled for r in results},
+        recent_rolls=recent_rolls
       )
 
 
