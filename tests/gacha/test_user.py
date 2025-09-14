@@ -90,13 +90,15 @@ async def test_daily_unclaimed(
   # last user daily < last reset < "current" time
 
   # Daily reset | Last daily | "Current" time
-  # 14/2 00:00  | 13/2 23:00 | 14/2 06:00
-  # 14/2 04:00  | 14/2 03:00 | 14/2 10:00
-  # 14/2 21:00  | 14/2 20:00 | 15/2 03:00
+  # 14/2 00:00  | 13/2 23:00 | 14/2 01:00
+  # 14/2 04:00  | 14/2 03:00 | 14/2 05:00
+  # 14/2 21:00  | 14/2 20:00 | 14/2 22:00
 
   now = custom_daily_reset + timedelta(hours=1)
 
   user_before = gacha_user_custom_reset
+  assert await user_before.can_daily(now=now)
+
   async with begin_session() as session:
     user_after = await gacha.GachaUser.daily(session, mock_user.id, now=now)
 
@@ -118,6 +120,8 @@ async def test_daily_claimed(
   now = custom_daily_reset - timedelta(minutes=30)
 
   user_before = gacha_user_custom_reset
+  assert not await user_before.can_daily(now=now)
+
   async with begin_session() as session:
     user_after = await gacha.GachaUser.daily(session, mock_user.id, now=now)
 
@@ -133,8 +137,10 @@ async def test_daily_burst(
   user_before = await gacha.GachaUser.fetch(mock_user.id)
   assert user_before is not None
 
-  # First call
+  # First call (can daily)
   now = custom_daily_reset + timedelta(days=1, minutes=1)
+  assert await user_before.can_daily(now=now)
+
   async with begin_session() as session:
     user_after = await gacha.GachaUser.daily(session, mock_user.id, now=now)
 
@@ -142,14 +148,16 @@ async def test_daily_burst(
   assert user_after.claimed_daily
   assert not user_after.claimed_first_daily
 
-  # Subsequent calls
+  # Subsequent calls (cannot daily)
   for s in range(5):
     user_before = user_after
 
     now += timedelta(seconds=s)
+
     async with begin_session() as session:
       user_after = await gacha.GachaUser.daily(session, mock_user.id, now=now)
 
+    assert not await user_after.can_daily(now=now)
     assert user_after.amount == user_before.amount
     assert not user_after.claimed_daily
     assert not user_after.claimed_first_daily

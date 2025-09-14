@@ -11,7 +11,8 @@
 # GNU Affero General Public License for more details.
 
 from typing import Optional, Any, Union, Self
-from datetime import timezone
+from datetime import timezone, timedelta
+from croniter import croniter
 
 import attrs
 import interactions as ipy
@@ -66,6 +67,47 @@ class GachaUser(AsDict):
   def total_obtained(self):
     """Unique cards rolled by this user, only set if fetched using `fetch_profile()`."""
     return sum(self.obtained_cards.values())
+
+
+  async def next_daily(self) -> Optional[ipy.Timestamp]:
+    """
+    Next time this user can daily.
+
+    If this user has no last daily, returns `None`, which may happen if the
+    user has not registered to Mitsuki Gacha yet, but received shards from
+    a give command.
+
+    Returns:
+      Datetime of next daily, or `None` if last daily is not known
+    """
+    if not self.last_daily:
+      return None
+
+    last = self.last_daily.astimezone(timezone.utc)
+
+    reset_s = await get_setting(Settings.DailyResetTime)
+    hours, minutes = reset_s.split(":")
+
+    # croniter returns datetime rather than ipy.Timestamp, so we wrap it in fromdatetime() to convert its type.
+    return ipy.Timestamp.fromdatetime(croniter(f"{minutes} {hours} * * *", last).next(ipy.Timestamp))
+
+
+  async def can_daily(self, *, now: Optional[ipy.Timestamp] = None) -> bool:
+    """
+    Whether this user can claim a new daily.
+    
+    Args:
+      now: Reference time to determine ability to claim, or current time if unset
+
+    Returns:
+      True if this user can claim daily, False otherwise
+    """
+    next_daily = await self.next_daily()
+    if not next_daily:
+      return True
+
+    now = now or ipy.Timestamp.now(tz=timezone.utc)
+    return now >= next_daily
 
 
   @classmethod
@@ -239,7 +281,7 @@ class GachaUser(AsDict):
     Returns:
       Instance of gacha user
     """
-    now = now or ipy.Timestamp.now()
+    now = now or ipy.Timestamp.now(tz=timezone.utc)
 
     if not isinstance(user, int):
       user = user.id
@@ -250,12 +292,7 @@ class GachaUser(AsDict):
 
     # -----
 
-    daily_reset = await get_setting(Settings.DailyResetTime)
-    daily_reset_h, daily_reset_m = daily_reset.split(":")
-
-    last_reset = now.replace(hour=int(daily_reset_h), minute=int(daily_reset_m), second=0, microsecond=0)
-
-    if gacha_user.last_daily and last_reset < gacha_user.last_daily:
+    if not await gacha_user.can_daily(now=now):
       return gacha_user
 
     # -----
