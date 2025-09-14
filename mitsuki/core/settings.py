@@ -239,7 +239,7 @@ async def set_setting(
   statement = (
     sa_insert(Setting)
     .values(name=setting.id, value=text)
-    .on_conflict_do_update(index_elements=["value"], set_={"value": text})
+    .on_conflict_do_update(index_elements=["name"], set_={"value": text})
   )
   await session.execute(statement)
   _cache[setting.id] = _value
