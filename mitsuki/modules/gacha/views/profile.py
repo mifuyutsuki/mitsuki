@@ -84,8 +84,8 @@ class GachaProfileView(View):
       ipy.ContainerComponent(
         ipy.SectionComponent(
           components=[
-            ipy.TextDisplayComponent("-# ✦ ${guild_name_esc}"),
-            ipy.TextDisplayComponent("## ${user_username}'s Gacha Profile"),
+            ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
+            ipy.TextDisplayComponent("# ${user_username}'s Profile"),
             ipy.TextDisplayComponent("${shard} **${user_shards}**"),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem(self.target_user.avatar_url))
@@ -125,8 +125,8 @@ class GachaProfileEmptyView(View):
       ipy.ContainerComponent(
         ipy.SectionComponent(
           components=[
-            ipy.TextDisplayComponent("-# ✦ ${guild_name_esc}"),
-            ipy.TextDisplayComponent("## ${user_username}'s Gacha Profile"),
+            ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
+            ipy.TextDisplayComponent("# ${user_username}'s Profile"),
             ipy.TextDisplayComponent("${shard} **${user_shards}**"),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem(self.target_user.avatar_url))
