@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mitsuki.utils import option
 from mitsuki.lib.userdata import begin_session, AsDict, sa_insert as insert
 from mitsuki.lib.commands import CustomID
-from mitsuki.core.settings import get_setting, Settings
+from mitsuki.core.settings import get_setting, fetch_setting, Settings
 
 import mitsuki.models.gacha as models
 import mitsuki.core.gacha as core
@@ -69,7 +69,7 @@ class GachaUser(AsDict):
     return sum(self.obtained_cards.values())
 
 
-  async def next_daily(self) -> Optional[ipy.Timestamp]:
+  def next_daily(self) -> Optional[ipy.Timestamp]:
     """
     Next time this user can daily.
 
@@ -85,14 +85,14 @@ class GachaUser(AsDict):
 
     last = self.last_daily.astimezone(timezone.utc)
 
-    reset_s = await get_setting(Settings.DailyResetTime)
+    reset_s = get_setting(Settings.DailyResetTime)
     hours, minutes = reset_s.split(":")
 
     # croniter returns datetime rather than ipy.Timestamp, so we wrap it in fromdatetime() to convert its type.
     return ipy.Timestamp.fromdatetime(croniter(f"{minutes} {hours} * * *", last).next(ipy.Timestamp))
 
 
-  async def can_daily(self, *, now: Optional[ipy.Timestamp] = None) -> bool:
+  def can_daily(self, *, now: Optional[ipy.Timestamp] = None) -> bool:
     """
     Whether this user can claim a new daily.
     
@@ -102,7 +102,7 @@ class GachaUser(AsDict):
     Returns:
       True if this user can claim daily, False otherwise
     """
-    next_daily = await self.next_daily()
+    next_daily = self.next_daily()
     if not next_daily:
       return True
 
@@ -132,7 +132,7 @@ class GachaUser(AsDict):
     if not isinstance(user, int):
       user = user.id
 
-    first_time_shards = await get_setting(Settings.FirstTimeShards)
+    first_time_shards = await fetch_setting(Settings.FirstTimeShards)
     pity_query = (
       select(sa.literal(user), models.CardRarity.rarity, sa.literal(0))
       .where(models.CardRarity.pity > 1)
@@ -292,17 +292,17 @@ class GachaUser(AsDict):
 
     # -----
 
-    if not await gacha_user.can_daily(now=now):
+    if not gacha_user.can_daily(now=now):
       return gacha_user
 
     # -----
 
     gacha_user.claimed_daily = True
     if gacha_user.first_daily:
-      daily_shards = await get_setting(Settings.DailyShards)
+      daily_shards = await fetch_setting(Settings.DailyShards)
     else:
       gacha_user.claimed_first_daily = True
-      daily_shards = await get_setting(Settings.FirstTimeShards)
+      daily_shards = await fetch_setting(Settings.FirstTimeShards)
 
     stmt = (
       update(models.GachaUser)

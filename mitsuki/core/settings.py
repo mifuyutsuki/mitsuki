@@ -77,9 +77,26 @@ class Settings:
 
 
   @staticmethod
-  async def get(setting: SettingData, no_default: bool = False):
+  def get(setting: SettingData):
     """
-    Get an application setting from the database, returning the default value if not set.
+    Get an application setting from the cache, returning the default value if not set or not available.
+
+    Settings are given by `SettingData` instances in `Settings`, which contain metadata about the setting,
+    including its type and default value.
+
+    Args:
+      setting: Setting to be retrieved
+
+    Returns:
+      Setting value, or `None` if not set and `no_default` is `True`
+    """
+    return get_setting(setting)
+
+
+  @staticmethod
+  async def fetch(setting: SettingData, no_default: bool = False):
+    """
+    Fetch an application setting from the database, returning the default value if not set.
 
     Settings are given by `SettingData` instances in `Settings`, which contain metadata about the setting,
     including its type and default value.
@@ -91,18 +108,18 @@ class Settings:
     Returns:
       Setting value, or `None` if not set and `no_default` is `True`
     """
-    return await get_setting(setting, no_default=no_default)
+    return await fetch_setting(setting, no_default=no_default)
 
 
   @staticmethod
-  async def get_all():
+  async def fetch_all():
     """
     Get all application settings and its values.
 
     Returns:
       Map of setting IDs to tuples of `SettingData` and the current value, or its default if not set.
     """
-    return await get_settings()
+    return await fetch_settings()
 
 
   @staticmethod
@@ -138,9 +155,47 @@ def _convert(setting: SettingData, value: str):
       return value
 
 
-async def get_setting(setting: SettingData, no_default: bool = False) -> Optional["SettingValueType"]:
+async def preload_settings():
   """
-  Get an application setting from the database, returning the default value if not set.
+  Preload application settings to the cache.
+  """
+  global _cache
+
+  statement = sa.select(Setting)
+  async with begin_session() as session:
+    results = await session.scalars(statement)
+
+  results = {result.name: result.value for result in results}
+
+  for setting in attrs.astuple(Settings(), recurse=False):
+    if not isinstance(setting, SettingData):
+      continue
+    if result := results.get(setting.id):
+      _cache[setting.id] = _convert(setting, _convert(result))
+
+
+def get_setting(setting: SettingData) -> Optional["SettingValueType"]:
+  """
+  Get an application setting from the cache, returning the default value if not set or not available.
+
+  Settings are given by `SettingData` instances in `Settings`, which contain metadata about the setting,
+  including its type and default value.
+
+  Args:
+    setting: Setting to be retrieved
+
+  Returns:
+    Setting value, or `None` if not set and `no_default` is `True`
+  """
+  global _cache
+  return _cache.get(setting.id, setting.default)
+
+
+async def fetch_setting(
+  setting: SettingData, no_default: bool = False, force: bool = False
+) -> Optional["SettingValueType"]:
+  """
+  Fetch an application setting from the database, returning the default value if not set.
 
   Settings are given by `SettingData` instances in `Settings`, which contain metadata about the setting,
   including its type and default value.
@@ -148,13 +203,15 @@ async def get_setting(setting: SettingData, no_default: bool = False) -> Optiona
   Args:
     setting: Setting to be retrieved
     no_default: Whether to return `None` if the setting is not set, instead of the default value
+    force: Whether to force fetching from the database
 
   Returns:
     Setting value, or `None` if not set and `no_default` is `True`
   """
   global _cache
-  if cached_value := _cache.get(setting.id):
-    return cached_value
+  if not force:
+    if cached_value := _cache.get(setting.id):
+      return cached_value
 
   statement = sa.select(Setting.value).where(Setting.name == setting.id)
   async with begin_session() as session:
@@ -167,11 +224,12 @@ async def get_setting(setting: SettingData, no_default: bool = False) -> Optiona
   else:
     result = setting.default
 
-  _cache[setting.id] = result
+  if result is not None:
+    _cache[setting.id] = result
   return result
 
 
-async def get_settings() -> dict[str, tuple["SettingData", "SettingValueType"]]:
+async def fetch_settings() -> dict[str, tuple["SettingData", "SettingValueType"]]:
   """
   Get all application settings and its values.
 
@@ -180,7 +238,7 @@ async def get_settings() -> dict[str, tuple["SettingData", "SettingValueType"]]:
   """
   statement = sa.select(Setting)
   async with begin_session() as session:
-    results = (await session.scalars(statement)).all()
+    results = await session.scalars(statement)
 
   output = {}
   results = {result.name: result.value for result in results}
@@ -275,7 +333,7 @@ def is_valid_value(setting: SettingData, value: "SettingValueType") -> bool:
   return not setting.validator or setting.validator(_value)
 
 
-async def create_modal(setting: SettingData) -> ipy.Modal:
+def create_modal(setting: SettingData) -> ipy.Modal:
   """
   Create a Discord modal for editing a setting.
 
@@ -283,9 +341,9 @@ async def create_modal(setting: SettingData) -> ipy.Modal:
     setting: Setting to create a modal for
   
   Returns:
-    interactions.py `Modal` object 
+    Modal object to be sent with interactions.py
   """
-  current_value = await get_setting(setting, no_default=False)
+  current_value = get_setting(setting)
 
   return ipy.Modal(
     ipy.InputText(

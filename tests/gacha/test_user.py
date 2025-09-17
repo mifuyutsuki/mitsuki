@@ -16,7 +16,7 @@ from mitsuki import settings, utils
 from mitsuki.lib import checks
 from mitsuki.lib.userdata import begin_session
 
-from mitsuki.core.settings import get_setting, set_setting, Settings
+from mitsuki.core.settings import fetch_setting, set_setting, Settings
 from mitsuki.core import gacha
 
 TEST_DATETIME = ipy.Timestamp(
@@ -37,7 +37,9 @@ async def custom_daily_reset(request: pytest.FixtureRequest):
   async with begin_session() as session:
     await set_setting(session, Settings.DailyResetTime, request.param)
 
-  daily_reset_s = await get_setting(Settings.DailyResetTime)
+  daily_reset_s = await fetch_setting(Settings.DailyResetTime)
+  assert daily_reset_s == request.param
+
   h, m = daily_reset_s.split(":")
   return TEST_DATETIME.replace(hour=int(h), minute=int(m))
 
@@ -97,7 +99,7 @@ async def test_daily_unclaimed(
   now = custom_daily_reset + timedelta(hours=1)
 
   user_before = gacha_user_custom_reset
-  assert await user_before.can_daily(now=now)
+  assert user_before.can_daily(now=now)
 
   async with begin_session() as session:
     user_after = await gacha.GachaUser.daily(session, mock_user.id, now=now)
@@ -120,7 +122,7 @@ async def test_daily_claimed(
   now = custom_daily_reset - timedelta(minutes=30)
 
   user_before = gacha_user_custom_reset
-  assert not await user_before.can_daily(now=now)
+  assert not user_before.can_daily(now=now)
 
   async with begin_session() as session:
     user_after = await gacha.GachaUser.daily(session, mock_user.id, now=now)
@@ -139,7 +141,7 @@ async def test_daily_burst(
 
   # First call (can daily)
   now = custom_daily_reset + timedelta(days=1, minutes=1)
-  assert await user_before.can_daily(now=now)
+  assert user_before.can_daily(now=now)
 
   async with begin_session() as session:
     user_after = await gacha.GachaUser.daily(session, mock_user.id, now=now)
@@ -157,7 +159,7 @@ async def test_daily_burst(
     async with begin_session() as session:
       user_after = await gacha.GachaUser.daily(session, mock_user.id, now=now)
 
-    assert not await user_after.can_daily(now=now)
+    assert not user_after.can_daily(now=now)
     assert user_after.amount == user_before.amount
     assert not user_after.claimed_daily
     assert not user_after.claimed_first_daily
