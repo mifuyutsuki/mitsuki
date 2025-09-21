@@ -62,7 +62,7 @@ class ServerStickersView(SectionPaginatorMixin, View):
         "sticker_url": "{}?size=4096&quality=lossless".format(s.url),
         "sticker_created_at_f": s.id.created_at.format("f"),
         "sticker_created_at_r": s.id.created_at.format("R"),
-        "sticker_availability": "" if s.available else "*Unavailable*",
+        "sticker_availability": "" if s.available else "— *Unavailable*",
         "sticker_format": s.format_type.name,
       } for s in self.stickers
     ]
@@ -73,10 +73,10 @@ class ServerStickersView(SectionPaginatorMixin, View):
       ipy.SectionComponent(
         components=[
           ipy.TextDisplayComponent(
-            "## ${sticker_name_esc}\n"
+            "## [${sticker_name_esc}](<${sticker_url}>)\n"
             "${sticker_description_line}"
-            "ID: ${sticker_id} ${sticker_availability}\n"
-            "${sticker_format} Created at ${sticker_created_at_f} - [**Link**](<${sticker_url}>)"
+            "`${sticker_id}` ${sticker_availability}\n"
+            "${sticker_format} · Created at ${sticker_created_at_f}\n"
           ),
         ],
         accessory=ipy.ThumbnailComponent(

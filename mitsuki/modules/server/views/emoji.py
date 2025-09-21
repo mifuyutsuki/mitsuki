@@ -58,7 +58,7 @@ class ServerEmojiView(SectionPaginatorMixin, View):
         "emoji_mention": e if e.available else get_emoji(AppEmoji.TIME),
         "emoji_created_at_f": e.id.created_at.format("f"),
         "emoji_created_at_r": e.id.created_at.format("R"),
-        "emoji_availability": "" if e.available else "*Unavailable*",
+        "emoji_availability": "" if e.available else "— *Unavailable*",
       }
       for e in self.emojis
     ]
@@ -66,18 +66,10 @@ class ServerEmojiView(SectionPaginatorMixin, View):
 
   def section(self):
     return [
-      ipy.SectionComponent(
-        components=[
-          ipy.TextDisplayComponent(
-            "## ${emoji_name}\n"
-            "ID: ${emoji_id} ${emoji_availability}\n"
-            "Created at ${emoji_created_at_f} - [**Link**](<${emoji_url}>)"
-          ),
-        ],
-        accessory=ipy.ThumbnailComponent(
-          ipy.UnfurledMediaItem("${emoji_url}")
-        )
-      )
+      ipy.TextDisplayComponent(
+        "### ${emoji_mention} [${emoji_name}](<${emoji_url}>)\n"
+        "`${emoji_id}` · Created at ${emoji_created_at_f} ${emoji_availability}"
+      ),
     ]
 
 
@@ -97,8 +89,8 @@ class ServerEmojiView(SectionPaginatorMixin, View):
         ipy.SeparatorComponent(divider=True),
         SectionPaginatorContentPlaceholder(),
         ipy.TextDisplayComponent(
-          "-# {}: /server emoji animated={} sort={}".format(self.caller.tag, self.animated, self.sort)
-        )
+          "-# {}: /server emoji".format(self.caller.tag)
+        ),
       ),
       PaginatorNavPlaceholder(),
     ]
@@ -121,7 +113,7 @@ class ServerEmojiView(SectionPaginatorMixin, View):
         ipy.TextDisplayComponent("This server has no emoji of this type."),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
-          "-# {}: /server emoji animated={} sort={}".format(self.caller.tag, self.animated, self.sort)
-        )
+          "-# {}: /server emoji".format(self.caller.tag)
+        ),
       ),
     ]
