@@ -41,6 +41,10 @@ class GachaProfileView(View):
       "user_name_esc": escape_text(self.target_user.display_name),
       "user_avatar_url": self.target_user.avatar_url,
       "user_shards": self.gacha_user.amount,
+      "user_can_daily": "— **Daily available!**" if (
+        self.gacha_user.user == self.caller.id
+        and self.gacha_user.can_daily()
+      ) else "",
     }
 
 
@@ -85,8 +89,8 @@ class GachaProfileView(View):
         ipy.SectionComponent(
           components=[
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
-            ipy.TextDisplayComponent("# ${user_username}'s Profile"),
-            ipy.TextDisplayComponent("${shard} **${user_shards}**"),
+            ipy.TextDisplayComponent("# ${user_username}"),
+            ipy.TextDisplayComponent("${shard} **${user_shards}** ${user_can_daily}"),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem(self.target_user.avatar_url))
         ),
@@ -96,7 +100,7 @@ class GachaProfileView(View):
         ipy.TextDisplayComponent("### Latest Rolled\n" + "\n".join(rolls_fields)),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
-          "-# {}: /gacha profile user={}".format(self.caller.tag, self.target_user.tag)
+          "-# {}: /gacha profile".format(self.caller.tag)
         ),
         accent_color=get_member_color_value(self.target_user)
       )
@@ -117,6 +121,7 @@ class GachaProfileEmptyView(View):
       "user_name": self.target_user.display_name,
       "user_name_esc": escape_text(self.target_user.display_name),
       "user_avatar_url": self.target_user.avatar_url,
+      "user_shards": 0,
     }
 
 
@@ -126,7 +131,7 @@ class GachaProfileEmptyView(View):
         ipy.SectionComponent(
           components=[
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
-            ipy.TextDisplayComponent("# ${user_username}'s Profile"),
+            ipy.TextDisplayComponent("# ${user_username}"),
             ipy.TextDisplayComponent("${shard} **${user_shards}**"),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem(self.target_user.avatar_url))
@@ -135,7 +140,7 @@ class GachaProfileEmptyView(View):
         ipy.TextDisplayComponent("No information is available for this user."),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
-          "-# {}: /gacha profile user={}".format(self.caller.tag, self.target_user.tag)
+          "-# {}: /gacha profile".format(self.caller.tag)
         ),
         accent_color=get_member_color_value(self.target_user)
       )
