@@ -44,7 +44,7 @@ class GachaShardsView(View):
       result |= {
         "user_shards": self.gacha_user.amount,
         "user_can_daily": "— **Daily available!**" if (
-          self.gacha_user.user == self.target_user.id
+          self.gacha_user.user == self.caller.id
           and self.gacha_user.can_daily()
         ) else "",
       }
