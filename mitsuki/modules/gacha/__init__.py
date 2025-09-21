@@ -69,7 +69,7 @@ class GachaModule(ipy.Extension):
     opt_type=ipy.OptionType.USER
   )
   async def shards_cmd(self, ctx: ipy.SlashContext, user: Optional[ipy.BaseUser] = None):
-    raise UnderConstruction()
+    await commands.GachaShards.create(ctx).run(user)
 
 
   # ===========================================================================

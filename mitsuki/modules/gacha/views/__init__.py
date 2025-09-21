@@ -11,3 +11,4 @@
 # GNU Affero General Public License for more details.
 
 from .profile import GachaProfileView, GachaProfileEmptyView
+from .shards import GachaShardsView
