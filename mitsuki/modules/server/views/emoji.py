@@ -22,6 +22,7 @@ from mitsuki.lib.view import (
   SectionPaginatorMixin,
   SectionPaginatorContentPlaceholder,
   PaginatorNavPlaceholder,
+  DividerStyle,
 )
 
 from .. import customids
@@ -34,6 +35,7 @@ class ServerEmojiView(SectionPaginatorMixin, View):
   sort: str
   animated: bool = False
   entries_per_page: int = 5
+  divider_style: DividerStyle = DividerStyle.NONE
 
 
   def get_context(self):

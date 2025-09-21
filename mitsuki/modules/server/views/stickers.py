@@ -22,6 +22,7 @@ from mitsuki.lib.view import (
   SectionPaginatorMixin,
   SectionPaginatorContentPlaceholder,
   PaginatorNavPlaceholder,
+  DividerStyle,
 )
 
 from .. import customids
@@ -32,6 +33,7 @@ class ServerStickersView(SectionPaginatorMixin, View):
   guild: ipy.Guild
   stickers: list[ipy.Sticker]
   entries_per_page: int = 3
+  divider_style: DividerStyle = DividerStyle.SMALL
 
 
   def get_context(self):

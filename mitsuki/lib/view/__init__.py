@@ -34,6 +34,7 @@ from .paginators import (
   SectionPaginatorMixin,
   SectionPaginatorContentPlaceholder,
   PaginatorNavPlaceholder,
+  DividerStyle,
 )
 
 __all__ = (
@@ -49,4 +50,5 @@ __all__ = (
   "SectionPaginatorMixin",
   "SectionPaginatorContentPlaceholder",
   "PaginatorNavPlaceholder",
+  "DividerStyle",
 )

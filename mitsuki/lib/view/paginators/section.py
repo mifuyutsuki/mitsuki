@@ -19,7 +19,7 @@ from typing import Optional, Union, List, Any
 from mitsuki.logger import logger
 from mitsuki.lib.emoji import AppEmoji, get_emoji
 from mitsuki.lib.view import PlaceholderComponent, reset_timeout, add_timeout, utils
-from mitsuki.lib.view.paginators import BasePaginatorMixin
+from mitsuki.lib.view.paginators import BasePaginatorMixin, DividerStyle
 
 
 @attrs.define(slots=False)
@@ -39,6 +39,7 @@ class SectionPaginatorMixin(BasePaginatorMixin):
 
   entries_per_page: int = attrs.field(kw_only=True, default=5)
   page_index: int = attrs.field(kw_only=True, default=0)
+  divider_style: DividerStyle = attrs.field(kw_only=True, default=DividerStyle.NONE)
 
 
   @property
@@ -86,7 +87,8 @@ class SectionPaginatorMixin(BasePaginatorMixin):
         pages_context=pages_context,
         page_index=self.page_index,
         per_page=self.entries_per_page,
-        section=self.section()
+        section=self.section(),
+        divider_style=self.divider_style,
       )
 
     return {"components": components, "files": self.files()}
@@ -100,7 +102,8 @@ class SectionPaginatorContentPlaceholder(PlaceholderComponent):
     pages_context: list[dict[str, Any]],
     page_index: int,
     per_page: int,
-    section: List[ipy.BaseComponent]
+    section: List[ipy.BaseComponent],
+    divider_style: DividerStyle = DividerStyle.NONE,
   ) -> List[ipy.BaseComponent]:
     results = []
 
@@ -115,6 +118,28 @@ class SectionPaginatorContentPlaceholder(PlaceholderComponent):
           results.extend(add_c)
         elif add_c:
           results.append(add_c)
-      results.append(ipy.SeparatorComponent(divider=True))
+
+        match divider_style:
+          case DividerStyle.LARGE:
+            results.append(ipy.SeparatorComponent(divider=True, spacing=ipy.SeparatorSpacingSize.LARGE))
+          case DividerStyle.SMALL:
+            results.append(ipy.SeparatorComponent(divider=True, spacing=ipy.SeparatorSpacingSize.SMALL))
+          case DividerStyle.HIDDEN:
+            results.append(ipy.SeparatorComponent(divider=False))
+          case _:
+            pass
+
+    # Last separator is always small, as it separates the paginated section from the rest
+    # A: When pages_context and section are both not empty
+    try:
+      # When divider style is not NONE (added above)
+      if results[-1] is ipy.SeparatorComponent:
+        results[-1] = ipy.SeparatorComponent(divider=True)
+      # When divider style is NONE
+      elif divider_style == DividerStyle.NONE:
+        results.append(ipy.SeparatorComponent(divider=True))
+    # B: When either pages_context or section is empty
+    except IndexError:
+      pass
 
     return results

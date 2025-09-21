@@ -15,10 +15,18 @@ import attrs
 import uuid
 
 from typing import Optional, Union, List, Any
+from enum import IntEnum
 
 from mitsuki.logger import logger
 from mitsuki.lib.emoji import AppEmoji, get_emoji
 from mitsuki.lib.view import PlaceholderComponent, reset_timeout
+
+
+class DividerStyle(IntEnum):
+  NONE = 0
+  HIDDEN = 1
+  SMALL = 2
+  LARGE = 3
 
 
 @attrs.define(slots=False)
