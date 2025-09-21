@@ -54,7 +54,11 @@ class ServerStickersView(SectionPaginatorMixin, View):
         "sticker_name_esc": escape_text(s.name),
         "sticker_tags": s.tags,
         "sticker_description": s.description or "No description set",
-        "sticker_description_esc": escape_text(s.description or "No description set"),
+        "sticker_description_line": (
+          "> {}\n".format(escape_text(s.description))
+          if s.description
+          else ""
+        ),
         "sticker_url": "{}?size=4096&quality=lossless".format(s.url),
         "sticker_created_at_f": s.id.created_at.format("f"),
         "sticker_created_at_r": s.id.created_at.format("R"),
@@ -70,7 +74,7 @@ class ServerStickersView(SectionPaginatorMixin, View):
         components=[
           ipy.TextDisplayComponent(
             "## ${sticker_name_esc}\n"
-            "> ${sticker_description_esc}\n"
+            "${sticker_description_line}"
             "ID: ${sticker_id} ${sticker_availability}\n"
             "${sticker_format} Created at ${sticker_created_at_f} - [**Link**](<${sticker_url}>)"
           ),
