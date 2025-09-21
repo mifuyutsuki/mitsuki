@@ -30,6 +30,7 @@ from mitsuki.lib.messages import load_message
 from mitsuki.lib.userdata import db_migrate
 from mitsuki.lib.emoji import init_emoji
 from mitsuki.lib.view import View
+from mitsuki.core.settings import preload_settings
 from mitsuki.core.presences import get_presencer, set_presencer, is_presencer_running
 
 
@@ -179,6 +180,7 @@ class ClientHandlerMixin:
   async def on_startup(self, event: ipy.events.Startup):
     await db_migrate()
     await init_emoji(event.bot)
+    await preload_settings()
     init_event.set()
 
 
