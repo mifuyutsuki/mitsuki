@@ -18,3 +18,4 @@ class AccentColors(IntEnum):
   OK      = 0x344ae1
   WARNING = 0xc2b41d
   ERROR   = 0xc31d1d
+  SPECIAL = 0xe6bd37

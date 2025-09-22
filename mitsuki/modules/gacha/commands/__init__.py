@@ -12,3 +12,4 @@
 
 from .shards import GachaShards
 from .profile import GachaProfile
+from .daily import GachaDaily

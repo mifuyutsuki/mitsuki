@@ -102,7 +102,7 @@ class GachaModule(ipy.Extension):
   @ipy.auto_defer(time_until_defer=2.0)
   @ipy.cooldown(ipy.Buckets.USER, 1, 3.0)
   async def daily_cmd(self, ctx: ipy.SlashContext):
-    raise UnderConstruction()
+    await commands.GachaDaily.create(ctx).run()
 
 
   # ===========================================================================
