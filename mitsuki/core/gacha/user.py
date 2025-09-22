@@ -306,6 +306,7 @@ class GachaUser(AsDict):
 
     stmt = (
       update(models.GachaUser)
+      .where(models.GachaUser.user == gacha_user.user)
       .values(amount=models.GachaUser.__table__.c.amount + daily_shards, last_daily=now.timestamp())
       .returning(models.GachaUser.amount)
     )
