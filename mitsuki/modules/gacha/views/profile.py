@@ -32,7 +32,8 @@ class GachaProfileView(View):
 
 
   def get_context(self):
-    return {
+    now = ipy.Timestamp.now()
+    result = {
       "shard": get_emoji(AppEmoji.ITEM_SHARD),
       "user_id": self.target_user.id,
       "user_mention": self.target_user.mention,
@@ -41,11 +42,18 @@ class GachaProfileView(View):
       "user_name_esc": escape_text(self.target_user.display_name),
       "user_avatar_url": self.target_user.avatar_url,
       "user_shards": self.gacha_user.amount,
-      "user_can_daily": "— **Daily available!**" if (
-        self.gacha_user.user == self.caller.id
-        and self.gacha_user.can_daily()
-      ) else "",
     }
+    if self.gacha_user.user == self.caller.id:
+      result |= {
+        "user_can_daily": "— **Daily available!**" if (
+          self.gacha_user.can_daily(now=now)
+        ) else "— Next daily {}".format(self.gacha_user.next_daily(now=now).format("R")),
+      }
+    else:
+      result |= {
+        "user_can_daily": ""
+      }
+    return result
 
 
   def components(self):
