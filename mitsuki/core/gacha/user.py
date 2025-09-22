@@ -302,9 +302,14 @@ class GachaUser(AsDict):
     # -----
 
     gacha_user.claimed_daily = True
+    gacha_user.last_daily = now.timestamp()
+
+    # When setting daily times, to ensure consistency with the database value,
+    # we do the roundabout thing of converting `now` to float, and then back to ipy.Timestamp
     if gacha_user.first_daily:
       daily_shards = await fetch_setting(Settings.DailyShards)
     else:
+      gacha_user.first_daily = now.timestamp()
       gacha_user.claimed_first_daily = True
       daily_shards = await fetch_setting(Settings.FirstTimeShards)
 
@@ -315,6 +320,7 @@ class GachaUser(AsDict):
       .returning(models.GachaUser.amount)
     )
     gacha_user.amount = await session.scalar(stmt)
+
     return gacha_user
 
 
