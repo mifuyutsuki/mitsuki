@@ -69,7 +69,7 @@ class GachaUser(AsDict):
     return sum(self.obtained_cards.values())
 
 
-  def next_daily(self) -> Optional[ipy.Timestamp]:
+  def next_daily(self, *, now: Optional[ipy.Timestamp] = None) -> Optional[ipy.Timestamp]:
     """
     Next time this user can daily.
 
@@ -77,13 +77,17 @@ class GachaUser(AsDict):
     user has not registered to Mitsuki Gacha yet, but received shards from
     a give command.
 
+    Args:
+      now: Reference time to determine ability to claim, or this user's last daily if unset
+
     Returns:
-      Datetime of next daily, or `None` if last daily is not known
+      Datetime of next daily, or `None` if last daily is not known and 'now' is not set
     """
-    if not self.last_daily:
+    if not self.last_daily and not now:
       return None
 
-    last = self.last_daily.astimezone(timezone.utc)
+    last = now or self.last_daily
+    last = last.astimezone(timezone.utc)
 
     reset_s = get_setting(Settings.DailyResetTime)
     hours, minutes = reset_s.split(":")
