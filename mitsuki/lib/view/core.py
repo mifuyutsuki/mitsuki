@@ -71,7 +71,9 @@ async def clear_timeout(message_id: ipy.Snowflake):
 
 def timeout_resetter[T](callback: Awaitable[T]) -> Callable[[ipy.ComponentContext], Awaitable[T]]:
   """
-  Wrap a component callback to make it reset (refresh) its origin message's timeout when called.
+  Make a component reset (refresh) its attached message's timeout when invoked.
+
+  Use this function as a decorator on the target component callback.
 
   Args:
     callback: Component callback coroutine
@@ -86,7 +88,9 @@ def timeout_resetter[T](callback: Awaitable[T]) -> Callable[[ipy.ComponentContex
 
 def timeout_clearer[T](callback: Awaitable[T]) -> Callable[[ipy.ComponentContext], Awaitable[T]]:
   """
-  Wrap a component callback to make it clear (remove) its origin message's timeout when called.
+  Make a component clear (remove) its attached message's timeout when invoked.
+
+  Use this function as a decorator on the target component callback.
 
   Args:
     callback: Component callback coroutine
@@ -95,6 +99,43 @@ def timeout_clearer[T](callback: Awaitable[T]) -> Callable[[ipy.ComponentContext
     result = await callback(self, ctx=ctx)
     await clear_timeout(ctx.message_id)
     return result
+
+  return _callback
+
+
+def timeout_invoker[T](callback: Awaitable[T]) -> Callable[[ipy.ComponentContext], Awaitable[T]]:
+  """
+  Make a component trigger its attached message's timeout *after* invoked.
+
+  Use this function as a decorator on the target component callback. The
+  timeout action is only done after the main callback runs without errors.
+  If invocation before the callback is needed, use timeout_preinvoker().
+
+  Args:
+    callback: Component callback coroutine
+  """
+  async def _callback[T](self, ctx: ipy.ComponentContext) -> T:
+    result = await callback(self, ctx=ctx)
+    await force_timeout(ctx.message_id)
+    return result
+
+  return _callback
+
+
+def timeout_preinvoker[T](callback: Awaitable[T]) -> Callable[[ipy.ComponentContext], Awaitable[T]]:
+  """
+  Make a component trigger its attached message's timeout *before* invoked.
+
+  Use this function as a decorator on the target component callback. The
+  timeout action is done before the main callback executes. If invocation
+  after the callback is needed, use timeout_invoker().
+
+  Args:
+    callback: Component callback coroutine
+  """
+  async def _callback[T](self, ctx: ipy.ComponentContext) -> T:
+    await force_timeout(ctx.message_id)
+    return await callback(self, ctx=ctx)
 
   return _callback
 
