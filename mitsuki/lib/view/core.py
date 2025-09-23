@@ -93,7 +93,7 @@ def timeout_clearer[T](callback: Awaitable[T]) -> Callable[[ipy.ComponentContext
   """
   async def _callback[T](self, ctx: ipy.ComponentContext) -> T:
     result = await callback(self, ctx=ctx)
-    await reset_timeout(ctx)
+    await clear_timeout(ctx.message_id)
     return result
 
   return _callback
