@@ -60,37 +60,40 @@ class GachaProfileView(View):
     user     = self.gacha_user
     rarities = self.card_cache.rarities
 
-    counter_fields = []
+    fields = []
 
     if len(user.pity_counters) > 0:
-      counter_fields.append(
+      fields.append(
         "**Pity counter**\n" + " ".join([
           "{} **{}**/{}".format(rarities[r].emoji_str, count, rarities[r].pity)
           for r, count in user.pity_counters.items()
         ])
       )
     if len(user.rolled_cards) > 0:
-      counter_fields.append(
+      fields.append(
         "**Rolled cards:** {} card(s)\n".format(user.total_rolled) + " ".join([
           "{} **{}**".format(rarities[r].emoji_str, count)
           for r, count in user.rolled_cards.items()
         ])
       )
     if len(user.obtained_cards) > 0:
-      counter_fields.append(
+      fields.append(
         "**Obtained cards:** {} card(s)\n".format(user.total_obtained) + " ".join([
           "{} **{}**".format(rarities[r].emoji_str, count)
           for r, count in user.obtained_cards.items()
         ])
       )
+    if len(fields) == 0:
+      fields = ["No information is available for this user."]
+    else:
+      fields.append(
+        "**Latest rolled**\n" + "\n".join([
+          "{} {} **{}**".format(rarities[c.rarity].emoji_str, c.time.format("R"), escape_text(c.name))
+          for c in user.recent_rolls
+        ])
+      )
 
-    if len(counter_fields) == 0:
-      counter_fields = ["No information is available for this user."]
-
-    rolls_fields = [
-      "{} {} **{}**".format(rarities[c.rarity].emoji_str, c.time.format("R"), escape_text(c.name))
-      for c in user.recent_rolls
-    ]
+    info_components = [ipy.TextDisplayComponent(field) for field in fields]
 
     return [
       ipy.ContainerComponent(
@@ -103,9 +106,7 @@ class GachaProfileView(View):
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem(self.target_user.avatar_url))
         ),
         ipy.SeparatorComponent(divider=True),
-        ipy.TextDisplayComponent("\n\n".join(counter_fields)),
-        ipy.SeparatorComponent(divider=True),
-        ipy.TextDisplayComponent("### Latest Rolled\n" + "\n".join(rolls_fields)),
+        *info_components,
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
           "-# {}: /gacha profile".format(self.caller.tag)
