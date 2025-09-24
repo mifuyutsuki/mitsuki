@@ -33,7 +33,7 @@ class ServerStickersView(SectionPaginatorMixin, View):
   guild: ipy.Guild
   stickers: list[ipy.Sticker]
   entries_per_page: int = 3
-  divider_style: DividerStyle = DividerStyle.SMALL
+  divider_style: DividerStyle = DividerStyle.NONE
 
 
   def get_context(self):
