@@ -74,6 +74,18 @@ class Card(AsDict):
   collection: Optional[str] = attrs.field(default=None, eq=False)
   """The collection ID this roll comes from, if any, only set if obtained from a card roll."""
 
+  roll_pity: Optional[int] = attrs.field(default=None, eq=False)
+  """
+  Pity counter when this card was rolled, only set after give_to() on a normal roll.
+
+  This field is only set if obtained from a normal roll (i.e. not a collection roll), which affects the pity counter.
+  If the card rarity does not have a pity, this field is set to 1.
+  """
+  held_count: Optional[int] = attrs.field(default=None, eq=False)
+  """Number of cards held by the receiving user, only set after give_to()."""
+  is_new_roll: Optional[bool] = attrs.field(default=None, eq=False)
+  """Whether this card is newly rolled by the receiving user, only set after give_to()."""
+
 
   @property
   def emoji_str(self):
@@ -471,7 +483,7 @@ class Card(AsDict):
       session: Current database session
       user: Instance or snowflake of the target gacha user
       amount: Number of this card to give, default 1
-      rolled: Whether this card is rolled, and to update user data accordingly
+      rolled: Whether this card is rolled, and to update pity counters accordingly
     """
     if not isinstance(user, int):
       user = user.id
@@ -487,9 +499,27 @@ class Card(AsDict):
         index_elements=["user", "card"],
         set_={"count": models.UserCard.__table__.c.count + amount}
       )
+      .returning(models.UserCard.count)
     )
+    self.held_count = await session.scalar(inventory_stmt)
+    self.is_new_roll = self.held_count == amount
+
+    roll_entry_stmt = (
+      insert(models.GachaRoll).values(
+        user=user, card=self.id, time=self.roll_time.timestamp(),
+        pity_excluded=self.collection_pickup, collection=self.collection or self.season,
+      )
+    )
+    await session.execute(roll_entry_stmt)
+
+    if not rolled:
+      return
+
     pity_increment_stmt = (
-      update(models.UserPity).where(models.UserPity.user == user).values(count=models.UserPity.__table__.c.count + 1)
+      update(models.UserPity)
+      .where(models.UserPity.user == user)
+      .values(count=models.UserPity.__table__.c.count + 1)
+      .returning(models.UserPity.rarity, models.UserPity.count)
     )
     pity_reset_stmt = (
       update(models.UserPity)
@@ -497,18 +527,9 @@ class Card(AsDict):
       .where(models.UserPity.rarity == self.rarity)
       .values(count=0)
     )
-
-    await session.execute(inventory_stmt)
-    if rolled:
-      roll_entry_stmt = (
-        insert(models.GachaRoll).values(
-          user=user, card=self.id, time=self.roll_time.timestamp(),
-          pity_excluded=self.collection_pickup, collection=self.collection or self.season,
-        )
-      )
-      await session.execute(pity_increment_stmt)
-      await session.execute(pity_reset_stmt)
-      await session.execute(roll_entry_stmt)
+    pity_counters = (await session.execute(pity_increment_stmt)).all()
+    await session.execute(pity_reset_stmt)
+    self.roll_pity = next((p.count for p in pity_counters if p.rarity == self.rarity), 1)
 
 
 @attrs.define(kw_only=True)
