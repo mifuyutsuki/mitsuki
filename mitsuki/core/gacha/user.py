@@ -203,7 +203,7 @@ class GachaUser(AsDict):
 
     if len(results) > 0:
       results = sorted(results, key=lambda r: r.rarity, reverse=True)
-      return next([r.rarity for r in results if r.count >= r.pity], None)
+      return next((r.rarity for r in results if r.count >= r.pity), None)
 
 
   @classmethod
