@@ -856,12 +856,10 @@ class CardCache:
     card_rarity = None
 
     for rarity, rate in usable_rates.items():
-      if min_rarity and rarity < min_rarity:
-        continue
-      if arona < rate:
-        card_rarity = rarity
-        break
       arona -= rate
+      if arona < rate:
+        card_rarity = max(rarity, min_rarity or 0)
+        break
 
     if card_rarity is None:
       return None
