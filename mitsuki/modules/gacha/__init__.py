@@ -117,13 +117,13 @@ class GachaModule(ipy.Extension):
   @ipy.cooldown(ipy.Buckets.USER, 1, 3.0)
   async def roll_cmd(self, ctx: ipy.SlashContext):
     # await commands.Roll.create(ctx).run2()
-    raise UnderConstruction()
+    await commands.GachaRoll.create(ctx).run()
 
 
   @ipy.component_callback(customids.ROLL.string_id_pattern())
   async def roll_btn(self, ctx: ipy.ComponentContext):
     # await commands.Roll.create(ctx).run2(int(CustomID.get_id_from(ctx)))
-    raise UnderConstruction()
+    await commands.GachaRoll.create(ctx).run(custom_id_user=CustomID.get_snowflake_from(ctx))
 
 
   # ===========================================================================

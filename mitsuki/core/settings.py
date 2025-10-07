@@ -75,6 +75,16 @@ class Settings:
   )
   "Timezone on which the next gacha daily can be claimed, in ±HHMM offset format from UTC."
 
+  RollShards = SettingData(
+    SettingTypes.INTEGER, "gacha.shards.roll_cost", "Gacha: Shards to Roll", 120
+  )
+  "Amount of Shards needed to roll."
+
+  ShardName = SettingData(
+    SettingTypes.STRING, "gacha.shards.name", "Gacha: Shard Item Name", "Mitsuki Shard"
+  )
+  "Name of gacha 'Shard'."
+
 
   @staticmethod
   def get(setting: SettingData):
