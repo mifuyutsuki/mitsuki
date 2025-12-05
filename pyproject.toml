@@ -1,0 +1,31 @@
+[project]
+name = "mitsuki"
+version = "5.0.0a1"
+dependencies = [
+  "pyyaml ~= 6.0",
+  "python-dotenv ~= 1.0",
+  "rapidfuzz ~= 3.7",
+  "sqlalchemy ~= 2.0.0",
+  "discord-py-interactions >= 5.13.2, < 6.0", # https://github.com/interactions-py/interactions.py/issues/1717
+  "aiosqlite ~= 0.20",
+  "attrs >= 24.1.0",
+  "regex",
+  "sentry-sdk ~= 2.0",
+]
+requires-python = ">= 3.12"
+authors = [
+  {name = "Mifuyu", email = "mifuyutsuki@proton.me"},
+]
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+
+[project.optional-dependencies]
+dev = [
+  "pytest >= 8.4",
+  "pytest-asyncio",
+  "jurigged",
+]
+
+[project.urls]
+Github = "https://github.com/mifuyutsuki/mitsuki"
