@@ -221,45 +221,51 @@ class GachaUser(AsDict):
     if not isinstance(user, int):
       user = user.id
 
-    subquery = (
+    rolls_subquery = (
       select(
-        models.GachaRoll.user,
         models.Card.rarity,
         sa.func.count(models.GachaRoll.card.distinct()).label("obtained"),
         sa.func.count(models.GachaRoll.card).label("rolled"),
       )
-      .join(models.Card, models.Card.id == models.GachaRoll.card)
-      .group_by(models.GachaRoll.user, models.Card.rarity)
+      .join(models.GachaRoll, models.GachaRoll.card == models.Card.id, isouter=True)
+      .where(models.GachaRoll.user == user)
+      .group_by(models.Card.rarity)
       .subquery()
     )
-    query = (
+    pity_subquery = (
+      select(models.UserPity)
+      .where(models.UserPity.user == user)
+      .subquery()
+    )
+
+    profile_query = (
       select(
-        models.GachaUser,
-        subquery.c.rarity,
-        sa.func.coalesce(subquery.c.obtained, 0).label("obtained"),
-        sa.func.coalesce(subquery.c.rolled, 0).label("rolled"),
-        models.UserPity.count.label("pity"),
+        models.CardRarity.rarity,        
+        pity_subquery.c.count.label("pity"),
+        sa.func.coalesce(rolls_subquery.c.obtained, 0).label("obtained"),
+        sa.func.coalesce(rolls_subquery.c.rolled, 0).label("rolled"),
       )
-      .join(subquery, subquery.c.user == models.GachaUser.user, isouter=True)
-      .join(models.UserPity,
-        (models.UserPity.user == subquery.c.user) & (models.UserPity.rarity == subquery.c.rarity),
-        isouter=True
-      )
+      .join(pity_subquery, pity_subquery.c.rarity == models.CardRarity.rarity, isouter=True)
+      .join(rolls_subquery, rolls_subquery.c.rarity == models.CardRarity.rarity, isouter=True)
+    )
+    user_query = (
+      select(models.GachaUser)
       .where(models.GachaUser.user == user)
     )
 
     async with begin_session() as session:
-      results = (await session.execute(query)).all()
-      recent_rolls = await core.UserCardRoll.fetch_recent(session, user)
+      if not (user_result := await session.scalar(user_query)):
+        return None
+      recent_rolls_results = await core.UserCardRoll.fetch_recent(session, user)
+      profile_results = (await session.execute(profile_query)).all()
 
-    if len(results) > 0:
-      return cls(
-        **results[0].GachaUser.asdict(),
-        pity_counters={r.rarity: r.pity for r in results if r.pity is not None},
-        obtained_cards={r.rarity: r.obtained for r in results},
-        rolled_cards={r.rarity: r.rolled for r in results},
-        recent_rolls=recent_rolls
-      )
+    return cls(
+      **user_result.asdict(),
+      pity_counters={r.rarity: r.pity for r in profile_results if r.pity is not None},
+      obtained_cards={r.rarity: r.obtained for r in profile_results},
+      rolled_cards={r.rarity: r.rolled for r in profile_results},
+      recent_rolls=recent_rolls_results
+    )
 
 
   @classmethod
