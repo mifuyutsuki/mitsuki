@@ -207,13 +207,16 @@ class GachaUser(AsDict):
 
 
   @classmethod
-  async def fetch_profile(cls, user: Union[ipy.BaseUser, ipy.Snowflake]) -> Optional[Self]:
+  async def fetch_profile(
+    cls, user: Union[ipy.BaseUser, ipy.Snowflake], *, recent_rolls_count: int = 5
+  ) -> Optional[Self]:
     """
-    Fetch a gacha user's profile, including its pity counters and roll counts.
+    Fetch a gacha user's profile, including its pity counters, roll counts, and their most recently rolled cards.
 
     Args:
       session: Current database session
       user: Snowflake or instance of the user
+      recent_rolls_count: Number of most recent rolls to return (default 5)
 
     Returns:
       Instance of gacha user with additional fields set, or `None` if not registered
@@ -256,7 +259,9 @@ class GachaUser(AsDict):
     async with begin_session() as session:
       if not (user_result := await session.scalar(user_query)):
         return None
-      recent_rolls_results = await core.UserCardRoll.fetch_recent(session, user)
+      recent_rolls_results = await core.UserCardRoll.fetch_recent(
+        session, user, cards=recent_rolls_count
+      )
       profile_results = (await session.execute(profile_query)).all()
 
     return cls(
