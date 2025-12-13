@@ -29,9 +29,9 @@ class GachaDaily(ReaderCommand):
     await checks.assert_in_guild(self.ctx)
     await self.defer(ephemeral=False, edit_origin=False)
 
-    user  = self.caller_user
     cache = await core.CardCache.get_cache()
-    now   = ipy.Timestamp.now()
+    user  = self.caller_user
+    now   = self.ctx.id.created_at
 
     async with begin_session() as session:
       gacha_user = await core.GachaUser.daily(session, user, now=now)

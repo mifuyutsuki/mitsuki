@@ -31,7 +31,7 @@ class GachaRoll(ReaderCommand):
   async def run(self, custom_id_user: Optional[ipy.Snowflake] = None):
     await checks.assert_in_guild(self.ctx)
     await self.defer(ephemeral=False, edit_origin=False)
-    now = ipy.Timestamp.now()
+    now = self.ctx.id.created_at
 
     if custom_id_user and custom_id_user != self.caller_id:
       raise errors.InteractionDenied()
