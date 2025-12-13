@@ -759,7 +759,7 @@ class CardCache:
 
     # Season pick-up?
     cards = cache.roster_cards
-    season_id = False
+    season_id = None
 
     if (
       cache.season
