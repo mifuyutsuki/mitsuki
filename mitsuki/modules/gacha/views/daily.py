@@ -28,21 +28,20 @@ from mitsuki.modules.gacha import customids
 
 @attrs.define(slots=False)
 class GachaDailyView(View):
-  target_user: ipy.Member
+  card_cache: CardCache
   gacha_user: GachaUser
-  cache: CardCache
   now: ipy.Timestamp
 
 
   def get_context(self):
     return {
       "shard": get_emoji(AppEmoji.ITEM_SHARD),
-      "user_id": self.target_user.id,
-      "user_mention": self.target_user.mention,
-      "user_username": self.target_user.tag,
-      "user_name": self.target_user.display_name,
-      "user_name_esc": escape_text(self.target_user.display_name),
-      "user_avatar_url": self.target_user.avatar_url,
+      "user_id": self.ctx.author.id,
+      "user_mention": self.ctx.author.mention,
+      "user_username": self.ctx.author.tag,
+      "user_name": self.ctx.author.display_name,
+      "user_name_esc": escape_text(self.ctx.author.display_name),
+      "user_avatar_url": self.ctx.author.avatar_url,
       "user_shards": self.gacha_user.amount,
       "daily_shards": get_setting(Settings.DailyShards),
       "daily_next": self.gacha_user.next_daily(now=self.now).format("R"),

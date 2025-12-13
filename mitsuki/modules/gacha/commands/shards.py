@@ -31,4 +31,6 @@ class GachaShards(ReaderCommand):
 
     user = user or self.caller_user
     gacha_user = await core.GachaUser.fetch(user)
-    await views.GachaShardsView(self.ctx, user, gacha_user).send(timeout=180, hide_on_timeout=True)
+
+    view = views.GachaShardsView(self.ctx, target_user=user, gacha_user=gacha_user)
+    await view.send(timeout=180, hide_on_timeout=True)

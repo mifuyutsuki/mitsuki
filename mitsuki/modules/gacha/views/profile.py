@@ -26,9 +26,9 @@ from mitsuki.modules.gacha import customids
 
 @attrs.define(slots=False)
 class GachaProfileView(View):
+  card_cache: CardCache
   target_user: ipy.Member
   gacha_user: GachaUser
-  card_cache: CardCache
 
 
   def get_context(self):

@@ -29,10 +29,12 @@ class GachaProfile(ReaderCommand):
     await checks.assert_in_guild(self.ctx)
     await self.defer(ephemeral=False, edit_origin=False)
 
-    user  = user or self.caller_user
     cache = await core.CardCache.get_cache()
+    user  = user or self.caller_user
 
     if gacha_user := await core.GachaUser.fetch_profile(user):
-      await views.GachaProfileView(self.ctx, user, gacha_user, cache).send(timeout=180, hide_on_timeout=True)
+      view = views.GachaProfileView(self.ctx, card_cache=cache, target_user=user, gacha_user=gacha_user)
+      await view.send(timeout=180, hide_on_timeout=True)
     else:
-      await views.GachaProfileEmptyView(self.ctx, user).send()
+      view = views.GachaProfileEmptyView(self.ctx, target_user=user)
+      await view.send()

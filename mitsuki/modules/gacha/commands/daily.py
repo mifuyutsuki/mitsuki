@@ -35,4 +35,6 @@ class GachaDaily(ReaderCommand):
 
     async with begin_session() as session:
       gacha_user = await core.GachaUser.daily(session, user, now=now)
-      await views.GachaDailyView(self.ctx, user, gacha_user, cache, now).send()
+
+      view = views.GachaDailyView(self.ctx, card_cache=cache, gacha_user=gacha_user, now=now)
+      await view.send()

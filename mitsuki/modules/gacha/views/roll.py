@@ -26,9 +26,9 @@ from mitsuki.modules.gacha import customids
 
 @attrs.define(slots=False)
 class GachaRollView(View):
-  cache: CardCache
-  card: Card
+  card_cache: CardCache
   gacha_user: GachaUser
+  card: Card
 
 
   def get_context(self):

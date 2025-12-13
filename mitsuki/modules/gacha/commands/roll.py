@@ -36,25 +36,26 @@ class GachaRoll(ReaderCommand):
     if custom_id_user and custom_id_user != self.caller_id:
       raise errors.InteractionDenied()
 
-    user = await core.GachaUser.fetch(self.caller_id)
-    if not user:
+    gacha_user = await core.GachaUser.fetch(self.caller_id)
+    if not gacha_user:
       raise gacha_errors.UnregisteredGachaUser()
 
     shard_name = get_setting(Settings.ShardName)
     shard_icon = get_emoji(AppEmoji.ITEM_SHARD)
     roll_cost  = get_setting(Settings.RollShards)
 
-    if user.amount < roll_cost:
-      raise gacha_errors.InsufficientShards(shard_name, str(shard_icon), roll_cost, user.amount)
+    if gacha_user.amount < roll_cost:
+      raise gacha_errors.InsufficientShards(shard_name, str(shard_icon), roll_cost, gacha_user.amount)
 
-    pity_rarity = await core.GachaUser.fetch_guarantee(user.user)
-    card_cache = await core.CardCache.get_cache()
-    rolled = await card_cache.roll(min_rarity=pity_rarity, now=now)
+    pity_rarity = await core.GachaUser.fetch_guarantee(gacha_user.user)
+    cache  = await core.CardCache.get_cache()
+    rolled = await cache.roll(min_rarity=pity_rarity, now=now)
 
     async with begin_session() as session:
-      await user.take_shards(session, get_setting(Settings.RollShards))
-      await rolled.give_to(session, user.user, rolled=True)
+      await gacha_user.take_shards(session, get_setting(Settings.RollShards))
+      await rolled.give_to(session, gacha_user.user, rolled=True)
       if not rolled.is_new_roll:
-        _ = await user.give_shards(session, rolled.dupe_shards)
+        _ = await gacha_user.give_shards(session, rolled.dupe_shards)
 
-      await views.GachaRollView(self.ctx, card_cache, rolled, user).send()
+      view = views.GachaRollView(self.ctx, card_cache=cache, gacha_user=gacha_user, card=rolled)
+      await view.send()
