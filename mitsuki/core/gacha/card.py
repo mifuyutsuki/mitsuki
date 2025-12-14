@@ -698,32 +698,64 @@ class CardCache:
 
 
   @classmethod
-  async def search(cls, key: str, *, private: bool = False, limit: Optional[int] = None):
+  async def search_get(
+    cls, key: str, *, unobtained: bool = False, private: bool = False, limit: Optional[int] = None
+  ) -> list[tuple[str, str]]:
     """
-    Search a card by name.
+    Search cards by name, and get a list of id-name pairs, in matching order.
+  
+    To also fetch the cards, see `search_fetch()`.
+
+    Warning:
+      Searching with `unobtained` or `private` set to True will always fetch from the database for cards.
 
     Args:
+      key: Card name search key
       private: Whether to show non-public cards (cards with unlisted=True)
-    
+      limit: Number of matching cards to return at most
+
     Returns:
-      List of card instances
+      List of id-name pairs, in the order of top match
     """
     cache = await cls.get_cache()
 
-    if private:
-      card_names = {c.id: c.name for c in await Card.fetch_all(unobtained=True, private=True)}
+    if unobtained or private:
+      card_names = {c.id: c.name for c in await Card.fetch_all(unobtained=unobtained, private=private)}
     else:
       card_names = cache.card_names
 
-    scores = [(id, ratio(key, name, processor=process_text)) for id, name in card_names.items()]
-    scores.sort(key=lambda score: score[1], reverse=True)
+    results = [(id, name, ratio(key, name, processor=process_text)) for id, name in card_names.items()]
+    results.sort(key=lambda result: result[2], reverse=True)
 
     # Primary score cutoff
-    scores = [(id, score) for id, score in scores if score > 45.0]
+    results = [result for result in results if result[2] > 45.0]
     if limit:
-      scores = scores[:limit]
+      results = results[:limit]
 
-    ids = [id for id, _ in scores]
+    return [(id, name) for id, name, _ in results]
+
+
+  @classmethod
+  async def search_fetch(
+    cls, key: str, *, unobtained: bool = False, private: bool = False, limit: Optional[int] = None
+  ) -> list[Card]:
+    """
+    Search cards by name, and fetch them.
+
+    To only get id-name pairs, see `search()`.
+
+    Warning:
+      Searching with `unobtained` or `private` set to True will always fetch from the database for cards.
+
+    Args:
+      key: Card name search key
+      private: Whether to show non-public cards (cards with unlisted=True)
+      limit: Number of matching cards to return at most
+    
+    Returns:
+      List of card instances, in the order of top match
+    """
+    ids = [id for id, _ in await cls.search_get(key, unobtained=unobtained, private=private, limit=limit)]
     return await Card.fetch_multiple(ids, unobtained=private, private=private)
 
 

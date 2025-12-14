@@ -70,7 +70,7 @@ async def test_card_search_no_rolls(init_db, mock_user, cards: list[gacha.Card])
   card = await gacha.Card.fetch("c00.01.1", unobtained=True)
   assert card is not None
 
-  results = await gacha.CardCache.search(card.name)
+  results = await gacha.CardCache.search_fetch(card.name)
   assert len(results) == 0
 
 
@@ -80,7 +80,7 @@ async def test_card_search_exact_match(init_db, mock_user, card_rolls: list[gach
   card = await gacha.Card.fetch("c00.01.1", unobtained=True)
   assert card is not None
 
-  results = await gacha.CardCache.search(card.name)
+  results = await gacha.CardCache.search_fetch(card.name)
   assert len(results) > 0
 
   top_result = results[0]
@@ -93,7 +93,7 @@ async def test_card_search_partial_match(init_db, mock_user, card_rolls: list[ga
   card = await gacha.Card.fetch("c00.01.1", unobtained=True)
   assert card is not None
 
-  results = await gacha.CardCache.search("616")
+  results = await gacha.CardCache.search_fetch("616")
   assert len(results) > 0
 
   top_result = results[0]
