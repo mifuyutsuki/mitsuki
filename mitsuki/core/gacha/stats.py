@@ -72,7 +72,7 @@ class CardStats(AsDict):
   @classmethod
   async def fetch(cls, id: str, *, private: bool = False) -> Optional[Self]:
     """
-    Fetch statistics of a card.
+    Fetch global statistics of a card.
 
     Args:
       id: Card ID to fetch
@@ -84,12 +84,12 @@ class CardStats(AsDict):
     group_query = (
       select(
         models.GachaRoll.card,
-        sa.func.count(models.GachaRoll.card).label("rolled_count"),
-        sa.func.count(models.GachaRoll.card.distinct()).label("users_count"),
+        sa.func.count(models.GachaRoll.id).label("rolled_count"),
+        sa.func.count(models.GachaRoll.user.distinct()).label("users_count"),
         sa.func.min(models.GachaRoll.time).label("first_rolled"),
         sa.func.max(models.GachaRoll.time).label("last_rolled"),
       )
-      .group_by(models.GachaRoll.user, models.GachaRoll.card)
+      .group_by(models.GachaRoll.card)
       .subquery()
     )
     first_query = select(models.GachaRoll).subquery()

@@ -83,6 +83,9 @@ class UserCard(AsDict):
     Returns:
       Instance of user card, or `None` of card doesn't exist or is unlisted
     """
+    if not isinstance(user, int):
+      user = user.id
+
     roll_query = (
       select(
         models.GachaRoll.user,
@@ -105,8 +108,8 @@ class UserCard(AsDict):
       )
       .join(models.UserCard, models.UserCard.card == models.Card.id)
       .join(roll_query, (roll_query.c.user == models.UserCard.user) & (roll_query.c.card == models.UserCard.card))
-      .where(models.GachaRoll.user == user)
-      .where(models.GachaRoll.card == id)
+      .where(models.UserCard.user == user)
+      .where(models.UserCard.card == id)
     )
     if not private:
       query = query.where(models.Card.unlisted == False)
