@@ -166,9 +166,9 @@ class Timeout:
     while self.running:
       try:
         _ = await asyncio.wait_for(self.reset_event.wait(), timeout=self.duration)
-      except (TimeoutError, asyncio.CancelledError):
+      except (TimeoutError, asyncio.CancelledError) as e:
         self.running = False
-        if not self.view.is_disabled:
+        if not self.view.is_disabled and str(e) == "":
           with contextlib.suppress(ipy.errors.HTTPException):
             await self.view.disable(hide=self.hide)
       else:
@@ -210,8 +210,8 @@ class Timeout:
       if self.ctx.id in _timeouts:
         _ = _timeouts.pop(self.ctx.id)
 
-    # By immediately calling cancel(), the timeout task will run the timeout
-    # action, as the task loop catches CancelledError.
+    # By calling cancel() without a message, the timeout task will run the
+    # timeout action, with a call to disable()
     self.task.cancel()
 
 
@@ -222,13 +222,9 @@ class Timeout:
       if self.ctx.id in _timeouts:
         _ = _timeouts.pop(self.ctx.id)
 
-    # By disabling `running` and setting the reset event, the timeout task will
-    # not run the timeout action, as no TimeoutError/CancelledError is raised.
-    if self.running:
-      self.running = False
-      self.reset_event.set()
-
-    self.task.cancel()
+    # By calling cancel() with a message, the timeout task will run the timeout
+    # action, without a call to disable()
+    self.task.cancel("Clear timeout")
 
 
 @attrs.define(slots=False)
