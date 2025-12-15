@@ -14,3 +14,4 @@ from .shards import GachaShards
 from .profile import GachaProfile
 from .daily import GachaDaily
 from .roll import GachaRoll
+from .view import GachaView

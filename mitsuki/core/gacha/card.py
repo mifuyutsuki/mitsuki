@@ -725,6 +725,7 @@ class CardCache:
       card_names = cache.card_names
 
     results = [(id, name, ratio(key, name, processor=process_text)) for id, name in card_names.items()]
+    results.sort(key=lambda result: result[1])
     results.sort(key=lambda result: result[2], reverse=True)
 
     # Primary score cutoff

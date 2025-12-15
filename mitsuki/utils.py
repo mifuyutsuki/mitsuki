@@ -14,13 +14,15 @@ from interactions import (
   BaseContext,
   InteractionContext,
   Member,
+  BaseUser,
+  Snowflake,
 )
 from interactions.api.events import Component
 
 from rapidfuzz.utils import default_process
 from rapidfuzz import fuzz
 
-from typing import Optional, Callable
+from typing import Optional, Callable, Union
 import unicodedata
 import regex as re
 
@@ -55,6 +57,14 @@ def substring_ratio(s1: str, s2: str, processor=None):
   _s1 = processor(s1)
   _s2 = processor(s2)
   return 1.0 if (_s1 in _s2 or _s2 in _s1) else 0.0
+
+
+def user_mention(user: Optional[Union[BaseUser, Snowflake]]):
+  if user is None:
+    return ""
+  if not isinstance(user, int):
+    return user.mention
+  return f"<@{user}>"
 
 
 def escape_text(text: str):

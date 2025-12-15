@@ -18,6 +18,7 @@ import os
 from mitsuki import init_event, EXCLUSIVE_GUILDS
 from mitsuki.lib.errors import UnderConstruction
 from mitsuki.lib.commands import CustomID
+from mitsuki.lib.view import timeout_clearer
 
 from mitsuki.modules.gacha import customids, commands
 
@@ -226,35 +227,33 @@ class GachaModule(ipy.Extension):
   # ===========================================================================
 
 
-  # @gacha_cmd.subcommand(
-  #   sub_cmd_name="view",
-  #   sub_cmd_description="View an obtained card"
-  # )
-  # @ipy.auto_defer(time_until_defer=2.0)
-  # @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
-  # @ipy.slash_option(
-  #   name="name",
-  #   description="Card name to search",
-  #   required=True,
-  #   autocomplete=True,
-  #   opt_type=ipy.OptionType.STRING,
-  #   min_length=3,
-  #   max_length=100
-  # )
-  # async def view_cmd(self, ctx: ipy.SlashContext, name: str):
-  #   await commands.View.create(ctx).run(name)
+  @gacha_cmd.subcommand(
+    sub_cmd_name="view",
+    sub_cmd_description="View an obtained card"
+  )
+  @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
+  @ipy.slash_option(
+    name="name",
+    description="Card name to search",
+    required=True,
+    autocomplete=True,
+    opt_type=ipy.OptionType.STRING,
+    min_length=3,
+    max_length=100
+  )
+  async def view_cmd(self, ctx: ipy.SlashContext, name: str):
+    await commands.GachaView.create(ctx).run(name)
 
 
-  # @ipy.component_callback(customids.VIEW.string_id_pattern())
-  # @ipy.auto_defer(time_until_defer=2.0)
-  # @ipy.cooldown(ipy.Buckets.USER, 1, 15.0)
-  # async def view_btn_cmd(self, ctx: ipy.ComponentContext):
-  #   return await commands.View.create(ctx).view_from_button()
+  @ipy.component_callback(customids.VIEW.string_id_pattern())
+  @timeout_clearer
+  async def view_btn_cmd(self, ctx: ipy.ComponentContext):
+    await commands.GachaView.create(ctx).run(CustomID.get_id_from(ctx), origin=True)
 
 
-  # @view_cmd.autocomplete("name")
-  # async def view_cmd_autocomplete(self, ctx: ipy.AutocompleteContext):
-  #   await commands.View.create(ctx).autocomplete(ctx.input_text)
+  @view_cmd.autocomplete("name")
+  async def view_cmd_autocomplete(self, ctx: ipy.AutocompleteContext):
+    await commands.GachaView.create(ctx).autocomplete(ctx.input_text)
 
 
   # ===========================================================================
