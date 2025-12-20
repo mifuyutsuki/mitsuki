@@ -15,3 +15,5 @@ from .shards import GachaShardsView
 from .daily import GachaDailyView
 from .roll import GachaRollView
 from .view import GachaViewView, GachaViewResultsView
+from .cards import GachaCardsView
+from .gallery import GachaGalleryView

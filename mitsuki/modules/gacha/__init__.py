@@ -164,7 +164,7 @@ class GachaModule(ipy.Extension):
     user: Optional[ipy.BaseUser] = None
   ):
     # await commands.Cards.create(ctx).run(user, sort)
-    raise UnderConstruction()
+    await commands.GachaCards.create(ctx).run(user, sort=sort)
 
 
   @ipy.component_callback(customids.CARDS.numeric_id_pattern())
@@ -172,7 +172,7 @@ class GachaModule(ipy.Extension):
   @ipy.cooldown(ipy.Buckets.USER, 1, 15.0)
   async def cards_btn_cmd(self, ctx: ipy.ComponentContext):
     # return await commands.Cards.create(ctx).run_from_button()
-    raise UnderConstruction()
+    await commands.GachaCards.create(ctx).run(CustomID.get_snowflake_from(ctx))
 
 
   # ===========================================================================
@@ -212,7 +212,7 @@ class GachaModule(ipy.Extension):
     user: Optional[ipy.BaseUser] = None
   ):
     # await commands.Gallery.create(ctx).run(user, sort)
-    raise UnderConstruction()
+    await commands.GachaGallery.create(ctx).run(user, sort=sort)
 
 
   @ipy.component_callback(customids.GALLERY.numeric_id_pattern())
@@ -220,7 +220,7 @@ class GachaModule(ipy.Extension):
   @ipy.cooldown(ipy.Buckets.USER, 1, 15.0)
   async def gallery_btn_cmd(self, ctx: ipy.ComponentContext):
     # return await commands.Gallery.create(ctx).run_from_button()
-    raise UnderConstruction()
+    await commands.GachaGallery.create(ctx).run(CustomID.get_snowflake_from(ctx))
 
 
   # ===========================================================================
