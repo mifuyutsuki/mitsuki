@@ -129,7 +129,11 @@ def subst_component(component, context: dict, **kwargs):
       result.content = subst(context, result.content)
 
     case ipy.MediaGalleryComponent():
-      result.items = subst_components(result.items, context, **kwargs)
+      valid_media_items = subst_components(result.items, context, **kwargs)
+      if len(valid_media_items) > 0:
+        result.items = subst_components(result.items, context, **kwargs)
+      else:
+        result = None
 
     case ipy.MediaGalleryItem():
       if valid_media_item := subst_component(result.media, context, **kwargs):
