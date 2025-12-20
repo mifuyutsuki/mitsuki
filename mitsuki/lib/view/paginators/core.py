@@ -18,8 +18,10 @@ from typing import Optional, Union, List, Any
 from enum import IntEnum
 
 from mitsuki.logger import logger
+from mitsuki.utils import truncate
 from mitsuki.lib.emoji import AppEmoji, get_emoji
 from mitsuki.lib.view import PlaceholderComponent, reset_timeout
+from mitsuki.lib.view import utils
 
 
 class DividerStyle(IntEnum):
@@ -76,6 +78,7 @@ class BasePaginatorMixin:
             f"{self.id}|prev",
             f"{self.id}|next",
             f"{self.id}|last",
+            f"{self.id}|select",
             f"{self.id}|pageno",
           ],
         )
@@ -101,6 +104,8 @@ class BasePaginatorMixin:
         self.page_index += 1
       case "last":
         self.page_index = -1
+      case "select":
+        self.page_index = int(ctx.values[0])
       case "pageno":
         return await self._pageno_prompt(ctx)
       case _:
@@ -150,6 +155,40 @@ class BasePaginatorMixin:
       self._send_kwargs = edit_kwargs
     await reset_timeout(message)
     self._message = message
+
+
+class PaginatorNavSelectPlaceholder(PlaceholderComponent):
+  label: str
+  description: Optional[str] = None
+  placeholder_text: Optional[str] = None
+
+
+  def __init__(self, label: str, *, description: Optional[str] = None, placeholder_text: Optional[str] = None):
+    self.label = label
+    self.description = description
+    self.placeholder_text = placeholder_text or "Go to page..."
+
+
+  def subst(self, context: dict[str, Any], pages_context: List[dict[str, Any]], **kwargs) -> List[ipy.BaseComponent]:
+    id, page, pages = context["uuid"], int(context["page"]), int(context["pages"])
+    lower_index = max(0, min(pages - 25, page - 13))
+
+    return [ipy.ActionRow(
+      ipy.StringSelectMenu(
+        *[
+          ipy.StringSelectOption(
+            label=truncate(utils.subst(context | page_context, self.label)),
+            value=str(idx),
+            default=idx == (page - 1),
+            description=truncate(utils.subst(context | page_context, self.description)) if self.description else None,
+          )
+          for idx, page_context in enumerate(pages_context[lower_index : lower_index + 25], start=lower_index)
+        ],
+        placeholder=truncate(utils.subst(context, self.placeholder_text)) if self.placeholder_text else None,
+        custom_id="{}|select".format(id),
+        disabled=pages == 1
+      )
+    )]
 
 
 class PaginatorNavPlaceholder(PlaceholderComponent):

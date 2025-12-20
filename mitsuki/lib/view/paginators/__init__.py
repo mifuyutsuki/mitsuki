@@ -10,13 +10,14 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from .core import BasePaginatorMixin, PaginatorNavPlaceholder, DividerStyle
+from .core import BasePaginatorMixin, PaginatorNavPlaceholder, PaginatorNavSelectPlaceholder, DividerStyle
 from .section import SectionPaginatorMixin, SectionPaginatorContentPlaceholder
 from .gallery import GalleryPaginatorMixin
 
 __all__ = (
   "BasePaginatorMixin",
   "PaginatorNavPlaceholder",
+  "PaginatorNavSelectPlaceholder",
   "DividerStyle",
   "SectionPaginatorMixin",
   "SectionPaginatorContentPlaceholder",

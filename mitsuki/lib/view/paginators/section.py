@@ -68,7 +68,7 @@ class SectionPaginatorMixin(BasePaginatorMixin):
     context = self.get_master_context() | self.get_context()
 
     if len(pages_context) == 0:
-      components = utils.subst_components(self.components_on_empty(), context)
+      components = utils.subst_components(self.components_on_empty(), context, pages_context=pages_context)
 
     else:
       pages = 1 + ((self.entries - 1) // self.entries_per_page)

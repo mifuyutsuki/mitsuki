@@ -66,7 +66,7 @@ class GalleryPaginatorMixin(BasePaginatorMixin):
           embed = utils.subst_embed(embed)
 
       if components := self.components_on_empty():
-        components = utils.subst_components(components, context)
+        components = utils.subst_components(components, context, pages_context=pages_context)
 
     else:
       # This pattern allows for _nav_callback() to set page_index = -1
@@ -88,7 +88,7 @@ class GalleryPaginatorMixin(BasePaginatorMixin):
           embed = utils.subst_embed(embed)
 
       if components := self.components():
-        components = utils.subst_components(components, context)
+        components = utils.subst_components(components, context, pages_context=pages_context)
 
     return {
       "content": content,
