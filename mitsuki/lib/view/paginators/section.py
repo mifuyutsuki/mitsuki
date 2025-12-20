@@ -133,7 +133,7 @@ class SectionPaginatorContentPlaceholder(PlaceholderComponent):
     # A: When pages_context and section are both not empty
     try:
       # When divider style is not NONE (added above)
-      if results[-1] is ipy.SeparatorComponent:
+      if isinstance(results[-1], ipy.SeparatorComponent):
         results[-1] = ipy.SeparatorComponent(divider=True)
       # When divider style is NONE
       elif divider_style == DividerStyle.NONE:
