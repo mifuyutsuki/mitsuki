@@ -120,6 +120,10 @@ def subst_component(component, context: dict, **kwargs):
 
     case ipy.ContainerComponent():
       result.components = subst_components(result.components, context, **kwargs)
+      try:
+        result.accent_color = int(subst(context, result.accent_color))
+      except Exception:
+        result.accent_color = None
 
     case ipy.TextDisplayComponent():
       result.content = subst(context, result.content)
