@@ -94,5 +94,6 @@ class GalleryPaginatorMixin(BasePaginatorMixin):
       "content": content,
       "embeds": embeds,
       "components": components,
-      "files": self.files()
+      "files": self.files(),
+      "allowed_mentions": ipy.AllowedMentions.none(),
     }

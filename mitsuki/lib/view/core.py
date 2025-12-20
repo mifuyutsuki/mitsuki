@@ -489,18 +489,17 @@ class View:
       HTTPException: Could not send the message to Discord
     """
     send_kwargs = self._send_kwargs or self._generate()
-    mention_users = mention_users or []
+    if mention_users:
+      send_kwargs["allowed_mentions"] = ipy.AllowedMentions(users=mention_users)
 
     if self.ctx.deferred:
-      message = await self.ctx.send(allowed_mentions=ipy.AllowedMentions(users=mention_users), **send_kwargs)
+      message = await self.ctx.send(**send_kwargs)
     elif getattr(self.ctx, "editing_origin", False):
-      message = await self.ctx.edit_origin(allowed_mentions=ipy.AllowedMentions(users=mention_users), **send_kwargs)
+      message = await self.ctx.edit_origin(**send_kwargs)
     elif self.has_origin:
-      message = await self.ctx.edit_origin(allowed_mentions=ipy.AllowedMentions(users=mention_users), **send_kwargs)
+      message = await self.ctx.edit_origin(**send_kwargs)
     else:
-      message = await self.ctx.send(
-        ephemeral=ephemeral, allowed_mentions=ipy.AllowedMentions(users=mention_users), **send_kwargs
-      )
+      message = await self.ctx.send(ephemeral=ephemeral, **send_kwargs)
 
     self._message = message
     self._send_kwargs = send_kwargs
@@ -596,4 +595,5 @@ class View:
       "embeds": embeds,
       "components": components,
       "files": self.files(),
+      "allowed_mentions": ipy.AllowedMentions.none(),
     }

@@ -91,7 +91,7 @@ class SectionPaginatorMixin(BasePaginatorMixin):
         divider_style=self.divider_style,
       )
 
-    return {"components": components, "files": self.files()}
+    return {"components": components, "files": self.files(), "allowed_mentions": ipy.AllowedMentions.none()}
 
 
 class SectionPaginatorContentPlaceholder(PlaceholderComponent):
