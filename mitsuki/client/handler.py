@@ -104,6 +104,17 @@ def _format_traceback(e: Exception) -> str:
   return error_repr
 
 
+def _time_taken_s(ctx: ipy.BaseInteractionContext, now: ipy.Timestamp):
+  time_taken = now - ctx.id.created_at
+  time_taken = time_taken.microseconds
+  if time_taken < 1000000:
+    time_taken_s = f"{(time_taken / 1000):.2f} ms"
+  else:
+    time_taken_s = f"{(time_taken / 1000000):.4f} s"
+
+  return time_taken_s
+
+
 @attrs.define(slots=False)
 class ErrorView(View):
   exc: Exception
@@ -196,37 +207,45 @@ class ClientHandlerMixin:
 
   @ipy.listen(events.CommandCompletion)
   async def on_command_completion(self, event: events.CommandCompletion) -> None:
+    now = ipy.Timestamp.utcnow()
     ctx = event.ctx
+    time_taken_s = _time_taken_s(ctx, now)
 
     if len(ctx.kwargs) > 0:
       kwargs = {k: str(v) for k, v in ctx.kwargs.items()}
-      self.logger.info(f"{_invoker(ctx)}: Command /{ctx.invoke_target} {kwargs}")
+      self.logger.info(f"{_invoker(ctx)} ({time_taken_s}): Command /{ctx.invoke_target} {kwargs}")
     else:
-      self.logger.info(f"{_invoker(ctx)}: Command /{ctx.invoke_target}")
+      self.logger.info(f"{_invoker(ctx)} ({time_taken_s}): Command /{ctx.invoke_target}")
 
 
   @ipy.listen(events.ComponentCompletion)
   async def on_component_completion(self, event: events.ComponentCompletion) -> None:
+    now = ipy.Timestamp.utcnow()
     ctx = event.ctx
+    time_taken_s = _time_taken_s(ctx, now)
 
     if len(ctx.values) > 0:
-      self.logger.info(f"{_invoker(ctx)}: Component {ctx.custom_id} {event.ctx.values}")
+      self.logger.info(f"{_invoker(ctx)} ({time_taken_s}): Component {ctx.custom_id} {event.ctx.values}")
     else:
-      self.logger.info(f"{_invoker(ctx)}: Component {ctx.custom_id}")
+      self.logger.info(f"{_invoker(ctx)} ({time_taken_s}): Component {ctx.custom_id}")
 
 
   @ipy.listen(events.AutocompleteCompletion)
   async def on_autocomplete_completion(self, event: events.AutocompleteCompletion) -> None:
+    now = ipy.Timestamp.utcnow()
     ctx = event.ctx
+    time_taken_s = _time_taken_s(ctx, now)
 
-    self.logger.info(f"{_invoker(ctx)}: Autocomplete /{ctx.invoke_target} '{ctx.input_text}'")
+    self.logger.info(f"{_invoker(ctx)} ({time_taken_s}): Autocomplete /{ctx.invoke_target} '{ctx.input_text}'")
 
 
   @ipy.listen(events.ModalCompletion)
   async def on_modal_completion(self, event: events.ModalCompletion) -> None:
+    now = ipy.Timestamp.utcnow()
     ctx = event.ctx
+    time_taken_s = _time_taken_s(ctx, now)
 
-    self.logger.info(f"{_invoker(ctx)}: Modal {ctx.custom_id} {event.ctx.responses}")
+    self.logger.info(f"{_invoker(ctx)} ({time_taken_s}): Modal {ctx.custom_id} {event.ctx.responses}")
 
 
   @ipy.listen(events.CommandError, disable_default_listeners=True)
