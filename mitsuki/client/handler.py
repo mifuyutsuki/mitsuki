@@ -80,6 +80,7 @@ def _format_traceback(e: Exception) -> str:
     use_tb = mitsuki_tb or tb
     tb = tb.tb_next
 
+  e_str = str(e).splitlines()[0]
   if mitsuki_tb:
     e_path = (
       use_tb.tb_frame.f_code.co_filename  # /path/to/err_code.py
@@ -94,12 +95,12 @@ def _format_traceback(e: Exception) -> str:
     error_repr = (
       f"{e_path}:{e_coname}:{e_lineno}: "
       f"{type(e).__name__}: "
-      f"{str(e)}"
+      f"{e_str}"
     )
   else:
     error_repr = (
       f"{type(e).__name__}: "
-      f"{str(e)}"
+      f"{e_str}"
     ) if use_tb else repr(e)
   return error_repr
 
