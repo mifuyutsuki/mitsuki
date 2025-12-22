@@ -177,11 +177,13 @@ class GachaViewResultsView(SectionPaginatorMixin, View):
         ipy.TextDisplayComponent("## Searching: \"${search_key}\""),
         ipy.TextDisplayComponent(
           "Found **${search_results_count}** result(s)\n"
-          "-# If you can't find the card, the card might have not been acquired by a user or doesn't exist."
         ),
         ipy.SeparatorComponent(divider=True),
+        ipy.TextDisplayComponent("No cards found."),
+        ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
-          "-# {}: /gacha view".format(self.caller.tag)
+          "-# If you can't find the card, the card might have not been acquired by a user or doesn't exist.\n"
+          + "-# {}: /gacha view".format(self.caller.tag)
         ),
       ),
     ]
@@ -194,12 +196,12 @@ class GachaViewResultsView(SectionPaginatorMixin, View):
         ipy.TextDisplayComponent("## Searching: \"${search_key}\" (${page}/${pages})"),
         ipy.TextDisplayComponent(
           "Found **${search_results_count}** result(s)\n"
-          "-# If you can't find the card, the card might have not been acquired by a user or doesn't exist."
         ),
         ipy.SeparatorComponent(divider=True),
         SectionPaginatorContentPlaceholder(),
         ipy.TextDisplayComponent(
-          "-# {}: /gacha view".format(self.caller.tag)
+          "-# If you can't find the card, the card might have not been acquired by a user or doesn't exist.\n"
+          + "-# {}: /gacha view".format(self.caller.tag)
         ),
       ),
       PaginatorNavPlaceholder(),
