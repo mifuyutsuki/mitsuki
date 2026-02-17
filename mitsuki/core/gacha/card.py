@@ -231,14 +231,16 @@ class Card(AsDict):
 
 
   @classmethod
-  async def fetch_all_standard(cls, *, private: bool = False) -> list[Self]:
+  async def fetch_all_standard(cls, *, season_id: Optional[str] = None, private: bool = False) -> list[Self]:
     """
     Fetch all cards in the standard roster.
 
     Standard roster includes all cards in the general rollable pool, which
-    excludes limited and locked cards.
+    excludes limited and locked cards. If season is specified, in-season cards
+    are also excluded.
 
     Args:
+      season_id: ID of the current season, to be excluded from the standard roster
       private: Whether to show non-public cards (cards with unlisted=True)
 
     Returns:
@@ -247,9 +249,22 @@ class Card(AsDict):
     query = (
       select(models.Card, models.CardRarity)
       .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
-      .where(models.Card.limited == False)
-      .where(models.Card.locked == False)
     )
+    if season_id:
+      season_query = (
+        select(models.GachaCollectionCard)
+        .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
+        .join(models.GachaSeason, models.GachaSeason.collection == models.GachaCollection.id)
+        .where(models.GachaSeason.id == season_id)
+        .subquery()
+      )
+      query = (
+        query
+        .join(season_query, season_query.c.card == models.Card.id, isouter=True)
+        .where(season_query.c.collection == None)
+      )
+
+    query = query.where(models.Card.limited == False).where(models.Card.locked == False)
     if not private:
       query = query.where(models.Card.unlisted == False)
 
@@ -298,7 +313,7 @@ class Card(AsDict):
 
 
   @classmethod
-  async def fetch_all_collection(cls, collection_id: str, *, private: bool = False):
+  async def fetch_all_collection(cls, collection_id: str, *, private: bool = False) -> list[Self]:
     """
     Fetch all cards in a given collection.
 
@@ -308,7 +323,7 @@ class Card(AsDict):
     Args:
       id: Card collection ID
       private: Whether to show non-public cards (cards with unlisted=True)
-    
+
     Returns:
       List of card IDs
     """
@@ -328,27 +343,88 @@ class Card(AsDict):
 
 
   @staticmethod
-  async def fetch_all_collection_roll(collection_id: str, *, private: bool = False):
+  async def fetch_table_standard(*, season_id: Optional[str] = None, private: bool = False) -> dict[int, list[str]]:
     """
-    Fetch all cards in a given collection, in the {rarity: [cards]} format
-    used for rolling a card.
+    Fetch all cards in the standard roster, in the {rarity: [cards]} "table"
+    format used by gacha rolls.
 
-    Card IDs fetched by this method include limited and locked cards, which are
-    rollable using collection tickets.
+    Standard roster includes all cards in the general rollable pool, which
+    excludes limited and locked cards. If season is specified, in-season cards
+    are also excluded.
 
     Args:
-      id: Card collection ID
+      season_id: ID of the current season, to be excluded from the standard roster
       private: Whether to show non-public cards (cards with unlisted=True)
-    
+
     Returns:
-      List of card IDs categorized by rarity
+      List of card instances
     """
+    query = (
+      select(models.Card.rarity, models.Card.id)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+    )
+    if season_id:
+      season_query = (
+        select(models.GachaCollectionCard)
+        .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
+        .join(models.GachaSeason, models.GachaSeason.collection == models.GachaCollection.id)
+        .where(models.GachaSeason.id == season_id)
+        .subquery()
+      )
+      query = (
+        query
+        .join(season_query, season_query.c.card == models.Card.id, isouter=True)
+        .where(season_query.c.collection == None)
+      )
+
+    query = query.where(models.Card.limited == False).where(models.Card.locked == False)
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+
+    async with begin_session() as session:
+      results = (await session.execute(query)).all()
+
+    choices: dict[int, list[str]] = {}
+    for result in results:
+      if result.rarity not in choices:
+        choices[result.rarity] = []
+      choices[result.rarity].append(result.id)
+    return choices
+
+
+  @staticmethod
+  async def fetch_table_season(*, now: Optional[ipy.Timestamp] = None, private: bool = False) -> dict[int, list[str]]:
+    """
+    Fetch all cards in the current season, in the {rarity: [cards]} "table"
+    format used by gacha rolls.
+
+    If no season is currently running, returns an empty dictionary.
+
+    Args:
+      now: Reference time to determine the current season, or current time if unset
+      private: Whether to show non-public cards (cards with unlisted=True)
+
+    Returns:
+      Dictionary containing list of card IDs categorized by rarity
+    """
+    now = now or ipy.Timestamp.now()
+    now = now.timestamp()
+
+    season_query = (
+      select(models.GachaSeason)
+      .where(models.GachaSeason.end_time > now)
+      .order_by(models.GachaSeason.end_time.asc())
+      .limit(1)
+      .subquery()
+    )
+
     query = (
       select(models.Card.rarity, models.Card.id)
       .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
       .join(models.GachaCollectionCard, models.GachaCollectionCard.card == models.Card.id)
       .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
-      .where(models.GachaCollection.id == collection_id)
+      .join(season_query, season_query.c.collection == models.GachaCollection.id)
+      .where(models.Card.locked == False)
     )
     if not private:
       query = query.where(models.Card.unlisted == False)
@@ -364,8 +440,49 @@ class Card(AsDict):
     return choices
 
 
+  @staticmethod
+  async def fetch_table_collection(
+    collection_id: Optional[str] = None, *, private: bool = False
+  ) -> dict[int, list[str]]:
+    """
+    Fetch all cards in a given collection, in the {rarity: [cards]} "table"
+    format used by gacha rolls.
+
+    If collection ID is set, limited and locked cards that are part of the
+    collection are included. Otherwise, returns the standard roster without
+    limited and locked cards, not accounting for seasons.
+
+    Args:
+      id: Card collection ID
+      private: Whether to show non-public cards (cards with unlisted=True)
+
+    Returns:
+      Dictionary containing list of card IDs categorized by rarity
+    """
+    query = (
+      select(models.Card.rarity, models.Card.id)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+      .join(models.GachaCollectionCard, models.GachaCollectionCard.card == models.Card.id)
+      .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
+    )
+
+    query = query.where(models.GachaCollection.id == collection_id)
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+
+    async with begin_session() as session:
+      results = (await session.execute(query)).all()
+
+    choices: dict[int, list[str]] = {}
+    for result in results:
+      if result.rarity not in choices:
+        choices[result.rarity] = []
+      choices[result.rarity].append(result.id)
+    return choices
+
+
   @classmethod
-  async def grep_id(cls, pattern: str, *, private: bool = False):
+  async def grep_id(cls, pattern: str, *, private: bool = False) -> list[Self]:
     """
     Fetch cards by regex matching card IDs.
 
@@ -390,7 +507,7 @@ class Card(AsDict):
 
 
   @classmethod
-  async def roll(cls, *, min_rarity: Optional[int] = None):
+  async def roll(cls, *, min_rarity: Optional[int] = None) -> Card:
     """
     Roll a card from the main roster.
 
@@ -475,7 +592,7 @@ class Card(AsDict):
 
   async def give_to(
     self, session: AsyncSession, user: Union[ipy.BaseUser, ipy.Snowflake], amount: int = 1, *, rolled: bool = False
-  ):
+  ) -> None:
     """
     Grant a number of this card to the target user.
 
@@ -556,21 +673,21 @@ class CardCache:
 
 
   @property
-  def season_ends(self):
+  def season_ends(self) -> Optional[ipy.Timestamp]:
     """Time this season ends, or `None` if no season is running"""
     if self.season:
       return ipy.Timestamp.fromtimestamp(self.season.end_time)
 
 
   @property
-  def season_rate(self):
+  def season_rate(self) -> Optional[float]:
     """Rate of rolling this season's cards over the general pool, out of 1, or `None` if no season is running"""
     if self.season:
       return self.season.pickup_rate
 
 
   @property
-  def season_available(self):
+  def season_available(self) -> Optional[bool]:
     """Whether this season is available, i.e. there are cards to roll."""
     return self.season and any([len(cards) > 0 for cards in self.season_cards.values()])
 
@@ -686,7 +803,7 @@ class CardCache:
 
 
   @classmethod
-  async def place_card(cls, card: "Card"):
+  async def place_card(cls, card: "Card") -> None:
     """
     Register the given card, making it searchable by CardCache.search().
 
@@ -739,7 +856,7 @@ class CardCache:
   @classmethod
   async def search_fetch(
     cls, key: str, *, unobtained: bool = False, private: bool = False, limit: Optional[int] = None
-  ) -> list[Card]:
+  ) -> list["Card"]:
     """
     Search cards by name, and fetch them.
 
@@ -767,7 +884,7 @@ class CardCache:
     min_rarity: Optional[int] = None,
     now: Optional[ipy.Timestamp] = None,
     random: Optional[Random] = None,
-  ):
+  ) -> "Card":
     """
     Roll a card from the main roster.
 
@@ -820,7 +937,7 @@ class CardCache:
     min_rarity: Optional[int] = None,
     now: Optional[ipy.Timestamp] = None,
     random: Optional[Random] = None,
-  ):
+  ) -> "Card":
     """
     Roll a card from a collection.
 
@@ -837,7 +954,7 @@ class CardCache:
     cache  = await cls.get_cache()
     random = random or cache.random
 
-    cards = await Card.fetch_all_collection_roll(collection_id, private=False)
+    cards = await Card.fetch_table_collection(collection_id, private=False)
     if len(cards) == 0:
       raise RuntimeError("Failed to roll a card - collection has no cards")
 
