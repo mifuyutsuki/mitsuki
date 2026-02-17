@@ -67,9 +67,11 @@ async def card_collection(cards: list[gacha.Card]):
     rollable=True, discoverable=True, show_counts=True,
     roll_cost={"g.elf.c01": 5},
   )
+  collection_cards = [card.id for card in cards if card.id.startswith("c00")]
 
   async with begin_session() as session:
     await collection.add(session)
+    await collection.add_cards(session, collection_cards)
   return collection
 
 
