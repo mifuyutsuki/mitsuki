@@ -149,9 +149,19 @@ class CardCollection(AsDict):
       pattern: Regex pattern for card ID
     """
     cards_query = (
-      select(sa.literal(self.id), models.Card.id)
+      select(sa.literal(self.id), models.Card.id).select_from(models.Card)
       .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
       .where(models.Card.id.regexp_match(pattern))
+    )
+    stmt = insert(models.GachaCollectionCard).from_select(["collection", "card"], cards_query)
+    await session.execute(stmt)
+
+
+  async def add_cards(self, session: AsyncSession, card_ids: list[str]):
+    cards_query = (
+      select(sa.literal(self.id), models.Card.id).select_from(models.Card)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+      .where(models.Card.id.in_(card_ids))
     )
     stmt = insert(models.GachaCollectionCard).from_select(["collection", "card"], cards_query)
     await session.execute(stmt)
