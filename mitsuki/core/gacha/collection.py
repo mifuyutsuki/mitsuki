@@ -46,9 +46,6 @@ class CardCollection(AsDict):
   show_counts: bool = attrs.field(default=False)
   """Whether to show total cards in this collection, per rarity and including unobtained, if discoverable is set."""
 
-  roll_cost: dict[str, int] = attrs.field(factory=dict)
-  """Items needed to roll once in this collection, if rollable is set, in format {item_id: amount, ...}."""
-
 
   @classmethod
   async def fetch(cls, id: str):

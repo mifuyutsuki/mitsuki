@@ -61,9 +61,6 @@ class UserCardRoll(AsDict):
   unlisted: bool = attrs.field(default=False)
   """Whether the card is neither rollable nor viewable, i.e. 'deleted'."""
 
-  convert_to: dict[str, int] = attrs.field(factory=dict)
-  """Items that duplicates of this card convert to, if set, in the format {id: amount, ...}."""
-
   color: int = attrs.field(default=0x46a1eb, eq=False)
   """Accent color of this card, which depends on its rarity."""
   dupe_shards: int = attrs.field(default=75, eq=False)

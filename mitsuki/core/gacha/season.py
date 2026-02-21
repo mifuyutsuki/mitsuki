@@ -39,10 +39,14 @@ class GachaSeason(AsDict):
   """ID of the collection containing rate-up cards of this season."""
   pickup_rate: float
   """Rate of rolling this season's rate-up cards over the general pool, out of 1.0."""
+  start_time: float
+  """Time this season starts after the last one ends, in timestamp format."""
   end_time: float
   """Time this season ends and the next one begins, in timestamp format."""
   description: Optional[str] = attrs.field(default=None)
   """Description of this season."""
+  image: Optional[str] = attrs.field(default=None)
+  """Banner image of this season."""
 
 
   @classmethod
@@ -58,11 +62,12 @@ class GachaSeason(AsDict):
     """
     now = now or ipy.Timestamp.now(tz=timezone.utc)
     now = now.timestamp()
-    
+
     query = (
       select(models.GachaSeason)
+      .where(models.GachaSeason.start_time <= now)
       .where(models.GachaSeason.end_time > now)
-      .order_by(models.GachaSeason.end_time.asc())
+      .order_by(models.GachaSeason.start_time.asc())
       .limit(1)
     )
     async with begin_session() as session:

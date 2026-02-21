@@ -65,7 +65,6 @@ async def card_collection_empty(cards: list[gacha.Card]):
   collection = gacha.CardCollection(
     id="c00", name="Character: Mitsuki",
     rollable=True, discoverable=True, show_counts=True,
-    roll_cost={"g.elf.c01": 5},
   )
 
   async with begin_session() as session:
@@ -85,10 +84,12 @@ async def card_collection(cards: list[gacha.Card], card_collection_empty: gacha.
 
 @pytest.fixture()
 async def card_season_ongoing(card_collection: gacha.CardCollection):
-  end_time = ipy.Timestamp.now() + timedelta(days=56)
-  season = gacha.GachaSeason(
+  now        = ipy.Timestamp.now()
+  start_time = now - timedelta(days=1)
+  end_time   = now + timedelta(days=56)
+  season     = gacha.GachaSeason(
     id="2510.1", name="Season 1", collection=card_collection.id,
-    pickup_rate=0.7, end_time=end_time.timestamp(),
+    pickup_rate=0.7, start_time=start_time.timestamp(), end_time=end_time.timestamp(),
   )
 
   async with begin_session() as session:
@@ -98,10 +99,12 @@ async def card_season_ongoing(card_collection: gacha.CardCollection):
 
 @pytest.fixture()
 async def card_season_ended(card_collection: gacha.CardCollection):
-  end_time = ipy.Timestamp.now() - timedelta(days=56)
-  season = gacha.GachaSeason(
+  now        = ipy.Timestamp.now()
+  start_time = now - timedelta(days=60)
+  end_time   = now - timedelta(days=56)
+  season     = gacha.GachaSeason(
     id="2506.1", name="Season 0", collection=card_collection.id,
-    pickup_rate=0.7, end_time=end_time.timestamp(),
+    pickup_rate=0.7, start_time=start_time.timestamp(), end_time=end_time.timestamp(),
   )
 
   async with begin_session() as session:

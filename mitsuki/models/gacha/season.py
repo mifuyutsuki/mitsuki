@@ -27,11 +27,15 @@ class GachaSeason(Base):
   """Season ID."""
   name: Mapped[str]
   """Name of this season."""
+  description: Mapped[Optional[str]]
+  """Description of this season."""
+  image: Mapped[Optional[str]]
+  """Banner image of this collection."""
   collection: Mapped[str] = mapped_column(ForeignKey("gacha_collections.id"))
   """ID of the collection containing rate-up cards of this season."""
   pickup_rate: Mapped[float]
   """Rate of rolling this season's rate-up cards over the general pool, out of 1.0."""
+  start_time: Mapped[float]
+  """Time this season starts after the previous ends, in timestamp format."""
   end_time: Mapped[float]
   """Time this season ends and the next one begins, in timestamp format."""
-  description: Mapped[Optional[str]]
-  """Description of this season."""

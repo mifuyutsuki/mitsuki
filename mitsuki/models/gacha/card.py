@@ -21,7 +21,7 @@ from mitsuki.lib.userdata import Base, AsDict
 class Card(Base):
   """Database entry of gacha cards."""
 
-  __tablename__ = "gacha_cards2"
+  __tablename__ = "gacha_cards"
 
   id: Mapped[str] = mapped_column(primary_key=True)
   """ID of this card."""
@@ -42,6 +42,3 @@ class Card(Base):
   """Whether the card is not rollable, but obtainable using collection tickets."""
   unlisted: Mapped[bool] = mapped_column(server_default=text("FALSE"))
   """Whether the card is neither rollable nor viewable, i.e. 'deleted'."""
-
-  convert_to: Mapped[Optional[dict]] = mapped_column(JSON)
-  """Items that duplicates of this card convert to, if set, in the format {id: amount, ...}."""

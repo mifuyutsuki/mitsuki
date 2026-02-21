@@ -95,7 +95,7 @@ class CardSubmitter(BaseSubmitter):
           id=card_data_id, name=card_data["name"], rarity=int(card_data["rarity"]),
           type=card_data["type"], series=card_data["series"], image=card_data.get("image", None),
           limited=bool(card_data.get("limited")), locked=bool(card_data.get("locked")),
-          unlisted=bool(card_data.get("unlisted")), convert_to=card_data.get("convert_to", {}),
+          unlisted=bool(card_data.get("unlisted"))
         )
       except (KeyError, ValueError):
         result.error_counts[CardSubmitterErrors.FIELD] += 1

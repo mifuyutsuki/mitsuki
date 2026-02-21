@@ -57,9 +57,6 @@ class Card(AsDict):
   unlisted: bool = attrs.field(default=False)
   """Whether the card is neither rollable nor viewable, i.e. 'deleted'."""
 
-  convert_to: dict[str, int] = attrs.field(factory=dict)
-  """Items that duplicates of this card convert to, if set, in the format {id: amount, ...}."""
-
   color: int = attrs.field(default=0x46a1eb, eq=False)
   """Accent color of this card, which depends on its rarity."""
   dupe_shards: int = attrs.field(default=75, eq=False)
@@ -113,7 +110,7 @@ class Card(AsDict):
   def db_dict(self, exclude_id: bool = False):
     keys = {
       "name", "rarity", "type", "series", "image",
-      "locked", "limited", "unlisted", "convert_to"
+      "locked", "limited", "unlisted"
     }
     if not exclude_id:
       keys.add("id")
