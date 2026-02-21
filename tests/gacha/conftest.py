@@ -58,19 +58,27 @@ async def cards(card_rarities: list[gacha.CardRarity], card_data: dict):
 async def gacha_user(mock_user):
   async with begin_session() as session:
     return await gacha.GachaUser.daily(session, mock_user.id)
-
+  
 
 @pytest.fixture()
-async def card_collection(cards: list[gacha.Card]):
+async def card_collection_empty(cards: list[gacha.Card]):
   collection = gacha.CardCollection(
     id="c00", name="Character: Mitsuki",
     rollable=True, discoverable=True, show_counts=True,
     roll_cost={"g.elf.c01": 5},
   )
-  collection_cards = [card.id for card in cards if card.id.startswith("c00")]
 
   async with begin_session() as session:
     await collection.add(session)
+  return collection
+
+
+@pytest.fixture()
+async def card_collection(cards: list[gacha.Card], card_collection_empty: gacha.CardCollection):
+  collection       = card_collection_empty
+  collection_cards = [card.id for card in cards if card.id.startswith("c00")]
+
+  async with begin_session() as session:
     await collection.add_cards(session, collection_cards)
   return collection
 
