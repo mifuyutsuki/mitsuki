@@ -153,7 +153,11 @@ class CardCollection(AsDict):
       .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
       .where(models.Card.id.regexp_match(pattern))
     )
-    stmt = insert(models.GachaCollectionCard).from_select(["collection", "card"], cards_query)
+    stmt = (
+      insert(models.GachaCollectionCard)
+      .from_select(["collection", "card"], cards_query)
+      .on_conflict_do_nothing()
+    )
     await session.execute(stmt)
 
 
@@ -163,7 +167,11 @@ class CardCollection(AsDict):
       .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
       .where(models.Card.id.in_(card_ids))
     )
-    stmt = insert(models.GachaCollectionCard).from_select(["collection", "card"], cards_query)
+    stmt = (
+      insert(models.GachaCollectionCard)
+      .from_select(["collection", "card"], cards_query)
+      .on_conflict_do_nothing()
+    )
     await session.execute(stmt)
 
 
