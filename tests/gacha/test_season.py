@@ -43,8 +43,8 @@ async def test_fetch_table_season(
 ):
   season = await gacha.GachaSeason.fetch_current()
 
-  standard = await gacha.Card.fetch_table_standard(season_id=season.id)
-  seasonal = await gacha.Card.fetch_table_season()
+  standard = await gacha.Card.fetch_table_standard(season.id)
+  seasonal = await gacha.Card.fetch_table_season(season.id)
 
   standard_count = sum([len(rarity_cards) for rarity_cards in standard.values()])
   seasonal_count = sum([len(rarity_cards) for rarity_cards in seasonal.values()])
