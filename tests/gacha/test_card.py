@@ -106,3 +106,11 @@ async def test_card_search_grep_id(init_db, cards: list[gacha.Card]):
 
   assert len(results) > 0
   assert len(results) == len(mitsuki_cards)
+
+
+async def test_card_count_grep_id(init_db, cards: list[gacha.Card]):
+  patterns = [r"c00\..*", r"e2308\..*"]
+  expect   = len([c for c in cards if c.id.startswith("c00") or c.id.startswith("e2308")])
+  result   = await gacha.Card.grep_id_count(patterns, private=False)
+
+  assert result == expect

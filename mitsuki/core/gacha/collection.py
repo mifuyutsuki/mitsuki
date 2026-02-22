@@ -10,7 +10,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from typing import Optional, Any, Union, Self
+from typing import Optional, Any, Union, Self, List
 from datetime import timezone
 from random import SystemRandom
 
@@ -137,7 +137,7 @@ class CardCollection(AsDict):
       return await session.scalar(query) or 0
 
 
-  async def add_cards_by_grep_id(self, session: AsyncSession, pattern: str):
+  async def add_cards_by_grep_id(self, session: AsyncSession, pattern: Union[List[str], str]):
     """
     Add cards to this collection by regex of card IDs.
 
@@ -145,10 +145,13 @@ class CardCollection(AsDict):
       session: Current database session
       pattern: Regex pattern for card ID
     """
+    if isinstance(pattern, str):
+      pattern = [pattern]
+
     cards_query = (
       select(sa.literal(self.id), models.Card.id).select_from(models.Card)
       .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
-      .where(models.Card.id.regexp_match(pattern))
+      .where(sa.or_(*[models.Card.id.regexp_match(p) for p in pattern]))
     )
     stmt = (
       insert(models.GachaCollectionCard)

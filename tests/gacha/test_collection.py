@@ -27,11 +27,21 @@ async def test_collection_create(init_db, card_collection_empty: gacha.CardColle
 
 
 async def test_collection_add_by_regex(init_db, card_collection_empty: gacha.CardCollection):
-  selected = await gacha.Card.grep_id(r"c00\..*")
+  expect = await gacha.Card.grep_id_count(r"c00\..*")
 
   async with begin_session() as session:
     await card_collection_empty.add_cards_by_grep_id(session, r"c00\..*")
 
   fetched = await gacha.Card.fetch_all_collection(card_collection_empty.id)
+  assert expect == len(fetched)
 
-  assert len(fetched) == len(selected)
+
+async def test_collection_add_by_regex_multiple(init_db, card_collection_empty: gacha.CardCollection):
+  patterns = [r"c00\..*", r"e2308\..*"]
+  expect   = await gacha.Card.grep_id_count(patterns)
+
+  async with begin_session() as session:
+    await card_collection_empty.add_cards_by_grep_id(session, patterns)
+
+  fetched = await gacha.Card.fetch_all_collection(card_collection_empty.id)
+  assert expect == len(fetched)

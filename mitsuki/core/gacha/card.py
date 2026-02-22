@@ -481,21 +481,24 @@ class Card(AsDict):
 
 
   @classmethod
-  async def grep_id(cls, pattern: str, *, private: bool = False) -> list[Self]:
+  async def grep_id(cls, pattern: Union[List[str], str], *, private: bool = False) -> list[Self]:
     """
-    Fetch cards by regex matching card IDs.
+    Fetch cards whose ID match a given pattern.
 
     Args:
-      pattern: Regex pattern
+      pattern: Regex pattern, or a list thereof
       private: Whether to return non-public cards (cards with unlisted=True)
 
     Returns:
       List of card instances
     """
+    if isinstance(pattern, str):
+      pattern = [pattern]
+
     query = (
       select(models.Card, models.CardRarity)
       .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
-      .where(models.Card.id.regexp_match(pattern))
+      .where(sa.or_(*[models.Card.id.regexp_match(p) for p in pattern]))
     )
     if not private:
       query = query.where(models.Card.unlisted == False)
@@ -503,6 +506,41 @@ class Card(AsDict):
     async with begin_session() as session:
       results = (await session.execute(query)).all()
     return [cls.from_row(r) for r in results]
+
+
+  @staticmethod
+  async def grep_id_count(pattern: Union[List[str], str], *, private: bool = False) -> int:
+    """
+    Fetch count of cards whose ID match a given pattern.
+
+    If a list of patterns is provided, fetches a total count from each
+    individual pattern match.
+
+    Args:
+      pattern: Regex pattern, or a list thereof
+      private: Whether to return non-public cards (cards with unlisted=True)
+
+    Returns:
+      Count of matching cards
+    """
+    if isinstance(pattern, str):
+      pattern = [pattern]
+
+    query = (
+      select(models.Card.id)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+      .where(models.Card.id.regexp_match(sa.bindparam("pattern")))
+    )
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+    params = [{"pattern": p} for p in pattern]
+
+    cards = set()
+    async with begin_session() as session:
+      for param in params:
+        result = (await session.execute(query, param)).all()
+        cards |= set(result)
+    return len(cards)
 
 
   @classmethod
