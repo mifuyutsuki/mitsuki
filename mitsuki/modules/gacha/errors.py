@@ -37,6 +37,6 @@ class InsufficientShards(GachaException):
   ephemeral = False
 
   def __init__(self, item_name: str, item_emoji_s: str, cost: int, has_amount: int):
-    self.desc = "Needs {} {} {} to perform the action. (has {} {})".format(
+    self.desc = "Needs {} **{}** {} to perform the action. (has {} **{}**)".format(
       item_emoji_s, cost, item_name, item_emoji_s, has_amount
     )
