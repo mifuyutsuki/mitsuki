@@ -77,6 +77,7 @@ class GachaRollView(View):
           label="Roll again",
           emoji=get_emoji(AppEmoji.ITEM_SHARD),
           custom_id=customids.ROLL.id(self.caller.id),
+          disabled=not self.can_roll
         ),
       )
     ]
