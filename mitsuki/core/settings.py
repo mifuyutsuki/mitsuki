@@ -56,7 +56,7 @@ class Settings:
   "Duration of each status message (presence) in seconds before cycling to the next message."
 
   DailyShards = SettingData(
-    SettingTypes.INTEGER, "gacha.shards.daily", "Gacha: Daily Shards", 120
+    SettingTypes.INTEGER, "gacha.shards.daily", "Gacha: Daily Shards", 135
   )
   "Amount of Shards to give as a daily."
 
