@@ -11,3 +11,4 @@
 # GNU Affero General Public License for more details.
 
 from .upload_roster import RosterUploadPromptView, RosterUploadDoneView
+from .upload_season import SeasonUploadPromptView, SeasonUploadDoneView

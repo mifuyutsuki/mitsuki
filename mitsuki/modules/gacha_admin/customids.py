@@ -15,3 +15,6 @@ from mitsuki.lib.commands import CustomID
 
 ROSTER_UPLOAD = CustomID("gacha_admin_upload|roster")
 """Upload the selected gacha roster. (args: Submitter UUID)"""
+
+SEASON_UPLOAD = CustomID("gacha_admin_upload|season")
+"""Upload the selected gacha season. (args: Submitter UUID)"""

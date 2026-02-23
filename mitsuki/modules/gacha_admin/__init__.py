@@ -59,6 +59,7 @@ class GachaAdminModule(ipy.Extension):
     choices=[
       ipy.SlashCommandChoice("Roster update (yaml)", "roster_yaml"),
       ipy.SlashCommandChoice("Roster update (csv)", "roster_csv"),
+      ipy.SlashCommandChoice("Season data (yaml)", "season_yaml"),
     ],
     required=True,
   )
@@ -74,11 +75,19 @@ class GachaAdminModule(ipy.Extension):
         await commands.RosterUpload.create(ctx).run(file)
       case "roster_csv":
         raise UnderConstruction()
+      case "season_yaml":
+        await commands.SeasonUpload.create(ctx).run(file)
       case _:
         raise ValueError(f"Unexpected choice value for /gacha-admin upload: {type}")
 
 
   @ipy.component_callback(customids.ROSTER_UPLOAD.string_id_pattern())
-  async def gacha_admin_upload_btn(self, ctx: ipy.ComponentContext):
+  async def gacha_admin_upload_roster_btn(self, ctx: ipy.ComponentContext):
     uuid = customids.ROSTER_UPLOAD.get_id_from(ctx)
     await commands.RosterUpload.create(ctx).proceed(uuid)
+
+
+  @ipy.component_callback(customids.SEASON_UPLOAD.string_id_pattern())
+  async def gacha_admin_upload_season_btn(self, ctx: ipy.ComponentContext):
+    uuid = customids.SEASON_UPLOAD.get_id_from(ctx)
+    await commands.SeasonUpload.create(ctx).proceed(uuid)

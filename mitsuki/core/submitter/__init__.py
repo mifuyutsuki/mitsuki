@@ -12,3 +12,4 @@
 
 from .base import BaseSubmitter
 from .gacha.cards import CardSubmitterErrors, CardSubmitter
+from .gacha.season import GachaSeasonSubmitter
