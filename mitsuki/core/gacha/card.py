@@ -400,7 +400,9 @@ class Card(AsDict):
 
 
   @staticmethod
-  async def fetch_table_season(season: Union["GachaSeason", str], *, private: bool = False) -> dict[int, list[str]]:
+  async def fetch_table_season(
+    season: Optional[Union["GachaSeason", str]], *, private: bool = False
+  ) -> dict[int, list[str]]:
     """
     Fetch all cards in the specified season, in the {rarity: [cards]} "table"
     format used by gacha rolls.
@@ -414,6 +416,9 @@ class Card(AsDict):
     """
     if not season:
       return {}
+    if isinstance(season, GachaSeason):
+      season = season.id
+
     query = (
       select(models.Card.rarity, models.Card.id)
       .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
