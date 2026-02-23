@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mitsuki.utils import option
 from mitsuki.lib.userdata import begin_session, AsDict, sa_insert as insert
 from mitsuki.lib.commands import CustomID
+from mitsuki.core.gacha import CardCollection
 from mitsuki.core.settings import get_setting, Settings
 
 import mitsuki.models.gacha as models
@@ -108,23 +109,34 @@ class GachaSeason(AsDict):
     return [cls(**r.asdict()) for r in results]
 
 
-  async def add(self, session: AsyncSession) -> None:
+  async def add(self, session: AsyncSession, *, create_collection: bool = False) -> None:
     """
     Add this gacha season.
 
     Args:
       session: Current database session
+      create_collection: Whether to create the associated card collection as well
     """
+    if create_collection:
+      collection = CardCollection(
+        id=self.collection, name=self.name, description=f"Cards part of the season '{self.name}'.",
+        rollable=False, discoverable=True, show_counts=True
+      )
+      await collection.add(session)
     stmt = insert(models.GachaSeason).values(**self.asdict())
     await session.execute(stmt)
 
 
-  async def delete(self, session: AsyncSession) -> None:
+  async def delete(self, session: AsyncSession, *, delete_collection: bool = False) -> None:
     """
     Delete this gacha season.
 
     Args:
       session: Current database session
+      delete_collection: Whether to delete the associated card collection as well
     """
     stmt = delete(models.GachaSeason).where(models.GachaSeason.id == self.id)
     await session.execute(stmt)
+    if delete_collection:
+      stmt = delete(models.GachaCollection).where(models.GachaCollection.id == self.collection)
+      await session.execute(stmt)
