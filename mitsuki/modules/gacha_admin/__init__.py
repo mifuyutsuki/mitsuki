@@ -49,6 +49,14 @@ class GachaAdminModule(ipy.Extension):
 
 
   @gacha_admin_cmd.subcommand(
+    sub_cmd_name="sync",
+    sub_cmd_description="Sync cached Gacha data with database",
+  )
+  async def gacha_admin_sync_cmd(self, ctx: ipy.SlashContext):
+    await commands.GachaSync.create(ctx).run()
+
+
+  @gacha_admin_cmd.subcommand(
     sub_cmd_name="upload",
     sub_cmd_description="Upload a gacha data file",
   )

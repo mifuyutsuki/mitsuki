@@ -12,3 +12,4 @@
 
 from .upload_roster import RosterUploadPromptView, RosterUploadDoneView
 from .upload_season import SeasonUploadPromptView, SeasonUploadDoneView
+from .sync import GachaSyncView
