@@ -109,6 +109,16 @@ class GachaSeason(AsDict):
     return [cls(**r.asdict()) for r in results]
 
 
+  async def card_count(self) -> int:
+    """
+    Fetch the number of cards that are part of this season.
+
+    Returns:
+      Number of cards
+    """
+    return await CardCollection.fetch_card_count(self.collection, private=False)
+
+
   async def add(self, session: AsyncSession, *, create_collection: bool = False) -> None:
     """
     Add this gacha season.

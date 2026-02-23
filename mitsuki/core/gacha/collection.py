@@ -113,7 +113,33 @@ class CardCollection(AsDict):
       return list(await session.scalars(query))
 
 
-  async def count_cards(self, *, private: bool = False):
+  @staticmethod
+  async def fetch_card_count(id: str, *, private: bool = False) -> int:
+    """
+    Count the number of cards in the specified collection.
+
+    Args:
+      id: Card collection ID
+      private: Whether to show non-public cards (cards with unlisted=True)
+
+    Returns:
+      Number of cards in this collection
+    """
+    query = (
+      select(sa.func.count()).select_from(models.Card)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+      .join(models.GachaCollectionCard, models.GachaCollectionCard.card == models.Card.id)
+      .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
+      .where(models.GachaCollection.id == id)
+    )
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+
+    async with begin_session() as session:
+      return await session.scalar(query) or 0
+
+
+  async def card_count(self, *, private: bool = False) -> int:
     """
     Count the number of cards in this collection.
 
@@ -124,11 +150,11 @@ class CardCollection(AsDict):
       Number of cards in this collection
     """
     query = (
-      select(sa.func.count(models.Card.id))
+      select(sa.func.count()).select_from(models.Card)
       .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
       .join(models.GachaCollectionCard, models.GachaCollectionCard.card == models.Card.id)
       .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
-      .where(models.GachaCollection.id == id)
+      .where(models.GachaCollection.id == self.id)
     )
     if not private:
       query = query.where(models.Card.unlisted == False)
