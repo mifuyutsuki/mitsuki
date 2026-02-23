@@ -31,9 +31,11 @@ class GachaCards(ReaderCommand):
 
     cache = await core.CardCache.get_cache()
     target_user = user or self.caller_user
-    gacha_user = await core.GachaUser.fetch(target_user)
 
-    if gacha_user:
+    if isinstance(target_user, int):
+      target_user = await self.ctx.guild.fetch_member(target_user) or await self.ctx.client.fetch_user(target_user)
+
+    if gacha_user := await core.GachaUser.fetch(target_user):
       cards = await core.UserCard.fetch_all(target_user, sort=sort)
     else:
       cards = []

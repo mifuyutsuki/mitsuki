@@ -112,7 +112,23 @@ class GachaProfileView(View):
           "-# {}: /gacha profile".format(self.caller.tag)
         ),
         accent_color=get_member_color_value(self.target_user)
-      )
+      ),
+      ipy.ActionRow(
+        ipy.Button(
+          style=ipy.ButtonStyle.GRAY,
+          label="Cards",
+          emoji=get_emoji(AppEmoji.LIST),
+          custom_id=customids.CARDS.id(self.target_user.id),
+          disabled=self.gacha_user.total_rolled <= 0,
+        ),
+        ipy.Button(
+          style=ipy.ButtonStyle.GRAY,
+          label="Gallery",
+          emoji=get_emoji(AppEmoji.GALLERY),
+          custom_id=customids.GALLERY.id(self.target_user.id),
+          disabled=self.gacha_user.total_rolled <= 0,
+        ),
+      ),
     ]
 
 
