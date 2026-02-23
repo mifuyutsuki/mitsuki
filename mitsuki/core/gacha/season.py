@@ -137,6 +137,65 @@ class GachaSeason(AsDict):
     await session.execute(stmt)
 
 
+  async def add_cards_by_grep_id(self, session: AsyncSession, pattern: Union[list[str], str]):
+    """
+    Add cards to this season by regex patterns of card IDs.
+
+    Args:
+      session: Current database session
+      pattern: Regex pattern(s) to search card IDs for
+    """
+    if isinstance(pattern, str):
+      pattern = [pattern]
+
+    cards_query = (
+      select(sa.literal(self.collection), models.Card.id).select_from(models.Card)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+      .where(sa.or_(*[models.Card.id.regexp_match(p) for p in pattern]))
+    )
+    stmt = (
+      insert(models.GachaCollectionCard)
+      .from_select(["collection", "card"], cards_query)
+      .on_conflict_do_nothing()
+    )
+    await session.execute(stmt)
+
+
+  async def add_cards(self, session: AsyncSession, card_ids: list[str]):
+    """
+    Add cards to this season by list of card IDs.
+
+    Args:
+      session: Current database session
+      card_ids: List of card IDs
+    """
+    cards_query = (
+      select(sa.literal(self.collection), models.Card.id).select_from(models.Card)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+      .where(models.Card.id.in_(card_ids))
+    )
+    stmt = (
+      insert(models.GachaCollectionCard)
+      .from_select(["collection", "card"], cards_query)
+      .on_conflict_do_nothing()
+    )
+    await session.execute(stmt)
+
+
+  async def clear(self, session: AsyncSession):
+    """
+    Clear cards in this gacha season.
+
+    Note that this removes the card list of the collection associated with
+    this season.
+
+    Args:
+      session: Current database session
+    """
+    stmt = delete(models.GachaCollectionCard).where(models.GachaCollectionCard.collection == self.collection)
+    await session.execute(stmt)
+
+
   async def delete(self, session: AsyncSession, *, delete_collection: bool = False) -> None:
     """
     Delete this gacha season.
