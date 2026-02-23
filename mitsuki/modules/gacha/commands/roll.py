@@ -58,4 +58,5 @@ class GachaRoll(ReaderCommand):
         _ = await gacha_user.give_shards(session, rolled.dupe_shards)
 
       view = views.GachaRollView(self.ctx, card_cache=cache, gacha_user=gacha_user, card=rolled)
-      await view.send()
+      await view.send(timeout=15, hide_on_timeout=True)
+      await core.CardCache.place_card(rolled)

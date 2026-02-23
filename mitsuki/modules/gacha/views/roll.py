@@ -20,6 +20,7 @@ from mitsuki.lib.emoji import AppEmoji, get_emoji
 from mitsuki.lib.view import (
   View,
 )
+from mitsuki.core.settings import get_setting, Settings
 from mitsuki.core.gacha import GachaUser, CardCache, Card
 from mitsuki.modules.gacha import customids
 
@@ -29,6 +30,11 @@ class GachaRollView(View):
   card_cache: CardCache
   gacha_user: GachaUser
   card: Card
+
+
+  @property
+  def can_roll(self):
+    return self.gacha_user.amount >= get_setting(Settings.RollShards)
 
 
   def get_context(self):
@@ -64,5 +70,13 @@ class GachaRollView(View):
           "-# {}: /gacha roll".format(self.caller.tag)
         ),
         accent_color=self.card.color
+      ),
+      ipy.ActionRow(
+        ipy.Button(
+          style=ipy.ButtonStyle.BLUE,
+          label="Roll again",
+          emoji=get_emoji(AppEmoji.ITEM_SHARD),
+          custom_id=customids.ROLL.id(self.caller.id),
+        ),
       )
     ]

@@ -18,7 +18,7 @@ import os
 from mitsuki import init_event, EXCLUSIVE_GUILDS
 from mitsuki.lib.errors import UnderConstruction
 from mitsuki.lib.commands import CustomID
-from mitsuki.lib.view import timeout_clearer
+from mitsuki.lib.view import timeout_clearer, timeout_preinvoker
 
 from mitsuki.modules.gacha import customids, commands
 
@@ -122,6 +122,7 @@ class GachaModule(ipy.Extension):
 
 
   @ipy.component_callback(customids.ROLL.string_id_pattern())
+  @timeout_preinvoker
   async def roll_btn(self, ctx: ipy.ComponentContext):
     # await commands.Roll.create(ctx).run2(int(CustomID.get_id_from(ctx)))
     await commands.GachaRoll.create(ctx).run(custom_id_user=CustomID.get_snowflake_from(ctx))
