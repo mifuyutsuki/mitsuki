@@ -196,6 +196,7 @@ class GachaUser(AsDict):
       .join(models.GachaUser, models.GachaUser.user == models.UserPity.user)
       .join(models.CardRarity, models.CardRarity.rarity == models.UserPity.rarity)
       .where(models.CardRarity.pity > 1)
+      .where(models.UserPity.user == user)
     )
 
     async with begin_session() as session:
@@ -203,7 +204,7 @@ class GachaUser(AsDict):
 
     if len(results) > 0:
       results = sorted(results, key=lambda r: r.rarity, reverse=True)
-      return next((r.rarity for r in results if r.count >= r.pity), None)
+      return next((r.rarity for r in results if r.count >= r.pity - 1), None)
 
 
   @classmethod
