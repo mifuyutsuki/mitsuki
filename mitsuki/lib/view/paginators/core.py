@@ -19,6 +19,7 @@ from enum import IntEnum
 
 from mitsuki.logger import logger
 from mitsuki.utils import truncate
+from mitsuki.lib.errors import InteractionDenied
 from mitsuki.lib.emoji import AppEmoji, get_emoji
 from mitsuki.lib.view import PlaceholderComponent, reset_timeout
 from mitsuki.lib.view import utils
@@ -95,6 +96,8 @@ class BasePaginatorMixin:
 
 
   async def _nav_callback(self, ctx: ipy.ComponentContext):
+    if ctx.author.id != self.ctx.author.id:
+      raise InteractionDenied()
     match custom_id := ctx.custom_id.split("|")[-1]:
       case "first":
         self.page_index = 0
