@@ -51,7 +51,12 @@ class GachaModule(ipy.Extension):
     sub_cmd_description="View information on playing the gacha"
   )
   async def info_cmd(self, ctx: ipy.SlashContext):
-    raise UnderConstruction()
+    await commands.GachaInfo.create(ctx).run()
+
+
+  @ipy.component_callback(customids.INFO_DETAILS)
+  async def info_btn(self, ctx: ipy.ComponentContext):
+    await commands.GachaInfo.create(ctx).run(details=True)
 
 
   # ===========================================================================

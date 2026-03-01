@@ -36,3 +36,6 @@ VIEW_ADMIN = CustomID("gacha_view_admin")
 
 RELOAD = CustomID("gacha_reload")
 """Reload the current roster. (no args; confirm)"""
+
+INFO_DETAILS = CustomID("gacha_info|details")
+"""View details on playing Mitsuki Gacha. (no args)"""
