@@ -77,9 +77,8 @@ class GachaSeasonSubmitter(BaseSubmitter):
 
 
   async def execute(self, session: AsyncSession, *, overwrite: bool = False):
-    if not self.existing_season:
-      await self.season.add(session, create_collection=True)
-    elif overwrite:
+    await self.season.add(session, create_collection=True)
+    if overwrite:
       await self.season.clear(session)
     await self.season.add_cards(session, self.card_ids)
     await self.season.add_cards_by_grep_id(session, self.card_patterns)
