@@ -87,9 +87,10 @@ class EmojiFinder:
   def get(self, emoji: Union["AppEmoji", str]) -> Union[ipy.CustomEmoji, ipy.PartialEmoji]:
     if isinstance(emoji, AppEmoji):
       name, default = emoji.value
+      return self.emoji.get(name, ipy.PartialEmoji.from_str(default))
     else:
       name, default = emoji, "⬜"
-    return self.emoji.get(name, ipy.PartialEmoji.from_str(default))
+      return self.emoji.get(name, ipy.PartialEmoji.from_str(name)) or ipy.PartialEmoji.from_str(default)
 
 
   async def init(self) -> None:
