@@ -104,7 +104,8 @@ class GachaViewView(View):
         ),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
-          "-# {}: /gacha view".format(self.caller.tag)
+          "-# Tap the thumbnail to view the card picture\n"
+          + "-# {}: /gacha view".format(self.caller.tag)
         ),
         accent_color=self.card_cache.rarities[self.global_card.rarity].color
       ),

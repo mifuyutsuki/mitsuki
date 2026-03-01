@@ -158,7 +158,7 @@ class GachaCardsView(SectionPaginatorMixin, View):
         ipy.SeparatorComponent(divider=True),
         SectionPaginatorContentPlaceholder(),
         ipy.TextDisplayComponent(
-          "-# Click or tap the thumbnail to view the card picture.\n"
+          "-# Tap the thumbnail to view the card picture\n"
           "-# Viewing ${user_username}'s (${user_mention}) card collection\n"
           + "-# {}: /gacha cards".format(self.caller.tag)
           + " • Page ${page}/${pages}"
