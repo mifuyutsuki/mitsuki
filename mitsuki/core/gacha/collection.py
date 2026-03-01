@@ -47,6 +47,15 @@ class CardCollection(AsDict):
   """Whether to show total cards in this collection, per rarity and including unobtained, if discoverable is set."""
 
 
+  def db_dict(self, exclude_id: bool = False):
+    keys = {
+      "name", "description", "rollable", "discoverable", "show_counts"
+    }
+    if not exclude_id:
+      keys.add("id")
+    return {k: v for k, v in self.asdict().items() if k in keys}
+
+
   @classmethod
   async def fetch(cls, id: str):
     """
@@ -205,10 +214,16 @@ class CardCollection(AsDict):
     """
     Add this collection.
 
+    If a collection with this ID already exists, updates the collection.
+
     Args:
       session: Current database session
     """
-    stmt = insert(models.GachaCollection).values(**self.asdict())
+    stmt = (
+      insert(models.GachaCollection)
+      .values(**self.asdict())
+      .on_conflict_do_update(index_elements=["id"], set_=self.db_dict(exclude_id=True))
+    )
     await session.execute(stmt)
 
 

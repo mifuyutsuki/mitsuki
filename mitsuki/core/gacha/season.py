@@ -50,6 +50,15 @@ class GachaSeason(AsDict):
   """Banner image of this season."""
 
 
+  def db_dict(self, exclude_id: bool = False):
+    keys = {
+      "name", "collection", "pickup_rate", "start_time", "end_time", "description", "image"
+    }
+    if not exclude_id:
+      keys.add("id")
+    return {k: v for k, v in self.asdict().items() if k in keys}
+
+
   @classmethod
   async def fetch_current(cls, *, now: Optional[ipy.Timestamp] = None) -> Optional[Self]:
     """
@@ -123,6 +132,8 @@ class GachaSeason(AsDict):
     """
     Add this gacha season.
 
+    If a gacha season with this ID already exists, updates the gacha season.
+
     Args:
       session: Current database session
       create_collection: Whether to create the associated card collection as well
@@ -133,7 +144,11 @@ class GachaSeason(AsDict):
         rollable=False, discoverable=True, show_counts=True
       )
       await collection.add(session)
-    stmt = insert(models.GachaSeason).values(**self.asdict())
+    stmt = (
+      insert(models.GachaSeason)
+      .values(**self.asdict())
+      .on_conflict_do_update(index_elements=["id"], set_=self.db_dict(exclude_id=True))
+    )
     await session.execute(stmt)
 
 
