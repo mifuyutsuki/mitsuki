@@ -16,6 +16,7 @@ from interactions import (
 from typing import Dict, List, Optional, Union
 
 from mitsuki import logger
+from mitsuki.lib.view import StaticView
 from asyncio import Lock, sleep
 
 _autosend_lock = Lock()
@@ -23,11 +24,14 @@ _autosend_lock = Lock()
 AUTOSEND_DELAY_SECONDS = 0.1
 
 
-async def autosend(channel: TYPE_ALL_CHANNEL, content: str, sleep_seconds: Optional[float] = None, **kwargs):
+async def autosend(channel: TYPE_ALL_CHANNEL, content: StaticView | str, sleep_seconds: Optional[float] = None, **kwargs):
   sleep_seconds = sleep_seconds or AUTOSEND_DELAY_SECONDS
 
   async with _autosend_lock:
-    m = await channel.send(content, **kwargs)
+    if isinstance(content, StaticView):
+      m = await content.send()
+    else:
+      m = await channel.send(content, **kwargs)
     if sleep_seconds:
       await sleep(sleep_seconds)
 

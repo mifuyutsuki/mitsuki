@@ -21,6 +21,7 @@ from .utils import (
   PlaceholderComponent,
 )
 from .core import (
+  StaticView,
   View,
   Timeout,
   add_timeout,
@@ -43,6 +44,7 @@ from .paginators import (
 
 __all__ = (
   "PlaceholderComponent",
+  "StaticView",
   "View",
   "Timeout",
   "add_timeout",

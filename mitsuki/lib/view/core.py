@@ -37,6 +37,7 @@ __all__ = (
   "timeout_clearer",
   "timeout_invoker",
   "timeout_preinvoker",
+  "StaticView",
   "View",
   "TargetMixin",
 )
@@ -227,6 +228,242 @@ class Timeout:
     # By calling cancel() with a message, the timeout task will run the timeout
     # action, without a call to disable()
     self.task.cancel("Clear timeout")
+
+
+@attrs.define(slots=False)
+class StaticView:
+  """
+  A Discord message response view, but designed for non-interaction messages.
+
+  Inherit this object with `attrs.define(slots=False)` to create a new message
+  view, and override the following methods:
+  - `get_context()` to set the data, given attributes (default: `{}`)
+  - `content()` to set the text message content (default: `None`)
+  - `embeds()` to set the message embeds (default: `None`)
+  - `components()` to set the message components, including v2 components
+    (default: `None`)
+
+  Additional attributes can be added in your inherited view to provide
+  information to the view content. These attributes would be set at instance
+  creation, e.g. `MyView(channel, target=target_user)`.
+  """
+
+  channel: ipy.TYPE_MESSAGEABLE_CHANNEL = attrs.field(kw_only=False)
+  """Target channel for this view."""
+
+  _message: Optional[ipy.Message] = attrs.field(init=False, repr=False)
+  _send_kwargs: dict = attrs.field(init=False, repr=False)
+
+
+  def __attrs_post_init__(self):
+    self._message = None
+    self._send_kwargs = None
+
+
+  @property
+  def client(self) -> ipy.Client:
+    """Mitsuki client instance provided by the interaction."""
+    return self.channel.client
+
+
+  @property
+  def message(self) -> Optional[ipy.Message]:
+    """Message instance that was sent to Discord, if any."""
+    return self._message
+
+
+  @property
+  def is_sent(self) -> bool:
+    """Whether this view has been sent."""
+    return self._message is not None
+
+
+  @property
+  def is_components_v2(self) -> bool:
+    """Whether this view uses v2 components."""
+    components = self.components()
+    if not components:
+      return False
+
+    for component in components:
+      match component:
+        case (ipy.Button(), ipy.BaseSelectMenu()):
+          continue
+        case ipy.ActionRow():
+          continue
+        case _:
+          return True
+    return self.content() is None and self.embeds() is None and len(components) > 0
+
+
+  def get_master_context(self) -> dict[str, Any]:
+    """
+    Get interaction context data for this view, including information on the
+    caller and this application.
+
+    The output of this method is provided automatically from the interaction
+    data and should not be overriden. The output would be used to string-
+    substitute text in the message content, including its text content, embeds,
+    and components using `string.Template`.
+
+    Returns:
+      Dictionary of interaction context data
+    """
+    result = {
+      "client_id": self.client.user.id,
+      "client_mention": self.client.user.mention,
+      "client_username": self.client.user.tag,
+      "client_name": self.client.user.display_name,
+      "client_name_esc": escape_text(self.client.user.display_name),
+      "client_avatar_url": self.client.user.avatar_url,
+    }
+    if guild := getattr(self.channel, "guild", None):
+      result |= {
+        "guild_id": guild.id,
+        "guild_name": guild.name,
+        "guild_name_esc": escape_text(guild.name),
+      }
+      if icon := guild.icon:
+        result |= {"guild_avatar_url": icon.as_url()}
+    return result
+
+
+  def get_context(self) -> dict[str, Any]:
+    """
+    Get context data for this view.
+
+    Override this method to set this view's message context data. Define
+    additional attributes in your inherited view to include additional data.
+    By default, returns an empty dict `{}`.
+
+    The output would be used to string-substitute text in the message content,
+    including its text content, embeds, and components using `string.Template`.
+
+    Returns:
+      Dictionary of view context data
+    """
+    return {}
+
+
+  def content(self) -> Optional[str]:
+    """
+    Generate the message content of this view.
+
+    Override this method to set this view's message content. This method cannot
+    be set when using v2 components. By default, returns `None`.
+
+    Text in this message would be string-substituted using `string.Template` on
+    sending using data given by `View.get_master_context()` and
+    `View.get_context()`.
+
+    Returns:
+      Message text content, or `None` to leave unset
+    """
+    return None
+
+
+  def embeds(self) -> Optional[List[ipy.Embed]]:
+    """
+    Generate message embeds for this view.
+
+    Override this method to set this view's message embeds. This method cannot
+    be set when using v2 components. By default, returns `None`.
+
+    Text in this message would be string-substituted using `string.Template` on
+    sending using data given by `View.get_master_context()` and
+    `View.get_context()`.
+
+    Returns:
+      List of message embeds, or `None` to leave unset
+    """
+    return None
+
+
+  def components(self) -> Optional[List[ipy.BaseComponent]]:
+    """
+    Generate message components for this view.
+
+    Override this method to set this view's message components. Content and
+    embeds must not be set when using v2 components. By default, returns
+    `None`.
+
+    Text in this message would be string-substituted using `string.Template` on
+    sending using data given by `View.get_master_context()` and
+    `View.get_context()`.
+
+    Returns:
+      List of message components, or `None` to leave unset
+    """
+    return None
+
+
+  def files(self) -> Optional[List[ipy.UPLOADABLE_TYPE]]:
+    """
+    Generate files to send for this view.
+
+    Override this method to set this view's file attachments. The interaction
+    must be deferred before sending. When using components v2, files are only
+    shown via a file component linking to `attachment://<filename>`. By
+    default, returns `None`.
+
+    Returns:
+      List of files to attach, or `None` to leave unset
+    """
+    return None
+
+
+  async def send(
+    self,
+    *,
+    mention_users: Optional[List[ipy.BaseUser]] = None,
+  ) -> ipy.Message:
+    """
+    Send this view as a message.
+
+    Note that the ephemeral status of this message is overriden by deferring this interaction.
+
+    Args:
+      mention_users: Users to mention with ping in the message
+      timeout: Timeout duration of this view, or leave unset to post a persistent message
+      hide_on_timeout: Whether to hide interactable non-link components when timed out
+      ephemeral: Whether the message should only be viewable by the caller
+
+    Returns:
+      Sent message object
+
+    Raises:
+      HTTPException: Could not send the message to Discord
+    """
+    send_kwargs = self._send_kwargs or self._generate()
+    if mention_users:
+      send_kwargs["allowed_mentions"] = ipy.AllowedMentions(users=mention_users)
+
+    message = await self.channel.send(**send_kwargs)
+    self._message = message
+    self._send_kwargs = send_kwargs
+    return message
+
+
+  def _generate(self):
+    context = self.get_master_context() | self.get_context()
+
+    if content := self.content():
+      content = utils.subst(context, content)
+
+    if embeds := self.embeds():
+      for embed in embeds:
+        embed = utils.subst_embed(embed, context)
+
+    if components := self.components():
+      components = utils.subst_components(components, context)
+
+    return {
+      "content": content,
+      "embeds": embeds,
+      "components": components,
+      "files": self.files(),
+      "allowed_mentions": ipy.AllowedMentions.none(),
+    }
 
 
 @attrs.define(slots=False)
