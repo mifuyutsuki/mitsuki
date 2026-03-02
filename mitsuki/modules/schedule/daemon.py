@@ -24,6 +24,7 @@ from mitsuki import logger
 from mitsuki.lib.autopost import autosend
 from mitsuki.lib.userdata import begin_session
 from .userdata import Schedule, Message as ScheduleMessage, ScheduleTypes, timestamp_now
+from .views import SchedulePostView
 
 
 class DaemonTask:
@@ -127,7 +128,8 @@ class DaemonTask:
     # Execution: Post current message
     posted_message = None
     if is_ready and formatted_message:
-      posted_message = await autosend(channel, formatted_message)
+      view = SchedulePostView(channel, schedule, message)
+      posted_message = await autosend(channel, view)
       if schedule.pin and posted_message:
         try:
           await posted_message.pin()
