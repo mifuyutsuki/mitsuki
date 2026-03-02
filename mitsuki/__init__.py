@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -75,7 +75,7 @@ def run(prod: bool = False):
 
   curr_time = datetime.now(tz=timezone.utc).isoformat(sep=" ")
   print("Mitsuki v{}".format(__version__))
-  print("Copyright (c) 2024-2025 Mifuyu (mifuyutsuki)")
+  print("Copyright (c) 2024-2026 Mifuyu (mifuyutsuki)")
   print("Current time in UTC: {}".format(curr_time))
   print("Running mode: {}".format("Production" if prod else "Development"))
   print("")
