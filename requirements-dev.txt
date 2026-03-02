@@ -27,7 +27,7 @@ colorama==0.4.6
     # via pytest
 croniter==6.0.0
     # via discord-py-interactions
-discord-py-interactions==5.15.0
+discord-py-interactions==5.16.0
     # via mitsuki (pyproject.toml)
 discord-typings==0.9.0
     # via discord-py-interactions

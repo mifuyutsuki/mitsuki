@@ -380,7 +380,7 @@ class Schedule(AsDict):
     required_permissions = [Permissions.SEND_MESSAGES]
     if self.pin:
       required_permissions.extend([
-        Permissions.MANAGE_MESSAGES,      # for pin
+        Permissions.PIN_MESSAGES,         # for pin
         Permissions.VIEW_CHANNEL,         # for fetching previous pin
         Permissions.READ_MESSAGE_HISTORY, # for fetching previous pin
       ])

@@ -434,7 +434,7 @@ class ConfigureSchedule(WriterCommand):
       self.ctx.bot,
       schedule.post_channel,
       [
-        Permissions.MANAGE_MESSAGES,
+        Permissions.PIN_MESSAGES,
         Permissions.VIEW_CHANNEL,
         Permissions.READ_MESSAGE_HISTORY,
         Permissions.SEND_MESSAGES

@@ -1,12 +1,12 @@
 [project]
 name = "mitsuki"
-version = "5.0.0a1"
+version = "5.0.0"
 dependencies = [
   "pyyaml ~= 6.0",
   "python-dotenv ~= 1.0",
   "rapidfuzz ~= 3.7",
   "sqlalchemy ~= 2.0.0",
-  "discord-py-interactions >= 5.13.2, < 6.0", # https://github.com/interactions-py/interactions.py/issues/1717
+  "discord-py-interactions >= 5.16.0, < 6.0", # Permissions.PIN_MESSAGES
   "aiosqlite ~= 0.20",
   "attrs >= 24.1.0",
   "regex",
