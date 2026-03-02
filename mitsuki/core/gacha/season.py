@@ -78,6 +78,33 @@ class GachaSeason(AsDict):
       .where(models.GachaSeason.start_time <= now)
       .where(models.GachaSeason.end_time > now)
       .order_by(models.GachaSeason.start_time.asc())
+      .order_by(models.GachaSeason.end_time.asc())
+      .limit(1)
+    )
+    async with begin_session() as session:
+      if result := await session.scalar(query):
+        return cls(**result.asdict())
+
+
+  @classmethod
+  async def fetch_next(cls, *, now: Optional[ipy.Timestamp] = None) -> Optional[Self]:
+    """
+    Fetch the next gacha season, if there are any.
+
+    Args:
+      now: Reference time to determine the current season, or current time if unset
+
+    Returns:
+      Gacha season instance, or `None` if none are current
+    """
+    now = now or ipy.Timestamp.now(tz=timezone.utc)
+    now = now.timestamp()
+
+    query = (
+      select(models.GachaSeason)
+      .where(models.GachaSeason.start_time > now)
+      .order_by(models.GachaSeason.start_time.asc())
+      .order_by(models.GachaSeason.end_time.asc())
       .limit(1)
     )
     async with begin_session() as session:

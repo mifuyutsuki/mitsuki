@@ -704,6 +704,8 @@ class CardCache:
   """Gacha card rarity settings."""
   season: Optional["GachaSeason"] = attrs.field(default=None)
   """Current season, if any."""
+  next_season: Optional["GachaSeason"] = attrs.field(default=None)
+  """Next season, if any."""
 
   rarity_rates: dict[int, float] = attrs.field(factory=dict)
   """Gacha card rates per rarity, relative to the sum of all other rarity rates."""
@@ -804,6 +806,7 @@ class CardCache:
     """
     cache = await cls.get_cache()
     cache.season = await GachaSeason.fetch_current(now=now)
+    cache.next_season = await GachaSeason.fetch_next(now=now)
     cache.standard_table = await Card.fetch_table_standard(cache.season)
     cache.seasonal_table = await Card.fetch_table_season(cache.season)
 
@@ -812,8 +815,9 @@ class CardCache:
     now = now or ipy.Timestamp.now()
 
     # Store fetch results in temp vars to avoid incomplete syncing
-    rarities = await CardRarity.fetch_all()
-    season   = await GachaSeason.fetch_current(now=now)
+    rarities    = await CardRarity.fetch_all()
+    season      = await GachaSeason.fetch_current(now=now)
+    next_season = await GachaSeason.fetch_next(now=now)
 
     # Note: To account for rosters/collections with cardless rarities,
     # these rarity rates are not the final one used in calculation.
@@ -821,6 +825,7 @@ class CardCache:
 
     self.rarities       = {r.rarity: r for r in rarities}
     self.season         = season
+    self.next_season    = next_season
     self.rarity_rates   = rates
     self.standard_table = await Card.fetch_table_standard(season)
     self.seasonal_table = await Card.fetch_table_season(season)
@@ -894,7 +899,7 @@ class CardCache:
       key: Card name search key
       private: Whether to show non-public cards (cards with unlisted=True)
       limit: Number of matching cards to return at most
-    
+
     Returns:
       List of card instances, in the order of top match
     """
@@ -928,8 +933,11 @@ class CardCache:
     cache  = await cls.get_cache()
     random = random or cache.random
 
-    # Is season still current?
-    if cache.season_ends and now >= cache.season_ends:
+    # Is it time for next season? (season is None, next_season is not None)
+    if not cache.season and cache.next_season and now >= cache.next_season.start_time:
+      await cache.sync_season(now=now)
+    # Is season still current? (season is not None, season ended)
+    elif cache.season_ends and now >= cache.season_ends:
       await cache.sync_season(now=now)
 
     # Season pick-up?
