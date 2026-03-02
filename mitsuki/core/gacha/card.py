@@ -934,7 +934,7 @@ class CardCache:
     random = random or cache.random
 
     # Is it time for next season? (season is None, next_season is not None)
-    if not cache.season and cache.next_season and now >= cache.next_season.start_time:
+    if not cache.season and cache.next_season and now.timestamp() >= cache.next_season.start_time:
       await cache.sync_season(now=now)
     # Is season still current? (season is not None, season ended)
     elif cache.season_ends and now >= cache.season_ends:
