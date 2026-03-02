@@ -66,7 +66,6 @@ class GachaAdminModule(ipy.Extension):
     opt_type=ipy.OptionType.STRING,
     choices=[
       ipy.SlashCommandChoice("Roster update (yaml)", "roster_yaml"),
-      ipy.SlashCommandChoice("Roster update (csv)", "roster_csv"),
       ipy.SlashCommandChoice("Season data (yaml)", "season_yaml"),
     ],
     required=True,
@@ -81,8 +80,8 @@ class GachaAdminModule(ipy.Extension):
     match type:
       case "roster_yaml":
         await commands.RosterUpload.create(ctx).run(file)
-      case "roster_csv":
-        raise UnderConstruction()
+      # case "roster_csv":
+      #   raise UnderConstruction()
       case "season_yaml":
         await commands.SeasonUpload.create(ctx).run(file)
       case _:
