@@ -121,8 +121,12 @@ class GachaInfoDetailsView(View):
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
           "### Rates\n" +
-          "\n".join(rates)
+          "While a season is ongoing, featured seasonal cards enjoy increased rates based on their pickup chance. " +
+          "The pickup chance is the rate you obtain any featured seasonal card, as opposed to non-seasonal, " +
+          "standard cards."
         ),
+        ipy.SeparatorComponent(divider=False),
+        ipy.TextDisplayComponent("\n".join(rates)),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
           "### Commands\n"
