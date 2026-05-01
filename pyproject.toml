@@ -20,7 +20,7 @@ readme = "README.md"
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
   "pytest >= 8.4",
   "pytest-asyncio",
@@ -29,3 +29,6 @@ dev = [
 
 [project.urls]
 Github = "https://github.com/mifuyutsuki/mitsuki"
+
+[tool.setuptools.packages.find]
+where = ["mitsuki"]
