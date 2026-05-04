@@ -46,6 +46,7 @@ class GachaRollView(View):
       "card_series_esc": escape_text(self.card.series),
       "card_star_s": self.card.emoji_str,
       "card_new_or_dupe": (
+        "💫 **New! Season Pickup!**" if self.card.is_new_roll and self.card.season_pickup else
         "✨ **New!**" if self.card.is_new_roll else
         "**{} +{}**".format(get_emoji(AppEmoji.ITEM_SHARD), self.card.dupe_shards)
       ),
