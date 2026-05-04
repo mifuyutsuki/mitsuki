@@ -30,6 +30,7 @@ class GachaInfo(ReaderCommand):
     await self.defer(ephemeral=False, edit_origin=False)
 
     cache = await core.CardCache.get_cache()
+    await cache.sync_season()
     if not details and cache.season:
       view = views.GachaInfoSeasonView(self.ctx, cache)
     else:
