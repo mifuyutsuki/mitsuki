@@ -18,4 +18,4 @@ from .view import GachaViewView, GachaViewResultsView
 from .cards import GachaCardsView
 from .gallery import GachaGalleryView
 from .info import GachaInfoSeasonView, GachaInfoDetailsView
-from .collections import GachaCollectionsView
+from .collections import GachaCollectionsView, GachaCollectionCardsView

@@ -44,3 +44,28 @@ class GachaCollections(ReaderCommand):
       self.ctx, card_cache=cache, target_user=target_user, gacha_user=gacha_user, collections=collections
     )
     await view.send(timeout=45, hide_on_timeout=True)
+
+
+class GachaCollectionCards(ReaderCommand):
+  async def run(self, collection_id: str, user: Optional[ipy.BaseUser] = None, *, sort: Optional[str] = None):
+    await checks.assert_in_guild(self.ctx)
+    await self.defer(ephemeral=False, edit_origin=False)
+
+    cache = await core.CardCache.get_cache()
+    target_user = user or self.caller_user
+
+    if isinstance(target_user, int):
+      target_user = await self.ctx.guild.fetch_member(target_user) or await self.ctx.client.fetch_user(target_user)
+
+    collection = await core.CardCollection.fetch_user(collection_id, target_user)
+    gacha_user = await core.GachaUser.fetch(target_user)
+
+    if collection:
+      cards = await core.UserCard.fetch_all(target_user, collection=collection, sort=sort)
+    else:
+      raise errors.ObjectNotFound("collection")
+
+    view = views.GachaCollectionCardsView(
+      self.ctx, card_cache=cache, target_user=target_user, gacha_user=gacha_user, collection=collection, cards=cards
+    )
+    await view.send(timeout=45, hide_on_timeout=True)

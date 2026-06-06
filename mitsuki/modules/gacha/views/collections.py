@@ -24,7 +24,7 @@ from mitsuki.lib.view import (
   PaginatorNavPlaceholder,
   DividerStyle,
 )
-from mitsuki.core.gacha import GachaUser, CardCollection, CardCache
+from mitsuki.core.gacha import GachaUser, CardCollection, CardCache, UserCard
 from mitsuki.modules.gacha import customids
 
 
@@ -37,7 +37,7 @@ class GachaCollectionsView(SectionPaginatorMixin, View):
 
   # Paginator parameters
   entries_per_page: int = 5
-  divider_style: DividerStyle = DividerStyle.SMALL
+  divider_style: DividerStyle = DividerStyle.NONE
 
 
   @property
@@ -96,14 +96,14 @@ class GachaCollectionsView(SectionPaginatorMixin, View):
         components=[
           ipy.TextDisplayComponent(
             "### ${collection_name}\n"
-            "**${collection_owned_cards}/${collection_available_cards}** owned (${collection_rolled_cards} rolled)\n"
-            "${collection_description}"
+            "> ${collection_description}\n"
+            "**${collection_owned_cards}/${collection_available_cards}** owned (${collection_rolled_cards} rolled)"
           ),
         ],
         accessory=ipy.Button(
           style=ipy.ButtonStyle.GRAY,
           emoji=get_emoji(AppEmoji.LIST),
-          custom_id=customids.COLLECTION_CARDS.id("${collection_id}"),
+          custom_id=customids.COLLECTION_CARDS.id("${collection_id}").id("${user_id}"),
         )
       )
     ]
@@ -151,11 +151,180 @@ class GachaCollectionsView(SectionPaginatorMixin, View):
         ipy.SeparatorComponent(divider=True),
         SectionPaginatorContentPlaceholder(),
         ipy.TextDisplayComponent(
-          "-# Viewing ${user_username}'s (${user_mention}) card collection\n"
-          + "-# {}: /gacha collection".format(self.caller.tag)
+          "-# Viewing ${user_username}'s (${user_mention}) card library\n"
+          + "-# {}: /gacha collections".format(self.caller.tag)
           + " • Page ${page}/${pages}"
         ),
         accent_color=get_member_color_value(self.target_user)
       ),
       PaginatorNavPlaceholder(),
+    ]
+
+
+@attrs.define(slots=False)
+class GachaCollectionCardsView(SectionPaginatorMixin, View):
+  card_cache: CardCache
+  target_user: ipy.Member
+  gacha_user: Optional[GachaUser]
+  collection: CardCollection
+  cards: list[UserCard]
+
+  # Paginator parameters
+  entries_per_page: int = 5
+  divider_style: DividerStyle = DividerStyle.NONE
+
+
+  @property
+  def is_target_own_user(self):
+    if not self.gacha_user:
+      return False
+    return self.gacha_user.user == self.caller.id
+
+
+  def get_context(self):
+    result = {
+      "shard": get_emoji(AppEmoji.ITEM_SHARD),
+      "user_id": self.target_user.id,
+      "user_mention": self.target_user.mention,
+      "user_username": self.target_user.tag,
+      "user_name": self.target_user.display_name,
+      "user_name_esc": escape_text(self.target_user.display_name),
+      "user_avatar_url": self.target_user.avatar_url,
+    }
+
+    if self.gacha_user:
+      result |= {
+        "user_shards": self.gacha_user.amount,
+      }
+      if self.is_target_own_user:
+        now = self.ctx.id.created_at
+        result |= {
+          "user_can_daily": "— **Daily available!**" if (
+            self.gacha_user.can_daily(now=now)
+          ) else "— Next daily {}".format(self.gacha_user.next_daily(now=now).format("R")),
+        }
+      else:
+        result |= {
+          "user_can_daily": ""
+        }
+
+    # if self.collection:
+    result |= {
+      "collection_id": self.collection.id,
+      "collection_name": self.collection.name,
+      "collection_description": self.collection.description,
+      "collection_available_cards": self.collection.available_count,
+      "collection_owned_cards": self.collection.user_obtained,
+      "collection_rolled_cards": self.collection.user_rolled,
+    }
+    return result
+
+
+  def get_pages_context(self):
+    return [
+      {
+        "card_id": card.id,
+        "card_name": escape_text(card.name),
+        "card_type": escape_text(card.type),
+        "card_series": escape_text(card.series),
+        "card_image": card.image,
+        "card_star_s": self.card_cache.rarities[card.rarity].emoji_str,
+        "card_owned_count": card.count,
+        "card_rolled_count": card.rolled_count,
+        "card_first_rolled_f": card.first_rolled.format("f"),
+        "card_last_rolled_f": card.last_rolled.format("f"),
+      }
+      for card in self.cards
+    ]
+
+
+  def section(self):
+    return [
+      ipy.SectionComponent(
+        components=[      
+          ipy.TextDisplayComponent(
+            "### ${card_name}\n"
+            "${card_star_s} • *${card_type}* • *${card_series}*\n"
+          ),
+          ipy.TextDisplayComponent(
+            "In library: **${card_rolled_count}** card(s)\n"
+            "First acquired: ${card_first_rolled_f}"
+          )
+        ],
+        accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${card_image}")),
+      )
+    ]
+
+
+  def components_on_empty(self):
+    own_user_info = "You have ${shard} **${user_shards}** ${user_can_daily}" if self.is_target_own_user else ""
+    return [
+      ipy.ContainerComponent(
+        ipy.SectionComponent(
+          components=[
+            ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
+            ipy.TextDisplayComponent(
+              "## ${collection_name}\n"
+              "> ${collection_description}"
+            ),
+            ipy.TextDisplayComponent(
+              "**${collection_owned_cards}/${collection_available_cards}** owned (${collection_rolled_cards} rolled) "
+              "by ${user_username} (${user_mention})\n"
+              + own_user_info
+            ),
+          ],
+          accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${user_avatar_url}")),
+        ),
+        ipy.SeparatorComponent(divider=True),
+        ipy.TextDisplayComponent(
+          "No cards have been acquired by this user in this collection.\n"
+        ),
+        ipy.SeparatorComponent(divider=True),
+        ipy.TextDisplayComponent(
+          "-# Viewing ${user_username}'s (${user_mention}) card library\n"
+          + "-# {}: /gacha collections".format(self.caller.tag)
+        ),
+        accent_color=get_member_color_value(self.target_user)
+      ),
+    ]
+
+
+  def components(self):
+    own_user_info = "You have ${shard} **${user_shards}** ${user_can_daily}" if self.is_target_own_user else ""
+    return [
+      ipy.ContainerComponent(
+        ipy.SectionComponent(
+          components=[
+            ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
+            ipy.TextDisplayComponent(
+              "## ${collection_name}\n"
+              "> ${collection_description}"
+            ),
+            ipy.TextDisplayComponent(
+              "**${collection_owned_cards}/${collection_available_cards}** owned (${collection_rolled_cards} rolled) "
+              "by ${user_username} (${user_mention})\n"
+              + own_user_info
+            ),
+          ],
+          accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${user_avatar_url}")),
+        ),
+        ipy.SeparatorComponent(divider=True),
+        SectionPaginatorContentPlaceholder(),
+        ipy.TextDisplayComponent(
+          "-# Tap the thumbnail to view the card picture\n"
+          "-# Viewing ${user_username}'s (${user_mention}) card library\n"
+          + "-# {}: /gacha collections".format(self.caller.tag)
+          + " • Page ${page}/${pages}"
+        ),
+        accent_color=get_member_color_value(self.target_user)
+      ),
+      PaginatorNavPlaceholder(),
+      # ipy.ActionRow(
+      #   ipy.Button(
+      #     style=ipy.ButtonStyle.GRAY,
+      #     label="Back to Collections",
+      #     emoji=get_emoji(AppEmoji.BACK),
+      #     custom_id=customids.COLLECTION_LIST.id("${user_id}"),
+      #   )
+      # )
     ]

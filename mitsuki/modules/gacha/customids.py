@@ -29,13 +29,13 @@ ROLL = CustomID("gacha_roll")
 """Roll a card. Caller must be the same as the user in ID. (id: User)"""
 
 COLLECTION_CATEGORY = CustomID("gacha_collection_category")
-"""View available card collection categories. (no args)"""
+"""View available card collection categories. (id: Target User)"""
 
 COLLECTION_LIST = CustomID("gacha_collection_list")
-"""View card collections. (id: Collection Category ID (optional))"""
+"""View card collections. (id: Target User)"""
 
 COLLECTION_CARDS = CustomID("gacha_collection_cards")
-"""View cards in collection. (id: Collection ID)"""
+"""View cards in collection. (id: Collection ID, id: Target User)"""
 
 CARDS_ADMIN = CustomID("gacha_cards_admin")
 """View all cards in deck as admin. (no args)"""

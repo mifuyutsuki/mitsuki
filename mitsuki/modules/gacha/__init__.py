@@ -242,6 +242,21 @@ class GachaModule(ipy.Extension):
     await commands.GachaCollections.create(ctx).run(user)
 
 
+  @ipy.component_callback(customids.COLLECTION_LIST.string_id_pattern())
+  @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
+  async def collections_btn(self, ctx: ipy.ComponentContext):
+    await commands.GachaCollections.create(ctx).run(CustomID.get_snowflake_from(ctx))
+
+
+  @ipy.component_callback(customids.COLLECTION_CARDS.string_id_pattern())
+  @ipy.cooldown(ipy.Buckets.USER, 1, 15.0)
+  async def collection_cards_btn(self, ctx: ipy.ComponentContext):
+    ids = CustomID.get_ids_from(ctx)
+    collection_id = ids[0]
+    user = ipy.Snowflake(ids[1])
+    await commands.GachaCollectionCards.create(ctx).run(collection_id, user)
+
+
   # ===========================================================================
   # ===========================================================================
 

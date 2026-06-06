@@ -26,7 +26,7 @@ from mitsuki.lib.commands import CustomID
 from mitsuki.core.settings import get_setting, Settings
 
 import mitsuki.models.gacha as models
-from mitsuki.core.gacha import Card
+from mitsuki.core.gacha import CardCollection
 
 
 @attrs.define(kw_only=True)
@@ -125,6 +125,7 @@ class UserCard(AsDict):
     cls,
     user: Union[ipy.BaseUser, ipy.Snowflake],
     *,
+    collection: Optional[Union["CardCollection", str]] = None,
     sort: Optional[str] = None,
     private: bool = False):
     """
@@ -132,12 +133,15 @@ class UserCard(AsDict):
 
     Args:
       user: Target user
+      collection_id: Collection to filter the list to, or all public cards if not set
       sort: Sort card by (date, rarity, alpha, series, count, id)
       private: Whether to return non-public cards (cards with unlisted=True)
 
     Returns:
       List of user cards, or empty list if user doesn't exist
     """
+    if isinstance(collection, CardCollection):
+      collection = collection.id
     if not isinstance(user, int):
       user = user.id
     sort = sort or "date"
@@ -164,10 +168,19 @@ class UserCard(AsDict):
       )
       .join(models.UserCard, models.UserCard.card == models.Card.id)
       .join(roll_query, (roll_query.c.user == models.UserCard.user) & (roll_query.c.card == models.UserCard.card))
-      .where(models.UserCard.user == user)
     )
+    if collection:
+      query = (
+        query
+        .join(models.GachaCollectionCard, models.GachaCollectionCard.card == models.Card.id)
+        .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
+        .where(models.GachaCollection.id == collection)
+      )
+    query = query.where(models.UserCard.user == user)
     if not private:
       query = query.where(models.Card.unlisted == False)
+      if collection:
+        query = query.where(models.GachaCollection.discoverable == True)
 
     match sort.lower():
       case "date":
