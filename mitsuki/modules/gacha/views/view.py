@@ -72,7 +72,7 @@ class GachaViewView(View):
   def components(self):
     user_components = [
       ipy.TextDisplayComponent(
-        "**In your collection**: **${user_owned_count}** card(s)\n"
+        "**${user_owned_count}** card(s) in your collection\n"
         "You first acquired this on ${user_first_rolled_f}"
       ),
     ] if self.user_card else [
