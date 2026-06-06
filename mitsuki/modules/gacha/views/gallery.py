@@ -110,9 +110,9 @@ class GachaGalleryView(GalleryPaginatorMixin, View):
         ipy.SectionComponent(
           components=[
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
-            ipy.TextDisplayComponent("## Card Collection: ${user_username}"),
+            ipy.TextDisplayComponent("## Card Collection - ${user_username}"),
             ipy.TextDisplayComponent(
-              "**${user_cards_count}** unique cards acquired by ${user_mention}\n" + own_user_info
+              "**${user_cards_count}** unique cards obtained by ${user_mention}\n" + own_user_info
             ),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${user_avatar_url}")),
@@ -138,11 +138,11 @@ class GachaGalleryView(GalleryPaginatorMixin, View):
     return [
       ipy.ContainerComponent(
         ipy.SectionComponent(
-          components=[      
+          components=[
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
-            ipy.TextDisplayComponent("## Card Collection: ${user_username}"),
+            ipy.TextDisplayComponent("## Card Collection - ${user_username}"),
             ipy.TextDisplayComponent(
-              "**${user_cards_count}** unique cards acquired by ${user_mention}\n" + own_user_info
+              "**${user_cards_count}** unique cards obtained by ${user_mention}\n" + own_user_info
             ),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${user_avatar_url}")),
@@ -153,7 +153,7 @@ class GachaGalleryView(GalleryPaginatorMixin, View):
         ipy.TextDisplayComponent("## ${card_name_esc}"),
         ipy.TextDisplayComponent("${card_star_s} • *${card_type_esc}* • *${card_series_esc}*"),
         ipy.TextDisplayComponent(
-          "In collection: **${card_owned_count}** card(s)\n"
+          "**${card_owned_count}** card(s) in collection\n"
           "First acquired: ${card_first_rolled_f} ${card_last_rolled_blurb}"
         ),
         ipy.SeparatorComponent(divider=False),

@@ -116,7 +116,7 @@ class GachaCollectionsView(SectionPaginatorMixin, View):
         ipy.SectionComponent(
           components=[      
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
-            ipy.TextDisplayComponent("## ${user_username}'s Card Collections"),
+            ipy.TextDisplayComponent("## Collections - ${user_username}"),
             ipy.TextDisplayComponent(own_user_info),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${user_avatar_url}")),
@@ -143,7 +143,7 @@ class GachaCollectionsView(SectionPaginatorMixin, View):
         ipy.SectionComponent(
           components=[      
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
-            ipy.TextDisplayComponent("## ${user_username}'s Card Collections"),
+            ipy.TextDisplayComponent("## Collections - ${user_username}"),
             ipy.TextDisplayComponent(own_user_info),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${user_avatar_url}")),
@@ -247,7 +247,7 @@ class GachaCollectionCardsView(SectionPaginatorMixin, View):
             "${card_star_s} • *${card_type}* • *${card_series}*\n"
           ),
           ipy.TextDisplayComponent(
-            "In library: **${card_rolled_count}** card(s)\n"
+          "**${card_owned_count}** card(s) in collection\n"
             "First acquired: ${card_first_rolled_f}"
           )
         ],
@@ -268,8 +268,8 @@ class GachaCollectionCardsView(SectionPaginatorMixin, View):
               "> ${collection_description}"
             ),
             ipy.TextDisplayComponent(
-              "**${collection_owned_cards}/${collection_available_cards}** owned (${collection_rolled_cards} rolled) "
-              "by ${user_username} (${user_mention})\n"
+              "**${collection_owned_cards}/${collection_available_cards}** owned (**${collection_rolled_cards}** rolled) "
+              "by ${user_mention}\n"
               + own_user_info
             ),
           ],
@@ -281,7 +281,7 @@ class GachaCollectionCardsView(SectionPaginatorMixin, View):
         ),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
-          "-# Viewing ${user_username}'s (${user_mention}) card library\n"
+          "-# Viewing ${user_username}'s (${user_mention}) card collection\n"
           + "-# {}: /gacha collections".format(self.caller.tag)
         ),
         accent_color=get_member_color_value(self.target_user)
@@ -297,12 +297,12 @@ class GachaCollectionCardsView(SectionPaginatorMixin, View):
           components=[
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
             ipy.TextDisplayComponent(
-              "## ${collection_name}\n"
+              "## ${collection_name} - ${user_username}\n"
               "> ${collection_description}"
             ),
             ipy.TextDisplayComponent(
-              "**${collection_owned_cards}/${collection_available_cards}** owned (${collection_rolled_cards} rolled) "
-              "by ${user_username} (${user_mention})\n"
+              "**${collection_owned_cards}/${collection_available_cards}** owned (**${collection_rolled_cards}** rolled) "
+              "by ${user_mention}\n"
               + own_user_info
             ),
           ],
@@ -312,7 +312,7 @@ class GachaCollectionCardsView(SectionPaginatorMixin, View):
         SectionPaginatorContentPlaceholder(),
         ipy.TextDisplayComponent(
           "-# Tap the thumbnail to view the card picture\n"
-          "-# Viewing ${user_username}'s (${user_mention}) card library\n"
+          "-# Viewing ${user_username}'s (${user_mention}) card collection\n"
           + "-# {}: /gacha collections".format(self.caller.tag)
           + " • Page ${page}/${pages}"
         ),

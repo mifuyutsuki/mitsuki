@@ -37,7 +37,7 @@ class GachaCardsView(SectionPaginatorMixin, View):
 
   # Paginator parameters
   entries_per_page: int = 5
-  divider_style: DividerStyle = DividerStyle.HIDDEN
+  divider_style: DividerStyle = DividerStyle.NONE
 
 
   @property
@@ -104,7 +104,7 @@ class GachaCardsView(SectionPaginatorMixin, View):
             "${card_star_s} • *${card_type}* • *${card_series}*\n"
           ),
           ipy.TextDisplayComponent(
-            "In collection: **${card_rolled_count}** card(s)\n"
+            "**${card_owned_count}** card(s) in collection\n"
             "First acquired: ${card_first_rolled_f}"
           )
         ],
@@ -118,11 +118,11 @@ class GachaCardsView(SectionPaginatorMixin, View):
     return [
       ipy.ContainerComponent(
         ipy.SectionComponent(
-          components=[      
+          components=[
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
-            ipy.TextDisplayComponent("## Card Collection: ${user_username}"),
+            ipy.TextDisplayComponent("## Card Collection - ${user_username}"),
             ipy.TextDisplayComponent(
-              "**${user_cards_count}** unique cards acquired by ${user_mention}\n" + own_user_info
+              "**${user_cards_count}** unique cards obtained by ${user_mention}\n" + own_user_info
             ),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${user_avatar_url}")),
@@ -146,11 +146,11 @@ class GachaCardsView(SectionPaginatorMixin, View):
     return [
       ipy.ContainerComponent(
         ipy.SectionComponent(
-          components=[      
+          components=[
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
-            ipy.TextDisplayComponent("## Card Collection: ${user_username}"),
+            ipy.TextDisplayComponent("## Card Collection - ${user_username}"),
             ipy.TextDisplayComponent(
-              "**${user_cards_count}** unique cards acquired by ${user_mention}\n" + own_user_info
+              "**${user_cards_count}** unique cards obtained by ${user_mention}\n" + own_user_info
             ),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${user_avatar_url}")),
