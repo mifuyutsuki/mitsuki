@@ -46,6 +46,13 @@ class CardCollection(AsDict):
   show_counts: bool = attrs.field(default=False)
   """Whether to show total cards in this collection, per rarity and including unobtained, if discoverable is set."""
 
+  user_rolled: Optional[int] = attrs.field(default=None)
+  """Total cards in this collection rolled by a user, only set if fetched using `fetch_user()`."""
+  user_obtained: Optional[int] = attrs.field(default=None)
+  """Unique cards in this collection rolled by a user, only set if fetched using `fetch_user()`."""
+  available_count: Optional[int] = attrs.field(default=None)
+  """Total cards available to roll, only set if fetched using `fetch_user()`."""
+
 
   def db_dict(self, exclude_id: bool = False):
     keys = {
@@ -91,6 +98,56 @@ class CardCollection(AsDict):
 
     async with begin_session() as session:
       return [cls(**r.asdict()) for r in await session.scalars(query)]
+
+
+  @classmethod
+  async def fetch_all_user(cls, user: Union[ipy.BaseUser, ipy.Snowflake], *, private: bool = False):
+    """
+    Fetch all available card collections with appended roll data for a given user.
+
+    Args:
+      user: Snowflake or instance of the user
+      private: Whether to show private collections (discoverable=False)
+
+    Returns:
+      List of card collection instances with attached roll count data
+    """
+    if not isinstance(user, int):
+      user = user.id
+
+    rolls_query = select(models.GachaRoll).where(models.GachaRoll.user == user).subquery()
+
+    available_count_col = sa.func.count(sa.distinct(models.Card.id)).label("available_count")
+    user_rolled_col = sa.func.count(rolls_query.c.card).label("user_rolled")
+    user_obtained_col = sa.func.count(sa.distinct(rolls_query.c.card)).label("user_obtained")
+
+    query = (
+      select(
+        models.GachaCollection,
+        available_count_col,
+        user_rolled_col,
+        user_obtained_col,
+      )
+      .select_from(models.GachaCollection)
+      .join(models.GachaCollectionCard, models.GachaCollectionCard.collection == models.GachaCollection.id)
+      .join(models.Card, models.Card.id == models.GachaCollectionCard.card)
+      .outerjoin(rolls_query, rolls_query.c.card == models.Card.id)
+    )
+    if not private:
+      query = query.where(models.GachaCollection.discoverable == True)
+    query = query.having(available_count_col > 0)
+    query = query.group_by(models.GachaCollection.id)
+
+    async with begin_session() as session:
+      return [
+        cls(
+          **r.GachaCollection.asdict(),
+          available_count=r.available_count,
+          user_rolled=r.user_rolled,
+          user_obtained=r.user_obtained,
+        )
+        for r in await session.execute(query)
+      ]
 
 
   @classmethod

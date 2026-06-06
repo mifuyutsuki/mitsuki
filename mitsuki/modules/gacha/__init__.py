@@ -228,6 +228,25 @@ class GachaModule(ipy.Extension):
 
 
   @gacha_cmd.subcommand(
+    sub_cmd_name="collections",
+    sub_cmd_description="View your card collection progress"
+  )
+  @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
+  @ipy.slash_option(
+    name="user",
+    description="User to view",
+    required=False,
+    opt_type=ipy.OptionType.USER
+  )
+  async def collections_cmd(self, ctx: ipy.SlashContext, user: Optional[ipy.BaseUser] = None):
+    await commands.GachaCollections.create(ctx).run(user)
+
+
+  # ===========================================================================
+  # ===========================================================================
+
+
+  @gacha_cmd.subcommand(
     sub_cmd_name="view",
     sub_cmd_description="View an obtained card"
   )
