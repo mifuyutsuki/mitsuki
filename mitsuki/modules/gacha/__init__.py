@@ -228,8 +228,8 @@ class GachaModule(ipy.Extension):
 
 
   @gacha_cmd.subcommand(
-    sub_cmd_name="collections",
-    sub_cmd_description="View your card collection progress"
+    sub_cmd_name="packs",
+    sub_cmd_description="View your progress on card packs"
   )
   @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
   @ipy.slash_option(
@@ -238,23 +238,23 @@ class GachaModule(ipy.Extension):
     required=False,
     opt_type=ipy.OptionType.USER
   )
-  async def collections_cmd(self, ctx: ipy.SlashContext, user: Optional[ipy.BaseUser] = None):
-    await commands.GachaCollections.create(ctx).run(user)
+  async def packs_cmd(self, ctx: ipy.SlashContext, user: Optional[ipy.BaseUser] = None):
+    await commands.GachaPacks.create(ctx).run(user)
 
 
-  @ipy.component_callback(customids.COLLECTION_LIST.string_id_pattern())
+  @ipy.component_callback(customids.PACK_LIST.string_id_pattern())
   @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
-  async def collections_btn(self, ctx: ipy.ComponentContext):
-    await commands.GachaCollections.create(ctx).run(CustomID.get_snowflake_from(ctx))
+  async def packs_btn(self, ctx: ipy.ComponentContext):
+    await commands.GachaPacks.create(ctx).run(CustomID.get_snowflake_from(ctx))
 
 
-  @ipy.component_callback(customids.COLLECTION_CARDS.string_id_pattern())
+  @ipy.component_callback(customids.PACK_CARDS.string_id_pattern())
   @ipy.cooldown(ipy.Buckets.USER, 1, 15.0)
-  async def collection_cards_btn(self, ctx: ipy.ComponentContext):
+  async def pack_cards_btn(self, ctx: ipy.ComponentContext):
     ids = CustomID.get_ids_from(ctx)
     collection_id = ids[0]
     user = ipy.Snowflake(ids[1])
-    await commands.GachaCollectionCards.create(ctx).run(collection_id, user)
+    await commands.GachaPackCards.create(ctx).run(collection_id, user)
 
 
   # ===========================================================================

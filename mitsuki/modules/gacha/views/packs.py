@@ -29,7 +29,7 @@ from mitsuki.modules.gacha import customids
 
 
 @attrs.define(slots=False)
-class GachaCollectionsView(SectionPaginatorMixin, View):
+class GachaPacksView(SectionPaginatorMixin, View):
   card_cache: CardCache
   target_user: ipy.Member
   gacha_user: Optional[GachaUser]
@@ -103,7 +103,7 @@ class GachaCollectionsView(SectionPaginatorMixin, View):
         accessory=ipy.Button(
           style=ipy.ButtonStyle.GRAY,
           emoji=get_emoji(AppEmoji.LIST),
-          custom_id=customids.COLLECTION_CARDS.id("${collection_id}").id("${user_id}"),
+          custom_id=customids.PACK_CARDS.id("${collection_id}").id("${user_id}"),
         )
       )
     ]
@@ -116,19 +116,19 @@ class GachaCollectionsView(SectionPaginatorMixin, View):
         ipy.SectionComponent(
           components=[      
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
-            ipy.TextDisplayComponent("## Collections - ${user_username}"),
+            ipy.TextDisplayComponent("## Card Packs - ${user_username}"),
             ipy.TextDisplayComponent(own_user_info),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${user_avatar_url}")),
         ),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
-          "No collections are available to view.\n"
+          "No card packs available to view.\n"
         ),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
           "-# Viewing ${user_username}'s (${user_mention}) card collection\n"
-          + "-# {}: /gacha collection".format(self.caller.tag)
+          + "-# {}: /gacha packs".format(self.caller.tag)
           + " • Page ${page}/${pages}"
         ),
         accent_color=get_member_color_value(self.target_user)
@@ -143,7 +143,7 @@ class GachaCollectionsView(SectionPaginatorMixin, View):
         ipy.SectionComponent(
           components=[      
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
-            ipy.TextDisplayComponent("## Collections - ${user_username}"),
+            ipy.TextDisplayComponent("## Card Packs - ${user_username}"),
             ipy.TextDisplayComponent(own_user_info),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${user_avatar_url}")),
@@ -151,8 +151,8 @@ class GachaCollectionsView(SectionPaginatorMixin, View):
         ipy.SeparatorComponent(divider=True),
         SectionPaginatorContentPlaceholder(),
         ipy.TextDisplayComponent(
-          "-# Viewing ${user_username}'s (${user_mention}) card library\n"
-          + "-# {}: /gacha collections".format(self.caller.tag)
+          "-# Viewing ${user_username}'s (${user_mention}) card collection\n"
+          + "-# {}: /gacha packs".format(self.caller.tag)
           + " • Page ${page}/${pages}"
         ),
         accent_color=get_member_color_value(self.target_user)
@@ -162,7 +162,7 @@ class GachaCollectionsView(SectionPaginatorMixin, View):
 
 
 @attrs.define(slots=False)
-class GachaCollectionCardsView(SectionPaginatorMixin, View):
+class GachaPackCardsView(SectionPaginatorMixin, View):
   card_cache: CardCache
   target_user: ipy.Member
   gacha_user: Optional[GachaUser]
@@ -247,7 +247,7 @@ class GachaCollectionCardsView(SectionPaginatorMixin, View):
             "${card_star_s} • *${card_type}* • *${card_series}*\n"
           ),
           ipy.TextDisplayComponent(
-          "**${card_owned_count}** card(s) in collection\n"
+            "**${card_owned_count}** card(s) in collection\n"
             "First acquired: ${card_first_rolled_f}"
           )
         ],
@@ -277,12 +277,12 @@ class GachaCollectionCardsView(SectionPaginatorMixin, View):
         ),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
-          "No cards have been acquired by this user in this collection.\n"
+          "No cards have been acquired by this user in this card pack.\n"
         ),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
           "-# Viewing ${user_username}'s (${user_mention}) card collection\n"
-          + "-# {}: /gacha collections".format(self.caller.tag)
+          + "-# {}: /gacha packs".format(self.caller.tag)
         ),
         accent_color=get_member_color_value(self.target_user)
       ),
@@ -313,7 +313,7 @@ class GachaCollectionCardsView(SectionPaginatorMixin, View):
         ipy.TextDisplayComponent(
           "-# Tap the thumbnail to view the card picture\n"
           "-# Viewing ${user_username}'s (${user_mention}) card collection\n"
-          + "-# {}: /gacha collections".format(self.caller.tag)
+          + "-# {}: /gacha packs".format(self.caller.tag)
           + " • Page ${page}/${pages}"
         ),
         accent_color=get_member_color_value(self.target_user)
@@ -322,9 +322,9 @@ class GachaCollectionCardsView(SectionPaginatorMixin, View):
       # ipy.ActionRow(
       #   ipy.Button(
       #     style=ipy.ButtonStyle.GRAY,
-      #     label="Back to Collections",
+      #     label="Back to Packs",
       #     emoji=get_emoji(AppEmoji.BACK),
-      #     custom_id=customids.COLLECTION_LIST.id("${user_id}"),
+      #     custom_id=customids.PACK_LIST.id("${user_id}"),
       #   )
       # )
     ]

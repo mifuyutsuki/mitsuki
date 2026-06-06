@@ -24,7 +24,7 @@ import mitsuki.core.gacha as core
 import mitsuki.modules.gacha.views as views
 
 
-class GachaCollections(ReaderCommand):
+class GachaPacks(ReaderCommand):
   async def run(self, user: Optional[ipy.BaseUser] = None):
     await checks.assert_in_guild(self.ctx)
     await self.defer(ephemeral=False, edit_origin=False)
@@ -40,13 +40,13 @@ class GachaCollections(ReaderCommand):
     else:
       collections = []
 
-    view = views.GachaCollectionsView(
+    view = views.GachaPacksView(
       self.ctx, card_cache=cache, target_user=target_user, gacha_user=gacha_user, collections=collections
     )
     await view.send(timeout=45, hide_on_timeout=True)
 
 
-class GachaCollectionCards(ReaderCommand):
+class GachaPackCards(ReaderCommand):
   async def run(self, collection_id: str, user: Optional[ipy.BaseUser] = None, *, sort: Optional[str] = None):
     await checks.assert_in_guild(self.ctx)
     await self.defer(ephemeral=False, edit_origin=False)
@@ -63,9 +63,9 @@ class GachaCollectionCards(ReaderCommand):
     if collection:
       cards = await core.UserCard.fetch_all(target_user, collection=collection, sort=sort)
     else:
-      raise errors.ObjectNotFound("collection")
+      raise errors.ObjectNotFound("card pack")
 
-    view = views.GachaCollectionCardsView(
+    view = views.GachaPackCardsView(
       self.ctx, card_cache=cache, target_user=target_user, gacha_user=gacha_user, collection=collection, cards=cards
     )
     await view.send(timeout=45, hide_on_timeout=True)
