@@ -105,7 +105,6 @@ class GachaModule(ipy.Extension):
     sub_cmd_name="daily",
     sub_cmd_description=f"Claim your gacha daily"
   )
-  @ipy.auto_defer(time_until_defer=2.0)
   @ipy.cooldown(ipy.Buckets.USER, 1, 3.0)
   async def daily_cmd(self, ctx: ipy.SlashContext):
     await commands.GachaDaily.create(ctx).run()
@@ -119,7 +118,6 @@ class GachaModule(ipy.Extension):
     sub_cmd_name="roll",
     sub_cmd_description="Roll gacha once using Shards"
   )
-  @ipy.auto_defer(time_until_defer=2.0)
   @ipy.cooldown(ipy.Buckets.USER, 1, 3.0)
   async def roll_cmd(self, ctx: ipy.SlashContext):
     # await commands.Roll.create(ctx).run2()
@@ -141,7 +139,6 @@ class GachaModule(ipy.Extension):
     sub_cmd_name="cards",
     sub_cmd_description="View a list of your or another user's collected cards"
   )
-  @ipy.auto_defer(time_until_defer=2.0)
   @ipy.cooldown(ipy.Buckets.USER, 1, 15.0)
   @ipy.slash_option(
     name="sort",
@@ -174,7 +171,6 @@ class GachaModule(ipy.Extension):
 
 
   @ipy.component_callback(customids.CARDS.numeric_id_pattern())
-  @ipy.auto_defer(time_until_defer=2.0)
   @ipy.cooldown(ipy.Buckets.USER, 1, 15.0)
   async def cards_btn_cmd(self, ctx: ipy.ComponentContext):
     # return await commands.Cards.create(ctx).run_from_button()
@@ -189,7 +185,6 @@ class GachaModule(ipy.Extension):
     sub_cmd_name="gallery",
     sub_cmd_description="View a gallery of your or another user's collected cards"
   )
-  @ipy.auto_defer(time_until_defer=2.0)
   @ipy.cooldown(ipy.Buckets.USER, 1, 15.0)
   @ipy.slash_option(
     name="sort",
@@ -222,7 +217,6 @@ class GachaModule(ipy.Extension):
 
 
   @ipy.component_callback(customids.GALLERY.numeric_id_pattern())
-  @ipy.auto_defer(time_until_defer=2.0)
   @ipy.cooldown(ipy.Buckets.USER, 1, 15.0)
   async def gallery_btn_cmd(self, ctx: ipy.ComponentContext):
     # return await commands.Gallery.create(ctx).run_from_button()
@@ -270,7 +264,6 @@ class GachaModule(ipy.Extension):
   #   sub_cmd_description="Give Shards to another user"
   # )
   # @ipy.cooldown(ipy.Buckets.USER, 1, 15.0)
-  # @ipy.auto_defer(time_until_defer=2.0)
   # @ipy.slash_option(
   #   name="target",
   #   description="User to give Shards to",
