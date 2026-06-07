@@ -173,7 +173,7 @@ class GachaSeason(AsDict):
       await collection.add(session)
     stmt = (
       insert(models.GachaSeason)
-      .values(**self.asdict())
+      .values(**self.db_dict())
       .on_conflict_do_update(index_elements=["id"], set_=self.db_dict(exclude_id=True))
     )
     await session.execute(stmt)

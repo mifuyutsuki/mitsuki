@@ -327,7 +327,7 @@ class CardCollection(AsDict):
     """
     stmt = (
       insert(models.GachaCollection)
-      .values(**self.asdict())
+      .values(**self.db_dict())
       .on_conflict_do_update(index_elements=["id"], set_=self.db_dict(exclude_id=True))
     )
     await session.execute(stmt)
