@@ -12,6 +12,7 @@
 
 from .pity import UserPity
 from .collection import CardCollection
+from .collection_category import CardCollectionCategory
 from .season import GachaSeason
 from .rarity import CardRarity
 from .card import Card, CardCache
@@ -23,6 +24,7 @@ from .user import GachaUser
 __all__ = (
   "UserPity",
   "CardCollection",
+  "CardCollectionCategory",
   "GachaSeason",
   "CardRarity",
   "Card",

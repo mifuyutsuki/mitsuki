@@ -17,6 +17,7 @@ from .rarity import CardRarity
 from .card import Card
 from .roll import GachaRoll
 from .collection import GachaCollection, GachaCollectionCard
+from .collection_category import GachaCollectionCategory, GachaCollectionCategoryEntry
 from .season import GachaSeason
 
 __all__ = (
@@ -28,5 +29,7 @@ __all__ = (
   "GachaRoll",
   "GachaCollection",
   "GachaCollectionCard",
+  "GachaCollectionCategory",
+  "GachaCollectionCategoryEntry",
   "GachaSeason",
 )

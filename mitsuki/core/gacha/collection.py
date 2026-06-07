@@ -131,17 +131,31 @@ class CardCollection(AsDict):
 
 
   @classmethod
-  async def fetch_all(cls, *, private: bool = False):
+  async def fetch_all(cls, *, category_id: Optional[str] = None, private: bool = False):
     """
     Fetch all available card collections.
 
     Args:
+      category_id: Collection category to filter the list to, or all public collections if not set
       private: Whether to show private collections (discoverable=False)
 
     Returns:
       List of card collection instances
     """
     query = select(models.GachaCollection)
+    if category_id:
+      query = (
+        query
+        .join(
+          models.GachaCollectionCategoryEntry,
+          models.GachaCollectionCategoryEntry.collection == models.GachaCollection.id
+        )
+        .join(
+          models.GachaCollectionCategory,
+          models.GachaCollectionCategory.id == models.GachaCollectionCategoryEntry.category
+        )
+        .where(models.GachaCollectionCategory.id == category_id)
+      )
     if not private:
       query = query.where(models.GachaCollection.discoverable == True)
 
