@@ -135,7 +135,7 @@ class GachaGalleryView(GalleryPaginatorMixin, View):
 
   def components(self):
     own_user_info = "You have ${shard} **${user_shards}** ${user_can_daily}" if self.is_target_own_user else ""
-    return [
+    result = [
       ipy.ContainerComponent(
         ipy.SectionComponent(
           components=[
@@ -168,7 +168,7 @@ class GachaGalleryView(GalleryPaginatorMixin, View):
           + "-# {}: /gacha gallery".format(self.caller.tag)
           + " • Page ${page}/${pages}"
         ),
-        accent_color="${card_rarity_color}",
+        # accent_color="${card_rarity_color}",
       ),
       PaginatorNavSelectPlaceholder(
         "${page} ${card_name}",
@@ -177,3 +177,6 @@ class GachaGalleryView(GalleryPaginatorMixin, View):
       ),
       PaginatorNavPlaceholder(),
     ]
+    # Circumvent the processing done by ipy.ContainerComponent().__init__(), which causes a KeyError
+    result[1].accent_color = "${card_rarity_color}"
+    return result
