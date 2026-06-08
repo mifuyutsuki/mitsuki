@@ -82,7 +82,7 @@ class GachaPacksView(SectionPaginatorMixin, View):
         "collection_id": collection.id,
         "collection_name": collection.name,
         "collection_description": collection.description,
-        "collection_available_cards": collection.available_count,
+        "collection_available_cards": collection.available_count if collection.show_counts else "-",
         "collection_owned_cards": collection.user_obtained,
         "collection_rolled_cards": collection.user_rolled,
       }
@@ -213,7 +213,7 @@ class GachaPackCardsView(SectionPaginatorMixin, View):
       "collection_id": self.collection.id,
       "collection_name": self.collection.name,
       "collection_description": self.collection.description,
-      "collection_available_cards": self.collection.available_count,
+      "collection_available_cards": self.collection.available_count if self.collection.show_counts else "-",
       "collection_owned_cards": self.collection.user_obtained,
       "collection_rolled_cards": self.collection.user_rolled,
     }
