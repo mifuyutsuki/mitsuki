@@ -168,7 +168,7 @@ class GachaSeason(AsDict):
     if create_collection:
       collection = CardCollection(
         id=self.collection, name=self.name, description=f"Cards part of the season '{self.name}'.",
-        rollable=False, discoverable=True, show_counts=True
+        rollable=False, discoverable=False, show_counts=True
       )
       await collection.add(session)
     stmt = (
