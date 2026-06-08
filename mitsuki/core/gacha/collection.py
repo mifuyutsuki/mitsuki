@@ -46,11 +46,11 @@ class CardCollection(AsDict):
   show_counts: bool = attrs.field(default=False)
   """Whether to show total cards in this collection, per rarity and including unobtained, if discoverable is set."""
 
-  user_rolled: Optional[int] = attrs.field(default=None)
+  user_rolled: Optional[int] = attrs.field(default=None, eq=False)
   """Total cards in this collection rolled by a user, only set if fetched using `fetch_user()`."""
-  user_obtained: Optional[int] = attrs.field(default=None)
+  user_obtained: Optional[int] = attrs.field(default=None, eq=False)
   """Unique cards in this collection rolled by a user, only set if fetched using `fetch_user()`."""
-  available_count: Optional[int] = attrs.field(default=None)
+  available_count: Optional[int] = attrs.field(default=None, eq=False)
   """Total cards available to roll, only set if fetched using `fetch_user()`."""
 
 
