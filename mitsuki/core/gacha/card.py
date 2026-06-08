@@ -810,6 +810,10 @@ class CardCache:
     cache.standard_table = await Card.fetch_table_standard(cache.season)
     cache.seasonal_table = await Card.fetch_table_season(cache.season)
 
+    if cache.season:
+      async with begin_session() as session:
+        await cache.season.publish(session)
+
 
   async def _sync(self, *, now: Optional[ipy.Timestamp] = None) -> None:
     now = now or ipy.Timestamp.now()

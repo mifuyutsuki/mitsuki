@@ -251,3 +251,18 @@ class GachaSeason(AsDict):
     if delete_collection:
       stmt = delete(models.GachaCollection).where(models.GachaCollection.id == self.collection)
       await session.execute(stmt)
+
+
+  async def publish(self, session: AsyncSession) -> None:
+    """
+    Publish this season as a card pack, setting its collection as discoverable.
+
+    Args:
+      session: Current database session
+    """
+    stmt = (
+      update(models.GachaCollection)
+      .where(models.GachaCollection.id == self.collection)
+      .values(discoverable=True)
+    )
+    await session.execute(stmt)
