@@ -52,6 +52,12 @@ async def add_timeout(view: "View", seconds: float, *, hide: bool = False):
 
 
 async def reset_timeout(message_id: ipy.Snowflake):
+  """
+  Reset the View timeout attached to the message ID, setting the timeout counter back to zero.
+
+  Args:
+    message_id: Snowflake ID of the associated message
+  """
   global _timeouts
   if timeout := _timeouts.get(message_id):
     if timeout.running:
@@ -59,6 +65,12 @@ async def reset_timeout(message_id: ipy.Snowflake):
 
 
 async def force_timeout(message_id: ipy.Snowflake):
+  """
+  Force the View timeout attached to the message ID, invoking the timeout.
+
+  Args:
+    message_id: Snowflake ID of the associated message
+  """
   global _timeouts
   if timeout := _timeouts.get(message_id):
     if timeout.running:
@@ -66,6 +78,12 @@ async def force_timeout(message_id: ipy.Snowflake):
 
 
 async def clear_timeout(message_id: ipy.Snowflake):
+  """
+  Clear the View timeout attached to the message ID, removing the timeout.
+
+  Args:
+    message_id: Snowflake ID of the associated message
+  """
   global _timeouts
   if timeout := _timeouts.get(message_id):
     if timeout.running:
@@ -211,7 +229,7 @@ class Timeout:
 
     async with _timeout_lock:
       if self.ctx.id in _timeouts:
-        _ = _timeouts.pop(self.ctx.id)
+        _ = _timeouts.pop(self.ctx.id, None)
 
     # By calling cancel() without a message, the timeout task will run the
     # timeout action, with a call to disable()
@@ -223,7 +241,7 @@ class Timeout:
 
     async with _timeout_lock:
       if self.ctx.id in _timeouts:
-        _ = _timeouts.pop(self.ctx.id)
+        _ = _timeouts.pop(self.ctx.id, None)
 
     # By calling cancel() with a message, the timeout task will run the timeout
     # action, without a call to disable()

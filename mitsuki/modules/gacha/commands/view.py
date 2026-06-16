@@ -59,6 +59,7 @@ class GachaView(AutocompleteMixin, ReaderCommand):
 
   async def run(self, search_key: str, *, origin: bool = False):
     await checks.assert_in_guild(self.ctx)
+    await self.clear_timeout()
     await self.defer(ephemeral=False, edit_origin=origin)
 
     if search_key.startswith("@"):

@@ -15,7 +15,7 @@ Mitsuki commands framework. Eases creation of stateful commands with the
 Mitsuki messages library (mitsuki.lib.messages).
 """
 
-from mitsuki.lib import messages
+from mitsuki.lib import messages, view
 from mitsuki.lib.paginators import Paginator, SelectionPaginator
 from mitsuki.lib.userdata import begin_session
 
@@ -332,6 +332,15 @@ class Command:
 
   async def run(self):
     raise NotImplementedError
+  
+  async def reset_timeout(self):
+    await view.reset_timeout(self.ctx.message_id)
+
+  async def force_timeout(self):
+    await view.force_timeout(self.ctx.message_id)
+
+  async def clear_timeout(self):
+    await view.clear_timeout(self.ctx.message_id)
 
   def asdict(self):
     return (

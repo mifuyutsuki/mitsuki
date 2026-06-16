@@ -125,7 +125,6 @@ class GachaModule(ipy.Extension):
 
 
   @ipy.component_callback(customids.ROLL.string_id_pattern())
-  @timeout_preinvoker
   async def roll_btn(self, ctx: ipy.ComponentContext):
     # await commands.Roll.create(ctx).run2(int(CustomID.get_id_from(ctx)))
     await commands.GachaRoll.create(ctx).run(custom_id_user=CustomID.get_snowflake_from(ctx))
@@ -280,7 +279,6 @@ class GachaModule(ipy.Extension):
 
 
   @ipy.component_callback(customids.VIEW.string_id_pattern())
-  @timeout_clearer
   async def view_btn_cmd(self, ctx: ipy.ComponentContext):
     await commands.GachaView.create(ctx).run(CustomID.get_id_from(ctx), origin=True)
 

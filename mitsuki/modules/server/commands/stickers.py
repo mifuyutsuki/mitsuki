@@ -36,6 +36,7 @@ class ServerStickers(libcmd.MultifieldMixin, libcmd.ReaderCommand):
 
   async def run(self):
     await self.check()
+    await self.reset_timeout()
     await self.defer(ephemeral=False, edit_origin=False)
 
     guild = self.ctx.guild

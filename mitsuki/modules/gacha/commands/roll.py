@@ -30,6 +30,7 @@ class GachaRoll(ReaderCommand):
   @userlock(bucket="gacha")
   async def run(self, custom_id_user: Optional[ipy.Snowflake] = None):
     await checks.assert_in_guild(self.ctx)
+    await self.force_timeout()
     await self.defer(ephemeral=False, edit_origin=False)
     now = self.ctx.id.created_at
 

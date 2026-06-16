@@ -87,12 +87,10 @@ class ServerModule(ipy.Extension):
     return await commands.ServerEmoji.create(ctx).run(animated=animated, sort=sort)
 
   @ipy.component_callback(customids.SERVER_EMOJIS_STATIC.string_id_pattern())
-  @timeout_resetter
   async def server_emoji_static_btn(self, ctx: ipy.ComponentContext):
     return await commands.ServerEmoji.create(ctx).run(animated=False, sort="name")
 
   @ipy.component_callback(customids.SERVER_EMOJIS_ANIMATED.string_id_pattern())
-  @timeout_resetter
   async def server_emoji_animated_btn(self, ctx: ipy.ComponentContext):
     return await commands.ServerEmoji.create(ctx).run(animated=True, sort="name")
 
@@ -109,6 +107,5 @@ class ServerModule(ipy.Extension):
     return await commands.ServerStickers.create(ctx).run()
 
   @ipy.component_callback(customids.SERVER_STICKERS.string_id_pattern())
-  @timeout_resetter
   async def server_stickers_btn(self, ctx: ipy.ComponentContext):
     return await commands.ServerStickers.create(ctx).run()
