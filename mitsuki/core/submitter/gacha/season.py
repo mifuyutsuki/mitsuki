@@ -47,6 +47,19 @@ class GachaSeasonSubmitter(BaseSubmitter):
     """
     Create a gacha season submitter from a season data yaml.
 
+    The data is a dictionary object corresponding to the data of a *single* gacha season. The following fields are
+    available:
+    - id: str (required)
+    - name: str (required)
+    - collection: str (default same as id)
+    - pickup_rate: float [0, 1] (required)
+    - start_time: str (ISO 8601 UTC) (required)
+    - end_time: str (ISO 8601 UTC) (required)
+    - description: str
+    - image: str (url)
+    - cards: [str]
+    - cards_regex: [str]
+
     Args:
       data: Season data in key-value entries
     
