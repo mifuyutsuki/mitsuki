@@ -292,6 +292,29 @@ class CardCollection(AsDict):
       return await session.scalar(query) or 0
 
 
+  async def add_to_category(self, session: AsyncSession, category_id: Union[List[str], str]):
+    """
+    Add this collection to a collection category.
+
+    Args:
+      session: Current database session
+      category_id: Collection category ID
+    """
+    if isinstance(category_id, str):
+      category_id = [category_id]
+
+    category_query = (
+      select(sa.literal(self.id), models.GachaCollectionCategory.id).select_from(models.GachaCollectionCategory)
+      .where(models.GachaCollectionCategory.id.in_(category_id))
+    )
+    stmt = (
+      insert(models.GachaCollectionCategoryEntry)
+      .from_select(["collection", "category"], category_query)
+      .on_conflict_do_nothing()
+    )
+    await session.execute(stmt)
+
+
   async def add_cards_by_grep_id(self, session: AsyncSession, pattern: Union[List[str], str]):
     """
     Add cards to this collection by regex of card IDs.
@@ -344,6 +367,20 @@ class CardCollection(AsDict):
       .values(**self.db_dict())
       .on_conflict_do_update(index_elements=["id"], set_=self.db_dict(exclude_id=True))
     )
+    await session.execute(stmt)
+
+
+  async def clear(self, session: AsyncSession):
+    """
+    Clear cards in this gacha season.
+
+    Note that this removes the card list of the collection associated with
+    this season.
+
+    Args:
+      session: Current database session
+    """
+    stmt = delete(models.GachaCollectionCard).where(models.GachaCollectionCard.collection == self.id)
     await session.execute(stmt)
 
 

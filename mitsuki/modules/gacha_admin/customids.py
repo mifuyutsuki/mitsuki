@@ -18,3 +18,6 @@ ROSTER_UPLOAD = CustomID("gacha_admin_upload|roster")
 
 SEASON_UPLOAD = CustomID("gacha_admin_upload|season")
 """Upload the selected gacha season. (args: Submitter UUID)"""
+
+PACK_UPLOAD = CustomID("gacha_admin_upload|pack")
+"""Upload the selected gacha card pack. (args: Submitter UUID)"""
