@@ -27,7 +27,7 @@ import mitsuki.modules.gacha.views as views
 
 
 class GachaRoll(ReaderCommand):
-  @userlock(pre_defer=True, bucket="gacha")
+  @userlock(bucket="gacha")
   async def run(self, custom_id_user: Optional[ipy.Snowflake] = None):
     await checks.assert_in_guild(self.ctx)
     await self.defer(ephemeral=False, edit_origin=False)
