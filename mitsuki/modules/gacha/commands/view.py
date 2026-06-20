@@ -33,10 +33,12 @@ class GachaView(AutocompleteMixin, ReaderCommand):
 
 
   async def autocomplete(self, input_text: str):
-    # Short circuit on length < 1
-    # TODO: Return your most recent rolls
     if len(input_text) < 1:
-      return await self.send_autocomplete()
+      async with begin_session() as session:
+        return await self.send_autocomplete([
+          self.option(self.search_entry(card), f"@{card.id}")
+          for card in await core.UserCardRoll.fetch_recent(session, self.caller_id, cards=10)
+        ])
 
     # First entry is the search key itself (goes to search results message)
     options = [self.option(input_text, input_text)]
@@ -47,8 +49,8 @@ class GachaView(AutocompleteMixin, ReaderCommand):
         options.append(self.option(self.search_entry(card_by_id), input_text))
 
     # Short circuit on length < 3
-    if len(input_text) < 3:
-      return await self.send_autocomplete(options)
+    # if len(input_text) < 3:
+    #   return await self.send_autocomplete(options)
 
     options.extend([
       self.option(self.search_entry(card), f"@{card.id}")
