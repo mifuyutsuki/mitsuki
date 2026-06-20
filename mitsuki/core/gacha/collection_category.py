@@ -61,6 +61,12 @@ class CardCollectionCategory(AsDict):
     Returns:
       Card collection category instance with attached collection count, or `None` if not found
     """
+    collection_query = (
+      select(models.GachaCollection.id, sa.func.count(models.GachaCollectionCard.card).label("card_count"))
+      .join(models.GachaCollectionCard, models.GachaCollectionCard.collection == models.GachaCollection.id)
+      .group_by(models.GachaCollection.id)
+      .subquery()
+    )
     count_query = (
       select(
         models.GachaCollectionCategory.id,
@@ -72,9 +78,10 @@ class CardCollectionCategory(AsDict):
         models.GachaCollectionCategoryEntry.category == models.GachaCollectionCategory.id
       )
       .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCategoryEntry.collection)
+      .join(collection_query, collection_query.c.id == models.GachaCollection.id)
     )
     if not private:
-      count_query = count_query.where(models.GachaCollection.discoverable == True)
+      count_query = count_query.where(models.GachaCollection.discoverable == True).where(collection_query.c.card_count > 0)
     count_query = (
       count_query
       .group_by(models.GachaCollectionCategory.id)
@@ -108,6 +115,12 @@ class CardCollectionCategory(AsDict):
     Returns:
       List of card collection category instances with attached collection count
     """
+    collection_query = (
+      select(models.GachaCollection.id, sa.func.count(models.GachaCollectionCard.card).label("card_count"))
+      .join(models.GachaCollectionCard, models.GachaCollectionCard.collection == models.GachaCollection.id)
+      .group_by(models.GachaCollection.id)
+      .subquery()
+    )
     count_query = (
       select(
         models.GachaCollectionCategory.id,
@@ -119,9 +132,10 @@ class CardCollectionCategory(AsDict):
         models.GachaCollectionCategoryEntry.category == models.GachaCollectionCategory.id
       )
       .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCategoryEntry.collection)
+      .join(collection_query, collection_query.c.id == models.GachaCollection.id)
     )
     if not private:
-      count_query = count_query.where(models.GachaCollection.discoverable == True)
+      count_query = count_query.where(models.GachaCollection.discoverable == True).where(collection_query.c.card_count > 0)
     count_query = (
       count_query
       .group_by(models.GachaCollectionCategory.id)
