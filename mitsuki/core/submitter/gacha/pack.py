@@ -96,7 +96,7 @@ class CardPackSubmitter(BaseSubmitter):
           discoverable=bool(pack.get("discoverable")), show_counts=bool(pack.get("show_counts")),
         )
         entry = CardPackSubmitterEntry(
-          collection=collection, category_id=pack.get("category"), card_ids=pack.get("cards"),
+          collection=collection, category_ids=pack.get("category"), card_ids=pack.get("cards"),
           card_regexes=pack.get("cards_regex")
         )
       except (KeyError, ValueError):
@@ -124,17 +124,18 @@ class CardPackSubmitter(BaseSubmitter):
       if card_regexes := entry.card_regexes:
         await collection.add_cards_by_grep_id(session, card_regexes)
       if entry.category_ids:
-        await collection.add_to_category(entry.category_ids)
+        await collection.add_to_category(session, entry.category_ids)
 
     for entry in self.to_edit:
       collection = entry.collection
+      await collection.add(session)
       await collection.clear(session)
       if card_ids := entry.card_ids:
         await collection.add_cards(session, card_ids)
       if card_regexes := entry.card_regexes:
         await collection.add_cards_by_grep_id(session, card_regexes)
       if entry.category_ids:
-        await collection.add_to_category(entry.category_ids)
+        await collection.add_to_category(session, entry.category_ids)
 
     # Some collections are used by a season, so don't do this just yet
     # for entry in self.to_remove:
