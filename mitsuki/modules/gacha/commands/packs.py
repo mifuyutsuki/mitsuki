@@ -24,10 +24,11 @@ import mitsuki.core.gacha as core
 import mitsuki.modules.gacha.views as views
 
 
-class GachaPacks(ReaderCommand):
-  async def run(self, user: Optional[ipy.BaseUser] = None):
+class GachaPackSets(ReaderCommand):
+  async def run(self, user: Optional[ipy.BaseUser] = None, *, origin: bool = False):
     await checks.assert_in_guild(self.ctx)
-    await self.defer(ephemeral=False, edit_origin=False)
+    await self.reset_timeout()
+    await self.defer(ephemeral=False, edit_origin=origin)
 
     cache = await core.CardCache.get_cache()
     target_user = user or self.caller_user
@@ -36,20 +37,45 @@ class GachaPacks(ReaderCommand):
       target_user = await self.ctx.guild.fetch_member(target_user) or await self.ctx.client.fetch_user(target_user)
 
     if gacha_user := await core.GachaUser.fetch(target_user):
-      collections = await core.CardCollection.fetch_all_user(target_user)
+      categories = await core.CardCollectionCategory.fetch_all()
+    else:
+      categories = ()
+
+    view = views.GachaPackSetsView(
+      self.ctx, card_cache=cache, target_user=target_user, gacha_user=gacha_user, categories=categories
+    )
+    await view.send(timeout=45, hide_on_timeout=True)
+
+
+class GachaPacks(ReaderCommand):
+  async def run(self, category_id: str, user: Optional[ipy.BaseUser] = None):
+    await checks.assert_in_guild(self.ctx)
+    await self.reset_timeout()
+    await self.defer(ephemeral=False, edit_origin=True)
+
+    cache = await core.CardCache.get_cache()
+    category = await core.CardCollectionCategory.fetch(category_id)
+    target_user = user or self.caller_user
+
+    if isinstance(target_user, int):
+      target_user = await self.ctx.guild.fetch_member(target_user) or await self.ctx.client.fetch_user(target_user)
+
+    if gacha_user := await core.GachaUser.fetch(target_user):
+      collections = await core.CardCollection.fetch_all_user(target_user, category_id=category_id)
     else:
       collections = []
 
     view = views.GachaPacksView(
-      self.ctx, card_cache=cache, target_user=target_user, gacha_user=gacha_user, collections=collections
+      self.ctx, card_cache=cache, target_user=target_user, gacha_user=gacha_user, collections=collections, category=category,
     )
     await view.send(timeout=45, hide_on_timeout=True)
 
 
 class GachaPackCards(ReaderCommand):
-  async def run(self, collection_id: str, user: Optional[ipy.BaseUser] = None, *, sort: Optional[str] = None):
+  async def run(self, collection_id: str, source_category: str, user: Optional[ipy.BaseUser] = None, *, sort: Optional[str] = None):
     await checks.assert_in_guild(self.ctx)
-    await self.defer(ephemeral=False, edit_origin=False)
+    await self.reset_timeout()
+    await self.defer(ephemeral=False, edit_origin=True)
 
     cache = await core.CardCache.get_cache()
     target_user = user or self.caller_user
@@ -66,6 +92,7 @@ class GachaPackCards(ReaderCommand):
       raise errors.ObjectNotFound("card pack")
 
     view = views.GachaPackCardsView(
-      self.ctx, card_cache=cache, target_user=target_user, gacha_user=gacha_user, collection=collection, cards=cards
+      self.ctx, card_cache=cache, target_user=target_user, gacha_user=gacha_user, collection=collection, cards=cards,
+      source_category=source_category
     )
     await view.send(timeout=45, hide_on_timeout=True)

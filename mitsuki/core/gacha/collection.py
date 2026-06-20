@@ -164,12 +164,15 @@ class CardCollection(AsDict):
 
 
   @classmethod
-  async def fetch_all_user(cls, user: Union[ipy.BaseUser, ipy.Snowflake], *, private: bool = False):
+  async def fetch_all_user(
+    cls, user: Union[ipy.BaseUser, ipy.Snowflake], *, category_id: Optional[str] = None, private: bool = False
+  ):
     """
     Fetch all available card collections with appended roll data for a given user.
 
     Args:
       user: Snowflake or instance of the user
+      category_id: Collection category to filter the list to, or all public collections if not set
       private: Whether to show private collections (discoverable=False)
 
     Returns:
@@ -194,8 +197,22 @@ class CardCollection(AsDict):
       .select_from(models.GachaCollection)
       .join(models.GachaCollectionCard, models.GachaCollectionCard.collection == models.GachaCollection.id)
       .join(models.Card, models.Card.id == models.GachaCollectionCard.card)
-      .outerjoin(rolls_query, rolls_query.c.card == models.Card.id)
     )
+    if category_id:
+      query = (
+        query
+        .join(
+          models.GachaCollectionCategoryEntry,
+          models.GachaCollectionCategoryEntry.collection == models.GachaCollection.id
+        )
+        .join(
+          models.GachaCollectionCategory,
+          models.GachaCollectionCategory.id == models.GachaCollectionCategoryEntry.category
+        )
+      )
+    query = query.outerjoin(rolls_query, rolls_query.c.card == models.Card.id)
+    if category_id:
+      query = query.where(models.GachaCollectionCategory.id == category_id)
     if not private:
       query = query.where(models.GachaCollection.discoverable == True)
     query = query.having(available_count_col > 0)

@@ -28,14 +28,17 @@ PROFILE = CustomID("gacha_profile")
 ROLL = CustomID("gacha_roll")
 """Roll a card. Caller must be the same as the user in ID. (id: User)"""
 
+PACK = CustomID("gacha_pack")
+"""View a user's card pack collection, starting from the available categories."""
+
 PACK_CATEGORY = CustomID("gacha_pack_category")
 """View available card pack categories. (id: Target User)"""
 
 PACK_LIST = CustomID("gacha_pack_list")
-"""View card packs. (id: Target User)"""
+"""View card packs. (id: Category ID, id: Target User)"""
 
 PACK_CARDS = CustomID("gacha_pack_cards")
-"""View cards in pack. (id: Collection ID, id: Target User)"""
+"""View cards in pack. (id: Category ID, id: Collection ID, id: Target User)"""
 
 CARDS_ADMIN = CustomID("gacha_cards_admin")
 """View all cards in deck as admin. (no args)"""

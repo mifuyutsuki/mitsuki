@@ -18,4 +18,4 @@ from .view import GachaView
 from .cards import GachaCards
 from .gallery import GachaGallery
 from .info import GachaInfo
-from .packs import GachaPacks, GachaPackCards
+from .packs import GachaPackSets, GachaPacks, GachaPackCards

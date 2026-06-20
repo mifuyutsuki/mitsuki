@@ -238,22 +238,32 @@ class GachaModule(ipy.Extension):
     opt_type=ipy.OptionType.USER
   )
   async def packs_cmd(self, ctx: ipy.SlashContext, user: Optional[ipy.BaseUser] = None):
-    await commands.GachaPacks.create(ctx).run(user)
+    await commands.GachaPackSets.create(ctx).run(user, origin=False)
+
+
+  @ipy.component_callback(customids.PACK_CATEGORY.string_id_pattern())
+  @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
+  async def pack_sets_btn(self, ctx: ipy.ComponentContext):
+    await commands.GachaPackSets.create(ctx).run(CustomID.get_snowflake_from(ctx), origin=True)
 
 
   @ipy.component_callback(customids.PACK_LIST.string_id_pattern())
   @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
   async def packs_btn(self, ctx: ipy.ComponentContext):
-    await commands.GachaPacks.create(ctx).run(CustomID.get_snowflake_from(ctx))
+    ids = CustomID.get_ids_from(ctx)
+    category_id = ids[0]
+    user = ipy.Snowflake(ids[1])
+    await commands.GachaPacks.create(ctx).run(category_id, user)
 
 
   @ipy.component_callback(customids.PACK_CARDS.string_id_pattern())
   @ipy.cooldown(ipy.Buckets.USER, 1, 15.0)
   async def pack_cards_btn(self, ctx: ipy.ComponentContext):
     ids = CustomID.get_ids_from(ctx)
-    collection_id = ids[0]
-    user = ipy.Snowflake(ids[1])
-    await commands.GachaPackCards.create(ctx).run(collection_id, user)
+    source_category = ids[0]
+    collection_id = ids[1]
+    user = ipy.Snowflake(ids[2])
+    await commands.GachaPackCards.create(ctx).run(collection_id, source_category, user)
 
 
   # ===========================================================================
