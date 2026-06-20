@@ -114,8 +114,7 @@ class GachaPackSetsView(SectionPaginatorMixin, View):
         ipy.SectionComponent(
           components=[
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
-            ipy.TextDisplayComponent("## Card Pack Sets - ${user_username}"),
-            ipy.TextDisplayComponent(own_user_info),
+            ipy.TextDisplayComponent("## Card Pack Sets - ${user_username}\n" + own_user_info),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${user_avatar_url}")),
         ),
@@ -127,7 +126,6 @@ class GachaPackSetsView(SectionPaginatorMixin, View):
         ipy.TextDisplayComponent(
           "-# Viewing ${user_username}'s (${user_mention}) card collection\n"
           + "-# {}: /gacha packs".format(self.caller.tag)
-          + " • Page ${page}/${pages}"
         ),
         accent_color=get_member_color_value(self.target_user)
       ),
@@ -141,8 +139,7 @@ class GachaPackSetsView(SectionPaginatorMixin, View):
         ipy.SectionComponent(
           components=[
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
-            ipy.TextDisplayComponent("## Card Pack Sets - ${user_username}"),
-            ipy.TextDisplayComponent(own_user_info),
+            ipy.TextDisplayComponent("## Card Pack Sets - ${user_username}\n" + own_user_info),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${user_avatar_url}")),
         ),
@@ -257,9 +254,8 @@ class GachaPacksView(SectionPaginatorMixin, View):
           components=[
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
             ipy.TextDisplayComponent(
-              "## ${category_name} - ${user_username} ${category_description_s}"
+              "## ${category_name} - ${user_username} ${category_description_s}\n" + own_user_info
             ),
-            ipy.TextDisplayComponent(own_user_info),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${user_avatar_url}")),
         ),
@@ -271,7 +267,6 @@ class GachaPacksView(SectionPaginatorMixin, View):
         ipy.TextDisplayComponent(
           "-# Viewing ${user_username}'s (${user_mention}) card collection\n"
           + "-# {}: /gacha packs".format(self.caller.tag)
-          + " • Page ${page}/${pages}"
         ),
         accent_color=get_member_color_value(self.target_user)
       ),
@@ -295,9 +290,9 @@ class GachaPacksView(SectionPaginatorMixin, View):
             ipy.TextDisplayComponent("-# ❖ Mitsuki Gacha"),
             ipy.TextDisplayComponent(
               "## ${category_name} - ${user_username} ${category_description_s}\n"
-              "**${category_entries}** card packs available"
+              "**${category_entries}** card packs available\n"
+              + own_user_info
             ),
-            ipy.TextDisplayComponent(own_user_info),
           ],
           accessory=ipy.ThumbnailComponent(ipy.UnfurledMediaItem("${user_avatar_url}")),
         ),

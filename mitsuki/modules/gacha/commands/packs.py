@@ -39,7 +39,7 @@ class GachaPackSets(ReaderCommand):
     if gacha_user := await core.GachaUser.fetch(target_user):
       categories = await core.CardCollectionCategory.fetch_all()
     else:
-      categories = ()
+      categories = []
 
     view = views.GachaPackSetsView(
       self.ctx, card_cache=cache, target_user=target_user, gacha_user=gacha_user, categories=categories
