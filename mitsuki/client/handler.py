@@ -29,7 +29,7 @@ from mitsuki.lib.errors import MitsukiException, RequestException
 from mitsuki.lib.messages import load_message
 from mitsuki.lib.userdata import db_migrate
 from mitsuki.lib.emoji import init_emoji
-from mitsuki.lib.view import View
+from mitsuki.lib.view import View, clear_timeout
 from mitsuki.core.settings import preload_settings
 from mitsuki.core.presences import get_presencer, set_presencer, is_presencer_running
 
@@ -277,5 +277,6 @@ class ClientHandlerMixin:
         self.logger.exception(_format_traceback(exc), exc_info=(type(exc), exc, exc.__traceback__))
 
     if isinstance(event.ctx, ipy.InteractionContext):
+      await clear_timeout(event.ctx.message_id)
       ephemeral = getattr(event.error, "ephemeral", False)
       await ErrorView(event.ctx, event.error).send(ephemeral=ephemeral)
