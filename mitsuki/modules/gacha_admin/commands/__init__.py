@@ -13,4 +13,5 @@
 from .upload_roster import RosterUpload
 from .upload_season import SeasonUpload
 from .upload_pack import PackUpload
+from .upload_set import SetUpload
 from .sync import GachaSync

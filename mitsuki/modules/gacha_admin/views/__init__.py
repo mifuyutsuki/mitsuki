@@ -13,4 +13,5 @@
 from .upload_roster import RosterUploadPromptView, RosterUploadDoneView
 from .upload_season import SeasonUploadPromptView, SeasonUploadDoneView
 from .upload_pack import PackUploadPromptView, PackUploadDoneView
+from .upload_set import SetUploadPromptView, SetUploadDoneView
 from .sync import GachaSyncView

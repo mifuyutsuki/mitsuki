@@ -67,7 +67,8 @@ class GachaAdminModule(ipy.Extension):
     choices=[
       ipy.SlashCommandChoice("Roster update (yaml)", "roster_yaml"),
       ipy.SlashCommandChoice("Season data (yaml)", "season_yaml"),
-      ipy.SlashCommandChoice("Pack data (yaml)", "pack_yaml")
+      ipy.SlashCommandChoice("Pack data (yaml)", "pack_yaml"),
+      ipy.SlashCommandChoice("Pack set data (yaml)", "set_yaml"),
     ],
     required=True,
   )
@@ -85,6 +86,8 @@ class GachaAdminModule(ipy.Extension):
         await commands.SeasonUpload.create(ctx).run(file)
       case "pack_yaml":
         await commands.PackUpload.create(ctx).run(file)
+      case "set_yaml":
+        await commands.SetUpload.create(ctx).run(file)
       case _:
         raise ValueError(f"Unexpected choice value for /gacha-admin upload: {type}")
 
@@ -105,3 +108,9 @@ class GachaAdminModule(ipy.Extension):
   async def gacha_admin_upload_pack_btn(self, ctx: ipy.ComponentContext):
     uuid = customids.PACK_UPLOAD.get_id_from(ctx)
     await commands.PackUpload.create(ctx).proceed(uuid)
+
+
+  @ipy.component_callback(customids.SET_UPLOAD.string_id_pattern())
+  async def gacha_admin_upload_set_btn(self, ctx: ipy.ComponentContext):
+    uuid = customids.SET_UPLOAD.get_id_from(ctx)
+    await commands.SetUpload.create(ctx).proceed(uuid)
