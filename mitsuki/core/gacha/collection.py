@@ -102,9 +102,9 @@ class CardCollection(AsDict):
     user_rolled_col = sa.func.count(rolls_query.c.card).label("user_rolled")
     user_obtained_col = sa.func.count(sa.distinct(rolls_query.c.card)).label("user_obtained")
 
-    query = (
+    count_query = (
       select(
-        models.GachaCollection,
+        models.GachaCollection.id,
         available_count_col,
         user_rolled_col,
         user_obtained_col,
@@ -114,11 +114,22 @@ class CardCollection(AsDict):
       .join(models.Card, models.Card.id == models.GachaCollectionCard.card)
       .outerjoin(rolls_query, rolls_query.c.card == models.Card.id)
     )
-    query = query.where(models.GachaCollection.id == id)
     if not private:
-      query = query.where(models.GachaCollection.discoverable == True)
-    query = query.having(available_count_col > 0)
-    query = query.group_by(models.GachaCollection.id)
+      count_query = count_query.where(models.GachaCollection.discoverable == True)
+    count_query = count_query.having(available_count_col > 0)
+    count_query = count_query.group_by(models.GachaCollection.id)
+    count_query = count_query.subquery()
+
+    query = (
+      select(
+        models.GachaCollection,
+        count_query.c.available_count,
+        count_query.c.user_rolled,
+        count_query.c.user_obtained,
+      )
+      .join(count_query, count_query.c.id == models.GachaCollection.id)
+      .where(models.GachaCollection.id == id)
+    )
 
     async with begin_session() as session:
       if result := (await session.execute(query)).first():
@@ -187,9 +198,9 @@ class CardCollection(AsDict):
     user_rolled_col = sa.func.count(rolls_query.c.card).label("user_rolled")
     user_obtained_col = sa.func.count(sa.distinct(rolls_query.c.card)).label("user_obtained")
 
-    query = (
+    count_query = (
       select(
-        models.GachaCollection,
+        models.GachaCollection.id,
         available_count_col,
         user_rolled_col,
         user_obtained_col,
@@ -199,8 +210,8 @@ class CardCollection(AsDict):
       .join(models.Card, models.Card.id == models.GachaCollectionCard.card)
     )
     if category_id:
-      query = (
-        query
+      count_query = (
+        count_query
         .join(
           models.GachaCollectionCategoryEntry,
           models.GachaCollectionCategoryEntry.collection == models.GachaCollection.id
@@ -210,13 +221,25 @@ class CardCollection(AsDict):
           models.GachaCollectionCategory.id == models.GachaCollectionCategoryEntry.category
         )
       )
-    query = query.outerjoin(rolls_query, rolls_query.c.card == models.Card.id)
+    count_query = count_query.outerjoin(rolls_query, rolls_query.c.card == models.Card.id)
     if category_id:
-      query = query.where(models.GachaCollectionCategory.id == category_id)
+      count_query = count_query.where(models.GachaCollectionCategory.id == category_id)
     if not private:
-      query = query.where(models.GachaCollection.discoverable == True)
-    query = query.having(available_count_col > 0)
-    query = query.group_by(models.GachaCollection.id)
+      count_query = count_query.where(models.GachaCollection.discoverable == True)
+    count_query = count_query.having(available_count_col > 0)
+    count_query = count_query.group_by(models.GachaCollection.id)
+    count_query = count_query.subquery()
+
+    query = (
+      select(
+        models.GachaCollection,
+        count_query.c.available_count,
+        count_query.c.user_rolled,
+        count_query.c.user_obtained,
+      )
+      .join(count_query, count_query.c.id == models.GachaCollection.id)
+      .order_by(models.GachaCollection.id.desc())
+    )
 
     async with begin_session() as session:
       return [
