@@ -44,6 +44,7 @@ class CardPackSubmitterEntry:
 class CardPackSubmitter(BaseSubmitter):
   to_add: list[CardPackSubmitterEntry] = attrs.field(factory=list)
   to_edit: list[CardPackSubmitterEntry] = attrs.field(factory=list)
+  to_update: list[CardPackSubmitterEntry] = attrs.field(factory=list)
   to_remove: list[CardPackSubmitterEntry] = attrs.field(factory=list)
 
   original_count: int = attrs.field(default=0)
@@ -54,6 +55,11 @@ class CardPackSubmitter(BaseSubmitter):
   @property
   def add_count(self):
     return len(self.to_add)
+
+
+  @property
+  def update_count(self):
+    return len(self.to_update)
   
 
   @property
@@ -105,8 +111,11 @@ class CardPackSubmitter(BaseSubmitter):
 
       if entry.collection.id not in existing:
         result.to_add.append(entry)
-      elif entry.collection != existing.pop(entry.collection.id, None):
-        result.to_edit.append(entry)
+      elif existing_entry := existing.pop(entry.collection.id, None):
+        if entry.collection == existing_entry:
+          result.to_update.append(entry)
+        else:
+          result.to_edit.append(entry)
 
     for remaining in existing.values():
       result.to_remove.append(remaining)
@@ -129,6 +138,16 @@ class CardPackSubmitter(BaseSubmitter):
     for entry in self.to_edit:
       collection = entry.collection
       await collection.add(session)
+      await collection.clear(session)
+      if card_ids := entry.card_ids:
+        await collection.add_cards(session, card_ids)
+      if card_regexes := entry.card_regexes:
+        await collection.add_cards_by_grep_id(session, card_regexes)
+      if entry.category_ids:
+        await collection.add_to_category(session, entry.category_ids)
+
+    for entry in self.to_update:
+      collection = entry.collection
       await collection.clear(session)
       if card_ids := entry.card_ids:
         await collection.add_cards(session, card_ids)

@@ -33,6 +33,7 @@ class PackUploadPromptView(View):
     return {
       "add_count": self.submitter.add_count,
       "edit_count": self.submitter.edit_count,
+      "update_count": self.submitter.update_count,
       # "remove_count": self.submitter.remove_count,
       "before_count": self.submitter.original_count,
       "after_count": self.submitter.after_count,
@@ -49,6 +50,7 @@ class PackUploadPromptView(View):
           "After this operation, the pack count will be **${after_count}**.\n"
           "* Packs to add: **${add_count}**\n"
           "* Packs to edit: **${edit_count}**\n"
+          "* Packs to update: **${update_count}**\n"
           "Proceed with this operation?"
         ),
         ipy.SeparatorComponent(divider=True),
@@ -76,6 +78,7 @@ class PackUploadDoneView(View):
     return {
       "add_count": self.submitter.add_count,
       "edit_count": self.submitter.edit_count,
+      "update_count": self.submitter.update_count,
       # "remove_count": self.submitter.remove_count,
       "before_count": self.submitter.original_count,
       "after_count": self.submitter.after_count,
@@ -89,7 +92,8 @@ class PackUploadDoneView(View):
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
           "* Added packs: **${add_count}**\n"
-          "* Edited packs: **${edit_count}**"
+          "* Edited packs: **${edit_count}**\n"
+          "* Updated packs: **${update_count}**"
         ),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
