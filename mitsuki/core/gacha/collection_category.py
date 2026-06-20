@@ -64,7 +64,7 @@ class CardCollectionCategory(AsDict):
     count_query = (
       select(
         models.GachaCollectionCategory.id,
-        sa.func.count(models.GachaCollectionCategoryEntry.collection).label("collection_count")
+        sa.func.count(models.GachaCollectionCategoryEntry.collection).label("count")
       )
       .select_from(models.GachaCollectionCategory)
       .join(
@@ -82,7 +82,7 @@ class CardCollectionCategory(AsDict):
     )
 
     query = (
-      select(models.GachaCollectionCategory, count_query.c.collection_count)
+      select(models.GachaCollectionCategory, count_query.c.count)
       .join(count_query, count_query.c.id == models.GachaCollectionCategory.id)
       .where(models.GachaCollectionCategory.id == id)
     )
@@ -93,7 +93,7 @@ class CardCollectionCategory(AsDict):
       if result := (await session.execute(query)).first():
         return cls(
           **result.GachaCollectionCategory.asdict(),
-          count=result.collection_count
+          count=result.count
         )
 
 
@@ -111,7 +111,7 @@ class CardCollectionCategory(AsDict):
     count_query = (
       select(
         models.GachaCollectionCategory.id,
-        sa.func.count(models.GachaCollectionCategoryEntry.collection).label("collection_count")
+        sa.func.count(models.GachaCollectionCategoryEntry.collection).label("count")
       )
       .select_from(models.GachaCollectionCategory)
       .join(
@@ -129,7 +129,7 @@ class CardCollectionCategory(AsDict):
     )
 
     query = (
-      select(models.GachaCollectionCategory, count_query.c.collection_count)
+      select(models.GachaCollectionCategory, count_query.c.count)
       .join(count_query, count_query.c.id == models.GachaCollectionCategory.id)
     )
     if not private:
@@ -139,11 +139,11 @@ class CardCollectionCategory(AsDict):
       return [
         cls(
           **r.GachaCollectionCategory.asdict(),
-          count=r.collection_count
+          count=r.count
         )
         for r in await session.execute(query)
       ]
-    
+
 
   async def add_collections(self, session: AsyncSession, collection_ids: list[str]):
     """
