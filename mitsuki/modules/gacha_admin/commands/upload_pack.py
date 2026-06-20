@@ -48,11 +48,11 @@ class PackUpload(libcmd.ReaderCommand):
     try:
       data = yaml.safe_load(f)
     except Exception:
-      raise errors.BadFile(expect="Roster YAML file")
+      raise errors.BadFile(expect="Card Pack YAML file")
     
     submitter = await CardPackSubmitter.from_pack2y_yaml(data)
     await views.PackUploadPromptView(self.ctx, submitter).send(ephemeral=True)
-  
+
 
   async def proceed(self, id: str):
     await self.defer(ephemeral=True, edit_origin=True, suppress_error=True)

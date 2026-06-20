@@ -37,19 +37,18 @@ class PackUploadPromptView(View):
       "before_count": self.submitter.original_count,
       "after_count": self.submitter.after_count,
     }
-  
+
 
   def components(self):
     return [
       ipy.ContainerComponent(
-        ipy.TextDisplayComponent("## Upload Gacha Roster"),
+        ipy.TextDisplayComponent("## Upload Card Pack"),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
           "Current pack count (including seasons): **${before_count}**\n"
           "After this operation, the pack count will be **${after_count}**.\n"
           "* Packs to add: **${add_count}**\n"
           "* Packs to edit: **${edit_count}**\n"
-          "* Packs to remove: **${remove_count}**\n"
           "Proceed with this operation?"
         ),
         ipy.SeparatorComponent(divider=True),
@@ -86,7 +85,7 @@ class PackUploadDoneView(View):
   def components(self):
     return [
       ipy.ContainerComponent(
-        ipy.TextDisplayComponent("## Uploaded Gacha Roster"),
+        ipy.TextDisplayComponent("## Uploaded Card Pack"),
         ipy.SeparatorComponent(divider=True),
         ipy.TextDisplayComponent(
           "* Added packs: **${add_count}**\n"
