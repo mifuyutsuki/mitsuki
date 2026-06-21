@@ -30,12 +30,12 @@ class GachaRoll(ReaderCommand):
   @userlock(bucket="gacha")
   async def run(self, custom_id_user: Optional[ipy.Snowflake] = None):
     await checks.assert_in_guild(self.ctx)
+    if custom_id_user and custom_id_user != self.caller_id:
+      raise errors.InteractionDenied()
+
     await self.force_timeout()
     await self.defer(ephemeral=False, edit_origin=False)
     now = self.ctx.id.created_at
-
-    if custom_id_user and custom_id_user != self.caller_id:
-      raise errors.InteractionDenied()
 
     gacha_user = await core.GachaUser.fetch(self.caller_id)
     if not gacha_user:
