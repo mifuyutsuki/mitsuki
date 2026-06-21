@@ -233,6 +233,7 @@ class GachaUser(AsDict):
       )
       .join(models.GachaRoll, models.GachaRoll.card == models.Card.id, isouter=True)
       .where(models.GachaRoll.user == user)
+      .where(models.Card.unlisted == False)
       .group_by(models.Card.rarity)
       .subquery()
     )
