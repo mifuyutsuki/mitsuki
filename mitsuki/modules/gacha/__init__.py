@@ -241,6 +241,12 @@ class GachaModule(ipy.Extension):
     await commands.GachaPackSets.create(ctx).run(user, origin=False)
 
 
+  @ipy.component_callback(customids.PACK.string_id_pattern())
+  @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
+  async def pack_btn(self, ctx: ipy.ComponentContext):
+    await commands.GachaPackSets.create(ctx).run(CustomID.get_snowflake_from(ctx), origin=False)
+
+
   @ipy.component_callback(customids.PACK_CATEGORY.string_id_pattern())
   @ipy.cooldown(ipy.Buckets.USER, 1, 5.0)
   async def pack_sets_btn(self, ctx: ipy.ComponentContext):

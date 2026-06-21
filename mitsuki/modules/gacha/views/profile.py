@@ -116,6 +116,13 @@ class GachaProfileView(View):
       ipy.ActionRow(
         ipy.Button(
           style=ipy.ButtonStyle.GRAY,
+          label="Packs",
+          emoji=get_emoji(AppEmoji.LIST),
+          custom_id=customids.PACK.id(self.target_user.id),
+          disabled=self.gacha_user.total_rolled <= 0,
+        ),
+        ipy.Button(
+          style=ipy.ButtonStyle.GRAY,
           label="Cards",
           emoji=get_emoji(AppEmoji.LIST),
           custom_id=customids.CARDS.id(self.target_user.id),
