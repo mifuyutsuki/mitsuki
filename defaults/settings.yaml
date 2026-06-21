@@ -17,6 +17,9 @@ mitsuki:
   #
   # The directory must contain a defaults.yaml or messages.yaml for use as
   # the default or base message templates file.
+  # 
+  # [FUTURE] This field would be deprecated after the migration to the new View
+  # system is completed.
   messages_dir: "messages"
 
   # Path to custom messages directory.
@@ -26,9 +29,17 @@ mitsuki:
   # 
   # Templates defined by template files in this directory overwrite templates
   # defined through messages_dir.
+  # 
+  # [FUTURE] This field would be deprecated after the migration to the new View
+  # system is completed.
   messages_custom_dir: 
 
-  # Daily reset time.
+  # ===========================================================================
+  # Deprecated variables
+
+  # [DEPRECATED] Daily reset time.
+  # 
+  # Replaced by in-bot setting `gacha.shards.daily`.
   # 
   # Determines the reset time for certain functions, such as /gacha daily.
   # 
@@ -37,13 +48,15 @@ mitsuki:
   # +hhmm   daily reset timezone (+0000 for UTC)
   daily_reset: "00:00+0000"
 
-  # Status messages ("Playing ...").
+  # [DEPRECATED] Status messages ("Playing ...").
+  # 
+  # Replaced by Presences in /system presences.
   status:
   - "Magical Mitsuki"
 
-  # Time to cycle to next status, in seconds.
+  # [DEPRECATED] Time to cycle to next status, in seconds.
   # 
-  # [FUTURE] Replaced by in-bot setting `runtime.status_cycle_seconds`.
+  # Replaced by in-bot setting `runtime.status_cycle_seconds`.
   # 
   # Setting this value to 0 or having only one status message disables
   # status cycling. For ratelimit reasons, this setting has a hard minimum
@@ -51,9 +64,6 @@ mitsuki:
   # 
   # The cycle resets after a bot restart.
   status_cycle: 300
-
-  # ===========================================================================
-  # Deprecated variables
 
   # [DEPRECATED] Whether the status messages cycling should be randomized.
   status_randomize: false
@@ -215,8 +225,12 @@ emoji:
 
 
 gacha:
-  # Gacha settings file, containing rates, gacha currency options, and more.
+  # [DEPRECATED] Gacha settings file, containing rates, gacha currency options, and more.
+  # 
+  # Replaced by gacha_admin.
   settings: "exampleassets/gacha_settings.yaml"
 
-  # Gacha roster file, containing card definitions.
+  # [DEPRECATED] Gacha roster file, containing card definitions.
+  # 
+  # Replaced by gacha_admin.
   roster: "exampleassets/gacha_roster.yaml"
