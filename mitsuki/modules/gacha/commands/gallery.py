@@ -27,6 +27,7 @@ import mitsuki.modules.gacha.views as views
 class GachaGallery(ReaderCommand):
   async def run(self, user: Optional[ipy.BaseUser] = None, *, sort: Optional[str] = None):
     await checks.assert_in_guild(self.ctx)
+    await self.reset_timeout()
     await self.defer(ephemeral=False, edit_origin=False)
 
     cache = await core.CardCache.get_cache()
