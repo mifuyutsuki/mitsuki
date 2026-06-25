@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -17,13 +17,14 @@ from enum import StrEnum
 from interactions.client.errors import HTTPException
 
 from mitsuki import utils, settings
-from mitsuki.settings2 import Settings
+from mitsuki.core.settings import Setting
 from mitsuki.lib import commands as libcmd
 from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
 
 
-from .. import customids, api, commands
+from mitsuki.core.presences import Presence, get_presencer
+from mitsuki.modules.system import customids, commands
 
 
 class SystemPresences(libcmd.SelectionMixin, libcmd.ReaderCommand):
@@ -57,7 +58,7 @@ class SystemPresences(libcmd.SelectionMixin, libcmd.ReaderCommand):
     await self.check()
     await self.defer(ephemeral=True, edit_origin=self.has_origin, suppress_error=True)
 
-    presences = await api.Presence.fetch_all()
+    presences = await Presence.fetch_all()
     data = {
       "total_presences": len(presences),
       "cycle_time": settings.mitsuki.status_cycle,

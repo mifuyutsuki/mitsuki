@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -64,13 +64,13 @@ from mitsuki.lib.checks import (
   has_bot_channel_permissions,
 )
 from mitsuki.lib.errors import (
-  MitsukiSoftException,
+  RequestException,
   UserDenied,
   BadInput,
   BadInputRange,
   BadLength,
 )
-from mitsuki.lib.userdata import new_session
+from mitsuki.lib.userdata import begin_session
 
 from ..userdata import (
   Schedule,

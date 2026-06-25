@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -15,10 +15,9 @@ Mitsuki commands framework. Eases creation of stateful commands with the
 Mitsuki messages library (mitsuki.lib.messages).
 """
 
-from mitsuki import bot
-from mitsuki.lib import messages
+from mitsuki.lib import messages, view
 from mitsuki.lib.paginators import Paginator, SelectionPaginator
-from mitsuki.lib.userdata import new_session
+from mitsuki.lib.userdata import begin_session
 
 from attrs import define, asdict as _asdict
 from typing import Optional, Union, List, Dict, Any, Callable, ParamSpec, TypeVar
@@ -333,6 +332,15 @@ class Command:
 
   async def run(self):
     raise NotImplementedError
+  
+  async def reset_timeout(self):
+    await view.reset_timeout(self.ctx.message_id)
+
+  async def force_timeout(self):
+    await view.force_timeout(self.ctx.message_id)
+
+  async def clear_timeout(self):
+    await view.clear_timeout(self.ctx.message_id)
 
   def asdict(self):
     return (
@@ -362,7 +370,7 @@ class WriterCommand(Command):
       else:
         raise RuntimeError("Unspecified message template or state")
 
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       await self.transaction(session)
       self.message = await self.send(
         template, other_data=other_data, template_kwargs=template_kwargs, edit_origin=edit_origin, **kwargs
@@ -460,7 +468,7 @@ class MultifieldMixin:
     template_kwargs = template_kwargs or {}
 
     message = self.message_multifield(template, other_data, per_page, **template_kwargs)
-    paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
+    paginator = Paginator.create_from_embeds(self.bot, *message.embeds, timeout=timeout)
     paginator.show_select_menu = True
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
@@ -512,7 +520,7 @@ class MultifieldMixin:
     template_kwargs = template_kwargs or {}
 
     message = self.message_multipage(template, other_data, **template_kwargs)
-    paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
+    paginator = Paginator.create_from_embeds(self.bot, *message.embeds, timeout=timeout)
     paginator.show_select_menu = True
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
@@ -564,7 +572,7 @@ class MultifieldMixin:
     template_kwargs = template_kwargs or {}
 
     message = self.message_multiline(template, other_data, per_page, **template_kwargs)
-    paginator = Paginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
+    paginator = Paginator.create_from_embeds(self.bot, *message.embeds, timeout=timeout)
     paginator.show_select_menu = True
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
@@ -626,7 +634,7 @@ class SelectionMixin(MultifieldMixin):
     template_kwargs = template_kwargs or {}
 
     message = self.message_multifield(template, other_data, per_page=self.selection_per_page, **template_kwargs)
-    paginator = SelectionPaginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
+    paginator = SelectionPaginator.create_from_embeds(self.bot, *message.embeds, timeout=timeout)
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
 
@@ -660,7 +668,7 @@ class SelectionMixin(MultifieldMixin):
     template_kwargs = template_kwargs or {}
 
     message = self.message_multiline(template, other_data, per_page=self.selection_per_page, **template_kwargs)
-    paginator = SelectionPaginator.create_from_embeds(bot, *message.embeds, timeout=timeout)
+    paginator = SelectionPaginator.create_from_embeds(self.bot, *message.embeds, timeout=timeout)
     if extra_components and len(extra_components) > 0:
       paginator.extra_components = spread_to_rows(*extra_components)
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -21,7 +21,7 @@ from mitsuki.lib import commands as libcmd
 from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
 
-from .. import customids
+from .. import customids, views
 
 
 class ServerEmoji(libcmd.MultifieldMixin, libcmd.ReaderCommand):
@@ -68,28 +68,16 @@ class ServerEmoji(libcmd.MultifieldMixin, libcmd.ReaderCommand):
 
   async def run(self, animated: bool = False, sort: str = "name"):
     await self.check()
+    await self.reset_timeout()
     await self.defer(ephemeral=False, edit_origin=False)
 
     guild = self.ctx.guild
-    emojis = await guild.fetch_all_custom_emojis()
-    data = {
-      "guild_name": guild.name,
-      "guild_boost_level": guild.premium_tier or 0,
-      "guild_boost_count": guild.premium_subscription_count,
-      "guild_emoji_count": 0,
-      "guild_emoji_limit": guild.emoji_limit,
-      "guild_emoji_type": "animated" if animated else "static",
-    }
-    components = self.components(from_animated=animated)
 
+    emojis = await guild.fetch_all_custom_emojis()
     if animated:
       emojis = [e for e in emojis if e.animated]
     else:
       emojis = [e for e in emojis if not e.animated]
-
-    if len(emojis) == 0:
-      await self.send(self.Templates.EMPTY, other_data=data, components=components)
-      return
 
     match sort:
       case "name":
@@ -102,23 +90,6 @@ class ServerEmoji(libcmd.MultifieldMixin, libcmd.ReaderCommand):
         raise ValueError(f"Unexpected sort option: {sort}")
     emojis.sort(key=lambda e: e.available, reverse=True)
 
-    data |= {
-      "guild_emoji_count": len(emojis),
-    }
-
-    self.field_data = [
-      {
-        "emoji_id": e.id,
-        "emoji_name": e.name,
-        "emoji_url": e.url,
-        "emoji_mention": e if e.available else settings.emoji.time,
-        "emoji_created_at_f": e.id.created_at.format("f"),
-        "emoji_created_at_r": e.id.created_at.format("R"),
-        "emoji_available": "" if e.available else "(Unavailable)",
-      } for e in emojis
-    ]
-
-    await self.send_multifield(
-      self.Templates.EMOJI_ANIMATED if animated else self.Templates.EMOJI_STATIC,
-      other_data=data, per_page=6, timeout=45, extra_components=components
-    )
+    await views.ServerEmojiView(
+      self.ctx, guild=guild, emojis=emojis, sort=sort, animated=animated,
+    ).send(timeout=45, hide_on_timeout=True)

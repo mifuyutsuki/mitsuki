@@ -1,0 +1,1065 @@
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+from typing import Optional, Any, Union, Self, Tuple, List
+from datetime import timezone
+from random import Random, SystemRandom
+
+import attrs
+import interactions as ipy
+import sqlalchemy as sa
+from sqlalchemy import select, update, delete, literal
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from mitsuki.utils import option, ratio, process_text
+from mitsuki.lib.emoji import get_emoji, AppEmoji
+from mitsuki.lib.userdata import begin_session, AsDict, sa_insert as insert
+from mitsuki.lib.commands import CustomID
+from mitsuki.core.settings import get_setting, Settings
+
+import mitsuki.models.gacha as models
+from mitsuki.core.gacha import GachaSeason, CardCollection, CardRarity
+
+
+_cache: Optional["CardCache"] = None
+
+
+@attrs.define(kw_only=True)
+class Card(AsDict):
+  """A gacha card."""
+
+  id: str
+  """ID of this card."""
+  name: str
+  """Name of this card."""
+  rarity: int
+  """Rarity of this card expressed as the amount of stars."""
+  type: str
+  """Type of this card, e.g. 'Event'."""
+  series: str
+  """Series of this card, e.g. 'Mitsuki (Summer)'"""
+  image: Optional[str] = attrs.field(default=None)
+  """URL to card image."""
+
+  limited: bool = attrs.field(default=False)
+  """Whether the card is only rollable as a season pick-up or using collection tickets."""
+  locked: bool = attrs.field(default=False)
+  """Whether the card is not rollable, but obtainable using collection tickets."""
+  unlisted: bool = attrs.field(default=False)
+  """Whether the card is neither rollable nor viewable, i.e. 'deleted'."""
+
+  color: int = attrs.field(default=0x46a1eb, eq=False)
+  """Accent color of this card, which depends on its rarity."""
+  dupe_shards: int = attrs.field(default=75, eq=False)
+  """Amount of shards given on obtaining a duplicate of this rarity."""
+  emoji: Optional[str] = attrs.field(default=None, eq=False)
+  """Emoji name to use as the rarity star, or the default `m_gc_star1` if unset."""
+
+  roll_time: Optional[ipy.Timestamp] = attrs.field(default=None, eq=False)
+  """Time when this card was rolled, only set if obtained from a card roll."""
+  season: Optional[str] = attrs.field(default=None, eq=False)
+  """The season ID this roll comes from, if any, only set if obtained from a card roll."""
+  collection: Optional[str] = attrs.field(default=None, eq=False)
+  """The collection ID this roll comes from, if any, only set if obtained from a card roll."""
+
+  roll_pity: Optional[int] = attrs.field(default=None, eq=False)
+  """
+  Pity counter when this card was rolled, only set after give_to() on a normal roll.
+
+  This field is only set if obtained from a normal roll (i.e. not a collection roll), which affects the pity counter.
+  If the card rarity does not have a pity, this field is set to 1.
+  """
+  held_count: Optional[int] = attrs.field(default=None, eq=False)
+  """Number of cards held by the receiving user, only set after give_to()."""
+  is_new_roll: Optional[bool] = attrs.field(default=None, eq=False)
+  """Whether this card is newly rolled by the receiving user, only set after give_to()."""
+
+
+  @property
+  def emoji_str(self):
+    """
+    Get the 'star' emoji string of this rarity, multiplied by the rarity value.
+
+    If this object's `emoji` is not set, this uses the AppEmoji `m_gc_star1`.
+    """
+    emoji = get_emoji(self.emoji or AppEmoji.GACHA_STAR_REGULAR)
+    return self.rarity * str(emoji)
+
+
+  @property
+  def season_pickup(self):
+    """Whether this card is a season pickup, only set if obtained from a card roll."""
+    return self.season is not None
+  
+
+  @property
+  def collection_pickup(self):
+    """Whether this card is a colletion pickup, only set if obtained from a card roll."""
+    return self.collection is not None
+
+
+  def db_dict(self, exclude_id: bool = False):
+    keys = {
+      "name", "rarity", "type", "series", "image",
+      "locked", "limited", "unlisted"
+    }
+    if not exclude_id:
+      keys.add("id")
+    return {k: v for k, v in self.asdict().items() if k in keys}
+
+
+  def set_roll_time(self, time: Optional[ipy.Timestamp] = None) -> Self:
+    """
+    Set this card's roll time.
+
+    If this card is obtained through CardCache.roll(), roll time should already
+    be set. This method is available for testing use to provide this instance's
+    `roll_time`, which is required by `give_to()`.
+    """
+    self.roll_time = time or ipy.Timestamp.now()
+    return self
+
+
+  @classmethod
+  def from_row(cls, row: sa.Row[Tuple["Card", "CardRarity"]]):
+    return cls(
+      **row.Card.asdict(),
+      color=row.CardRarity.color,
+      dupe_shards=row.CardRarity.dupe_shards,
+      emoji=row.CardRarity.emoji,
+    )
+
+
+  @classmethod
+  async def fetch(cls, id: str, *, unobtained: bool = False, private: bool = False) -> Optional[Self]:
+    """
+    Fetch a card by its ID.
+
+    Args:
+      id: Card ID
+      unobtained: Whether to return unobtained cards (cards without a roll entry)
+      private: Whether to return non-public cards (cards with unlisted=True)
+
+    Returns:
+      Card instance, or `None` if a card with given ID doesn't exist
+    """
+    query = (
+      select(models.Card, models.CardRarity)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+    )
+    if not unobtained:
+      roll_query = select(models.GachaRoll.card.distinct().label("card")).subquery()
+      query = query.join(roll_query, roll_query.c.card == models.Card.id)
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+    query = query.where(models.Card.id == id)
+
+    async with begin_session() as session:
+      if result := (await session.execute(query)).first():
+        return cls.from_row(result)
+
+
+  @classmethod
+  async def fetch_multiple(cls, ids: list[str], *, unobtained: bool = False, private: bool = False) -> list[Self]:
+    """
+    Fetch cards by the given list of IDs.
+
+    The returned list follows the order they are listed in ids.
+
+    Args:
+      ids: List of card IDs
+      unobtained: Whether to return unobtained cards (cards without a roll entry)
+      private: Whether to return non-public cards (cards with unlisted=True)
+    """
+    if len(ids) == 0:
+      return []
+
+    query = (
+      select(models.Card, models.CardRarity)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+    )
+    if not unobtained:
+      roll_query = select(models.GachaRoll.card.distinct().label("card")).subquery()
+      query = query.join(roll_query, roll_query.c.card == models.Card.id)
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+    query = query.where(models.Card.id.in_(ids))
+
+    async with begin_session() as session:
+      results = (await session.execute(query)).all()
+
+    # Sort the result list to match the order of `ids`
+    return sorted([cls.from_row(r) for r in results], key=lambda r: ids.index(r.id))
+
+
+  @classmethod
+  async def fetch_all(cls, *, unobtained: bool = False, private: bool = False) -> list[Self]:
+    """
+    Fetch all cards.
+
+    Args:
+      private: Whether to return non-public cards (cards with no roll entry or with unlisted=True)
+
+    Returns:
+      List of card instances
+    """
+    query = (
+      select(models.Card, models.CardRarity)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+    )
+    if not unobtained:
+      roll_query = select(models.GachaRoll.card.distinct().label("card")).subquery()
+      query = query.join(roll_query, roll_query.c.card == models.Card.id)
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+
+    async with begin_session() as session:
+      results = (await session.execute(query)).all()
+    return [cls.from_row(r) for r in results]
+
+
+  @classmethod
+  async def fetch_all_standard(
+    cls, season: Optional[Union["GachaSeason", str]] = None, *, private: bool = False
+  ) -> list[Self]:
+    """
+    Fetch all cards in the standard roster.
+
+    Standard roster includes all cards in the general rollable pool, which
+    excludes limited and locked cards. If season is specified, in-season cards
+    are also excluded.
+
+    Args:
+      season: Target season to exclude cards from the standard roster
+      private: Whether to show non-public cards (cards with unlisted=True)
+
+    Returns:
+      List of card instances
+    """
+    query = (
+      select(models.Card, models.CardRarity)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+    )
+    if season:
+      if isinstance(season, GachaSeason):
+        season = season.id
+      season_query = (
+        select(models.GachaCollectionCard)
+        .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
+        .join(models.GachaSeason, models.GachaSeason.collection == models.GachaCollection.id)
+        .where(models.GachaSeason.id == season)
+        .subquery()
+      )
+      query = (
+        query
+        .join(season_query, season_query.c.card == models.Card.id, isouter=True)
+        .where(season_query.c.collection == None)
+      )
+
+    query = query.where(models.Card.limited == False).where(models.Card.locked == False)
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+
+    async with begin_session() as session:
+      results = (await session.execute(query)).all()
+    return [cls.from_row(r) for r in results]
+
+
+  @classmethod
+  async def fetch_all_season(
+    cls, season: Optional[Union["GachaSeason", str]] = None, *, private: bool = False
+  ) -> list[Self]:
+    """
+    Fetch all cards in the specified season.
+
+    Args:
+      season: Target season
+      private: Whether to show non-public cards (cards with unlisted=True)
+
+    Returns:
+      List of card instances
+    """
+    if not season:
+      return []
+    if isinstance(season, GachaSeason):
+      season = season.id
+
+    query = (
+      select(models.Card, models.CardRarity)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+      .join(models.GachaCollectionCard, models.GachaCollectionCard.card == models.Card.id)
+      .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
+      .join(models.GachaSeason, models.GachaSeason.collection == models.GachaCollection.id)
+      .where(models.GachaSeason.id == season)
+      .where(models.Card.locked == False)
+    )
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+
+    async with begin_session() as session:
+      results = (await session.execute(query)).all()
+    return [cls.from_row(r) for r in results]
+
+
+  @classmethod
+  async def fetch_all_collection(
+    cls, collection: Union["CardCollection", str], *, private: bool = False
+  ) -> list[Self]:
+    """
+    Fetch all cards in a given collection.
+
+    Card IDs fetched by this method include limited and locked cards, which are
+    rollable using collection tickets.
+
+    Args:
+      collection: Target card collection
+      private: Whether to show non-public cards (cards with unlisted=True)
+
+    Returns:
+      List of card IDs
+    """
+    if isinstance(collection, CardCollection):
+      collection = collection.id
+
+    query = (
+      select(models.Card, models.CardRarity)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+      .join(models.GachaCollectionCard, models.GachaCollectionCard.card == models.Card.id)
+      .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
+      .where(models.GachaCollection.id == collection)
+    )
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+
+    async with begin_session() as session:
+      results = (await session.execute(query)).all()
+    return [cls.from_row(r) for r in results]
+
+
+  @staticmethod
+  async def fetch_table_standard(
+    season: Optional[Union["GachaSeason", str]] = None, *, private: bool = False
+  ) -> dict[int, list[str]]:
+    """
+    Fetch all cards in the standard roster, in the {rarity: [cards]} "table"
+    format used by gacha rolls.
+
+    Standard roster includes all cards in the general rollable pool, which
+    excludes limited and locked cards. If season is specified, in-season cards
+    are also excluded.
+
+    Args:
+      season: Target season to exclude cards from the standard roster
+      private: Whether to show non-public cards (cards with unlisted=True)
+
+    Returns:
+      List of card instances
+    """
+    query = (
+      select(models.Card.rarity, models.Card.id)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+    )
+    if season:
+      if isinstance(season, GachaSeason):
+        season = season.id
+      season_query = (
+        select(models.GachaCollectionCard)
+        .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
+        .join(models.GachaSeason, models.GachaSeason.collection == models.GachaCollection.id)
+        .where(models.GachaSeason.id == season)
+        .subquery()
+      )
+      query = (
+        query
+        .join(season_query, season_query.c.card == models.Card.id, isouter=True)
+        .where(season_query.c.collection == None)
+      )
+
+    query = query.where(models.Card.limited == False).where(models.Card.locked == False)
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+
+    async with begin_session() as session:
+      results = (await session.execute(query)).all()
+
+    choices: dict[int, list[str]] = {}
+    for result in results:
+      if result.rarity not in choices:
+        choices[result.rarity] = []
+      choices[result.rarity].append(result.id)
+    return choices
+
+
+  @staticmethod
+  async def fetch_table_season(
+    season: Optional[Union["GachaSeason", str]], *, private: bool = False
+  ) -> dict[int, list[str]]:
+    """
+    Fetch all cards in the specified season, in the {rarity: [cards]} "table"
+    format used by gacha rolls.
+
+    Args:
+      season: Target season
+      private: Whether to show non-public cards (cards with unlisted=True)
+
+    Returns:
+      Dictionary containing list of card IDs categorized by rarity
+    """
+    if not season:
+      return {}
+    if isinstance(season, GachaSeason):
+      season = season.id
+
+    query = (
+      select(models.Card.rarity, models.Card.id)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+      .join(models.GachaCollectionCard, models.GachaCollectionCard.card == models.Card.id)
+      .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
+      .join(models.GachaSeason, models.GachaSeason.collection == models.GachaCollection.id)
+      .where(models.GachaSeason.id == season)
+      .where(models.Card.locked == False)
+    )
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+
+    async with begin_session() as session:
+      results = (await session.execute(query)).all()
+
+    choices: dict[int, list[str]] = {}
+    for result in results:
+      if result.rarity not in choices:
+        choices[result.rarity] = []
+      choices[result.rarity].append(result.id)
+    return choices
+
+
+  @staticmethod
+  async def fetch_table_collection(
+    collection: Union["CardCollection", str], *, private: bool = False
+  ) -> dict[int, list[str]]:
+    """
+    Fetch all cards in a given collection, in the {rarity: [cards]} "table"
+    format used by gacha rolls.
+
+    If collection is set, limited and locked cards that are part of the
+    collection are included. Otherwise, returns the standard roster without
+    limited and locked cards, not accounting for seasons.
+
+    Args:
+      collection: Target card collection
+      private: Whether to show non-public cards (cards with unlisted=True)
+
+    Returns:
+      Dictionary containing list of card IDs categorized by rarity
+    """
+    if isinstance(collection, CardCollection):
+      collection = collection.id
+
+    query = (
+      select(models.Card.rarity, models.Card.id)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+      .join(models.GachaCollectionCard, models.GachaCollectionCard.card == models.Card.id)
+      .join(models.GachaCollection, models.GachaCollection.id == models.GachaCollectionCard.collection)
+      .where(models.GachaCollection.id == collection)
+    )
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+
+    async with begin_session() as session:
+      results = (await session.execute(query)).all()
+
+    choices: dict[int, list[str]] = {}
+    for result in results:
+      if result.rarity not in choices:
+        choices[result.rarity] = []
+      choices[result.rarity].append(result.id)
+    return choices
+
+
+  @classmethod
+  async def grep_id(cls, pattern: Union[List[str], str], *, private: bool = False) -> list[Self]:
+    """
+    Fetch cards whose ID match a given pattern.
+
+    Args:
+      pattern: Regex pattern, or a list thereof
+      private: Whether to return non-public cards (cards with unlisted=True)
+
+    Returns:
+      List of card instances
+    """
+    if isinstance(pattern, str):
+      pattern = [pattern]
+
+    query = (
+      select(models.Card, models.CardRarity)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+      .where(sa.or_(*[models.Card.id.regexp_match(p) for p in pattern]))
+    )
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+
+    async with begin_session() as session:
+      results = (await session.execute(query)).all()
+    return [cls.from_row(r) for r in results]
+
+
+  @staticmethod
+  async def grep_id_count(pattern: Union[List[str], str], *, private: bool = False) -> int:
+    """
+    Fetch count of cards whose ID match a given pattern.
+
+    If a list of patterns is provided, fetches a total count from each
+    individual pattern match.
+
+    Args:
+      pattern: Regex pattern, or a list thereof
+      private: Whether to return non-public cards (cards with unlisted=True)
+
+    Returns:
+      Count of matching cards
+    """
+    if isinstance(pattern, str):
+      pattern = [pattern]
+
+    query = (
+      select(models.Card.id)
+      .join(models.CardRarity, models.CardRarity.rarity == models.Card.rarity)
+      .where(models.Card.id.regexp_match(sa.bindparam("pattern")))
+    )
+    if not private:
+      query = query.where(models.Card.unlisted == False)
+    params = [{"pattern": p} for p in pattern]
+
+    cards = set()
+    async with begin_session() as session:
+      for param in params:
+        result = (await session.execute(query, param)).all()
+        cards |= set(result)
+    return len(cards)
+
+
+  @classmethod
+  async def roll(cls, *, min_rarity: Optional[int] = None) -> Card:
+    """
+    Roll a card from the main roster.
+
+    If there is an ongoing season, has a chance of obtaining a season pickup
+    card, with a rate depending on each season.
+
+    Args:
+      min_rarity: Lowest card rarity to obtain
+
+    Returns:
+      Card instance with additional roll-related data set
+    """
+    return await CardCache.roll(min_rarity=min_rarity)
+
+
+  async def add(self, session: AsyncSession, collection_id: Optional[str] = None) -> None:
+    """
+    Add this card to the database.
+
+    If a card with this ID already exists, updates the card.
+
+    Args:
+      session: Current database session
+      collection_id: Collection to add this card to, if specified
+    """
+    stmt = (
+      insert(models.Card)
+      .values(**self.db_dict())
+      .on_conflict_do_update(index_elements=["id"], set_=self.db_dict(exclude_id=True))
+    )
+    await session.execute(stmt)
+
+    if collection_id:
+      await self.add_to_collection(session, collection_id)
+
+
+  async def add_to_collection(self, session: AsyncSession, collection_id: str) -> None:
+    """
+    Add this card to a collection.
+
+    Args:
+      session: Current database session
+      collection_id: Collection to add this card to
+    """
+    stmt = insert(models.GachaCollectionCard).values(collection=collection_id, card=self.id)
+    await session.execute(stmt)
+
+
+  async def delist(self, session: AsyncSession) -> bool:
+    """
+    Delist this card.
+
+    Unlisting a card removes it from public display, including in user card
+    statistics and in collection views.
+
+    Args:
+      session: Current database session
+    """
+    self.unlisted = True
+    stmt = update(models.Card).where(models.Card.id == self.id).values(unlisted=True).returning(models.Card.id)
+    return await session.scalar(stmt) is not None
+
+
+  async def update(self, session: AsyncSession) -> bool:
+    """
+    Update this card in the database.
+
+    Args:
+      session: Current database session
+    
+    Returns:
+      True if the operation succeeded, or False otherwise
+    """
+    stmt = (
+      update(models.Card)
+      .where(models.Card.id == self.id)
+      .values(**self.db_dict(exclude_id=True))
+      .returning(models.Card.id)
+    )
+    return await session.scalar(stmt) is not None
+
+
+  async def give_to(
+    self, session: AsyncSession, user: Union[ipy.BaseUser, ipy.Snowflake], amount: int = 1, *, rolled: bool = False
+  ) -> None:
+    """
+    Grant a number of this card to the target user.
+
+    Args:
+      session: Current database session
+      user: Instance or snowflake of the target gacha user
+      amount: Number of this card to give, default 1
+      rolled: Whether this card is rolled, and to update pity counters accordingly
+    """
+    if not isinstance(user, int):
+      user = user.id
+    if amount < 1:
+      raise ValueError(f"Invalid card give amount of less than 1 ('{amount}')")
+    if rolled and self.roll_time is None:
+      raise ValueError("Instance is missing card roll time, which is required for granting rolled cards")
+
+    inventory_stmt = (
+      insert(models.UserCard)
+      .values(user=user, card=self.id, count=amount)
+      .on_conflict_do_update(
+        index_elements=["user", "card"],
+        set_={"count": models.UserCard.__table__.c.count + amount}
+      )
+      .returning(models.UserCard.count)
+    )
+    self.held_count = await session.scalar(inventory_stmt)
+    self.is_new_roll = self.held_count == amount
+
+    roll_entry_stmt = (
+      insert(models.GachaRoll).values(
+        user=user, card=self.id, time=self.roll_time.timestamp(),
+        pity_excluded=self.collection_pickup, collection=self.collection or self.season,
+      )
+    )
+    await session.execute(roll_entry_stmt)
+
+    if not rolled:
+      return
+
+    pity_increment_stmt = (
+      update(models.UserPity)
+      .where(models.UserPity.user == user)
+      .values(count=models.UserPity.__table__.c.count + 1)
+      .returning(models.UserPity.rarity, models.UserPity.count)
+    )
+    pity_reset_stmt = (
+      update(models.UserPity)
+      .where(models.UserPity.user == user)
+      .where(models.UserPity.rarity == self.rarity)
+      .values(count=0)
+    )
+    pity_counters = (await session.execute(pity_increment_stmt)).all()
+    await session.execute(pity_reset_stmt)
+    self.roll_pity = next((p.count for p in pity_counters if p.rarity == self.rarity), 1)
+
+
+@attrs.define(kw_only=True)
+class CardCache:
+  """Gacha card cache, primarily used for rolls."""
+
+  random: Random = attrs.field(factory=SystemRandom)
+  """Randomizer instance for rolls."""
+
+  card_names: dict[str, str] = attrs.field(factory=dict)
+  """Gacha card names in the roster, used for card search."""
+  rarities: dict[int, "CardRarity"] = attrs.field(factory=dict)
+  """Gacha card rarity settings."""
+  season: Optional["GachaSeason"] = attrs.field(default=None)
+  """Current season, if any."""
+  next_season: Optional["GachaSeason"] = attrs.field(default=None)
+  """Next season, if any."""
+
+  rarity_rates: dict[int, float] = attrs.field(factory=dict)
+  """Gacha card rates per rarity, relative to the sum of all other rarity rates."""
+
+  standard_table: dict[int, list[str]] = attrs.field(factory=dict)
+  """Rarity-ID table of cards in the standard roster, which excludes seasonal cards."""
+  seasonal_table: dict[int, list[str]] = attrs.field(factory=dict)
+  """Rarity-ID table of cards in the seasonal roster."""
+
+
+  @property
+  def season_ends(self) -> Optional[ipy.Timestamp]:
+    """Time this season ends, or `None` if no season is running"""
+    if self.season:
+      return ipy.Timestamp.fromtimestamp(self.season.end_time)
+
+
+  @property
+  def season_rate(self) -> Optional[float]:
+    """Rate of rolling this season's cards over the general pool, out of 1, or `None` if no season is running"""
+    if self.season:
+      return self.season.pickup_rate
+
+
+  @property
+  def season_available(self) -> Optional[bool]:
+    """Whether this season is available, i.e. there are cards to roll."""
+    return self.season and any([len(cards) > 0 for cards in self.seasonal_table.values()])
+
+
+  @classmethod
+  async def get_cache(cls) -> Self:
+    global _cache
+    if not _cache:
+      _cache = await cls.create()
+    return _cache
+
+
+  @classmethod
+  async def create(cls, *, now: Optional[ipy.Timestamp] = None) -> Self:
+    """
+    Create the card cache.
+
+    Args:
+      now: Reference time to determine the current season, or current time if unset
+
+    Returns:
+      Card cache instance
+    """
+    cache = cls()
+    await cache._sync(now=now)
+    return cache
+
+
+  @classmethod
+  async def init(cls, *, now: Optional[ipy.Timestamp] = None) -> None:
+    """
+    Initialize the card cache.
+
+    Args:
+      now: Reference time to determine the current season, or current time if unset
+
+    Returns:
+      Card cache instance
+    """
+    global _cache
+    _cache = await cls.create(now=now)
+
+
+  @classmethod
+  async def sync(cls, *, now: Optional[ipy.Timestamp] = None) -> None:
+    """
+    Synchronize the card cache with the database.
+
+    Args:
+      now: Reference time to determine the current season, or current time if unset
+    """
+    cache = await cls.get_cache()
+    await cache._sync(now=now)
+
+
+  @classmethod
+  async def sync_search(cls) -> None:
+    """
+    Synchronize obtained cards in the card cache with the database.
+    """
+    cache = await cls.get_cache()
+    cache.card_names = {c.id: c.name for c in await Card.fetch_all(unobtained=False)}
+
+
+  @classmethod
+  async def sync_season(cls, *, now: Optional[ipy.Timestamp] = None) -> None:
+    """
+    Synchronize the card cache's current season with the database.
+
+    Args:
+      now: Reference time to determine the current season, or current time if unset
+    """
+    cache = await cls.get_cache()
+    cache.season = await GachaSeason.fetch_current(now=now)
+    cache.next_season = await GachaSeason.fetch_next(now=now)
+    cache.standard_table = await Card.fetch_table_standard(cache.season)
+    cache.seasonal_table = await Card.fetch_table_season(cache.season)
+
+    if cache.season:
+      async with begin_session() as session:
+        await cache.season.publish(session)
+
+
+  async def _sync(self, *, now: Optional[ipy.Timestamp] = None) -> None:
+    now = now or ipy.Timestamp.now()
+
+    # Store fetch results in temp vars to avoid incomplete syncing
+    rarities    = await CardRarity.fetch_all()
+    season      = await GachaSeason.fetch_current(now=now)
+    next_season = await GachaSeason.fetch_next(now=now)
+
+    # Note: To account for rosters/collections with cardless rarities,
+    # these rarity rates are not the final one used in calculation.
+    rates = {r.rarity: r.rate for r in rarities}
+
+    self.rarities       = {r.rarity: r for r in rarities}
+    self.season         = season
+    self.next_season    = next_season
+    self.rarity_rates   = rates
+    self.standard_table = await Card.fetch_table_standard(season)
+    self.seasonal_table = await Card.fetch_table_season(season)
+    self.card_names     = {c.id: c.name for c in await Card.fetch_all(unobtained=False)}
+
+
+  @classmethod
+  async def place_card(cls, card: "Card") -> None:
+    """
+    Register the given card, making it searchable by CardCache.search().
+
+    Args:
+      card: Card instance
+    """
+    cache = await cls.get_cache()
+    cache.card_names[card.id] = card.name
+
+
+  @classmethod
+  async def search_get(
+    cls, key: str, *, unobtained: bool = False, private: bool = False, limit: Optional[int] = None
+  ) -> list[tuple[str, str]]:
+    """
+    Search cards by name, and get a list of id-name pairs, in matching order.
+  
+    To also fetch the cards, see `search_fetch()`.
+
+    Warning:
+      Searching with `unobtained` or `private` set to True will always fetch from the database for cards.
+
+    Args:
+      key: Card name search key
+      private: Whether to show non-public cards (cards with unlisted=True)
+      limit: Number of matching cards to return at most
+
+    Returns:
+      List of id-name pairs, in the order of top match
+    """
+    cache = await cls.get_cache()
+
+    if unobtained or private:
+      card_names = {c.id: c.name for c in await Card.fetch_all(unobtained=unobtained, private=private)}
+    else:
+      card_names = cache.card_names
+
+    results = [(id, name, ratio(key, name, processor=process_text)) for id, name in card_names.items()]
+    results.sort(key=lambda result: result[1])
+    results.sort(key=lambda result: result[2], reverse=True)
+
+    # Primary score cutoff
+    results = [result for result in results if result[2] > 45.0]
+    if limit:
+      results = results[:limit]
+
+    return [(id, name) for id, name, _ in results]
+
+
+  @classmethod
+  async def search_fetch(
+    cls, key: str, *, unobtained: bool = False, private: bool = False, limit: Optional[int] = None
+  ) -> list["Card"]:
+    """
+    Search cards by name, and fetch them.
+
+    To only get id-name pairs, see `search()`.
+
+    Warning:
+      Searching with `unobtained` or `private` set to True will always fetch from the database for cards.
+
+    Args:
+      key: Card name search key
+      private: Whether to show non-public cards (cards with unlisted=True)
+      limit: Number of matching cards to return at most
+
+    Returns:
+      List of card instances, in the order of top match
+    """
+    ids = [id for id, _ in await cls.search_get(key, unobtained=unobtained, private=private, limit=limit)]
+    return await Card.fetch_multiple(ids, unobtained=private, private=private)
+
+
+  @classmethod
+  async def roll(
+    cls,
+    *,
+    min_rarity: Optional[int] = None,
+    now: Optional[ipy.Timestamp] = None,
+    random: Optional[Random] = None,
+  ) -> "Card":
+    """
+    Roll a card from the main roster.
+
+    If there is an ongoing season, has a chance of obtaining a season pickup
+    card, with a rate depending on each season.
+
+    Args:
+      min_rarity: Lowest card rarity to obtain
+      now: Reference time to determine roll time and current season, or current time if unset
+      random: Custom instance of Random to use, or default SystemRandom if unset
+
+    Returns:
+      Card instance with additional roll-related data set
+    """
+    now    = now or ipy.Timestamp.now()
+    cache  = await cls.get_cache()
+    random = random or cache.random
+
+    # Is it time for next season? (season is None, next_season is not None)
+    if not cache.season and cache.next_season and now.timestamp() >= cache.next_season.start_time:
+      await cache.sync_season(now=now)
+    # Is season still current? (season is not None, season ended)
+    elif cache.season_ends and now >= cache.season_ends:
+      await cache.sync_season(now=now)
+
+    # Season pick-up?
+    cards = cache.standard_table
+    season_id = None
+
+    if (
+      cache.season
+      and cache.season_rate is not None
+      and cache.season_available
+      and random.random() < cache.season_rate
+    ):
+      season_id = cache.season.id
+      cards = cache.seasonal_table
+
+    # Roll
+    if result := await cls._roll(cards, min_rarity=min_rarity, random=random):
+      result.roll_time = now
+      result.season = season_id
+      return result
+    else:
+      raise RuntimeError("Failed to roll a card - missing setup or roster")
+
+
+  @classmethod
+  async def roll_collection(
+    cls,
+    collection_id: str,
+    *,
+    min_rarity: Optional[int] = None,
+    now: Optional[ipy.Timestamp] = None,
+    random: Optional[Random] = None,
+  ) -> "Card":
+    """
+    Roll a card from a collection.
+
+    Args:
+      collection_id: Card collection ID
+      min_rarity: Lowest card rarity to obtain
+      now: Reference time to determine roll time, or current time if unset
+      random: Custom instance of Random to use, or default SystemRandom if unset
+
+    Returns:
+      Card instance with additional roll-related data set
+    """
+    now    = now or ipy.Timestamp.now()
+    cache  = await cls.get_cache()
+    random = random or cache.random
+
+    cards = await Card.fetch_table_collection(collection_id, private=False)
+    if len(cards) == 0:
+      raise RuntimeError("Failed to roll a card - collection has no cards")
+
+    if result := await cls._roll(cards, min_rarity=min_rarity, random=random):
+      result.roll_time = now
+      result.collection = collection_id
+      return result
+    else:
+      raise RuntimeError("Failed to roll a card - missing setup or roster")
+
+
+  @classmethod
+  async def _roll(
+    cls, table: dict[int, list[str]], *, min_rarity: Optional[int] = None, random: Optional[Random] = None
+  ) -> Optional["Card"]:
+    cache  = await cls.get_cache()
+    random = random or cache.random
+
+    # Rates are normalized; only rates with corresponding card choices are
+    # considered. As an example:
+    # 
+    # With cards of each rarity present:
+    # -> {1: 0.785, 2: 0.185, 3: 0.03}
+    # -- Sum of rates is 1.0, so the rates are unchanged when normalized.
+    # -> {1: 0.785, 2: 0.185, 3: 0.03}
+    # 
+    # Without cards of rarity 1:
+    # -> {2: 0.185, 3: 0.03}
+    # -- Sum of rates is 0.215, so rates change upon normalization:
+    # -> {2: 0.86, 3: 0.14}
+
+    usable_rates = {
+      rarity: rate
+      for rarity, rate in cache.rarity_rates.items()
+      if len(table.get(rarity, [])) > 0
+    }
+    if len(usable_rates) == 0:
+      return None
+
+    total_usable_rates = sum(usable_rates.values())
+    if total_usable_rates != 1.0:
+      usable_rates = {
+        rarity: rate / total_usable_rates
+        for rarity, rate in usable_rates.items()
+      }
+
+    # Rate finding
+    arona = random.random()
+    card_rarity = None
+
+    for rarity, rate in usable_rates.items():
+      arona -= rate
+      if arona < rate:
+        card_rarity = max(rarity, min_rarity or 0)
+        break
+
+    if card_rarity is None:
+      return None
+
+    # Select obtained card
+    card_get = None
+    while card_get is None:
+      if card_rarity < 1:
+        return None
+      try:
+        card_get = random.choice(table[card_rarity])
+      except (KeyError, IndexError):
+        card_rarity -= 1
+        continue
+
+    return await Card.fetch(card_get, unobtained=True, private=False)

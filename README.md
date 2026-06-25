@@ -1,7 +1,7 @@
 # Mitsuki
 
-![](https://img.shields.io/badge/Mitsuki-4.3.0-blue)
-![](https://img.shields.io/badge/Python-3.12-blue?logo=Python)
+![](https://img.shields.io/badge/Mitsuki-5.1.0-blue)
+![](https://img.shields.io/badge/Python-3.14-blue?logo=Python)
 ![](https://img.shields.io/github/license/mifuyutsuki/mitsuki)
 ![](https://img.shields.io/github/last-commit/mifuyutsuki/mitsuki/dev?label=last%20commit)
 
@@ -30,12 +30,12 @@ Created for the anime community **Comfy Camp Club** (CCC), Mitsuki is a fun Disc
 | `user` | ☀️ Available | User information, including avatar and banner information |
 | `system` | ☀️ System | Bot information and configuration |
 | `convert` | 📝 Planning | Convert a unit to another, e.g. meters to miles |
-| `anilist` | 📝 Planning | View anime, manga, and characters via [AniList](https://anilist.co) |
+| `anime`/`manga` | 📝 Planning | View anime, manga, and characters via [AniList](https://anilist.co) |
 | `animethemes` | 📝 Planning | View anime theme songs (OP, ED, etc.) via [AnimeThemes](https://animethemes.moe) |
 
 # Setup
 
-Requires **Python 3.12** or later. In production, Python 3.12 on Linux is used. To manage multiple Python versions in a single machine, we recommend [`pyenv`](https://github.com/pyenv/pyenv/).
+Requires **Python 3.12** or later. In production, Python 3.14 on Linux is used. To manage multiple Python versions in a single machine, we recommend [`pyenv`](https://github.com/pyenv/pyenv/).
 
 Make sure `git` (unless downloading directly from GitHub) and `python3` (3.12 or later) are installed, and you have set up the bot and its **bot token** through [Discord Developer Portal](https://discord.com/developers/applications). You may want to prepare a "system" Discord server (internally known as System Guild) from which you can run `system` commands.
 
@@ -44,7 +44,7 @@ Make sure `git` (unless downloading directly from GitHub) and `python3` (3.12 or
 1.  Clone this repository, either via GitHub or using `git clone`:
 
     ```bash
-    git clone https://github.com/mifuyutsuki/mitsuki.git
+    git clone https://github.com/mifuyutsuki/mitsuki.git mitsuki
     cd mitsuki
     ```
 
@@ -54,11 +54,11 @@ Make sure `git` (unless downloading directly from GitHub) and `python3` (3.12 or
     python3 -m venv .venv
     source .venv/bin/activate
 
-    # pyenv + pyenv-virtualenv (3.12)
-    pyenv install 3.12
-    pyenv local 3.12
-    pyenv virtualenv 3.12 mitsuki-py3.12
-    pyenv activate mitsuki-py3.12
+    # pyenv + pyenv-virtualenv (3.14)
+    pyenv install 3.14
+    pyenv local 3.14
+    pyenv virtualenv 3.14 mitsuki-py3.14
+    pyenv activate mitsuki-py3.14
     ```
 
 3.  Install dependencies:

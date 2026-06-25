@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -21,10 +21,11 @@ from mitsuki import utils, settings
 from mitsuki.lib import commands as libcmd
 from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
-from mitsuki.lib.userdata import new_session
+from mitsuki.lib.userdata import begin_session
 
 
-from .. import customids, api, presencer, commands
+from mitsuki.core.presences import Presence, get_presencer
+from mitsuki.modules.system import customids, commands
 
 
 class SystemPresencesDelete(libcmd.WriterCommand):
@@ -57,7 +58,7 @@ class SystemPresencesDelete(libcmd.WriterCommand):
     await self.check()
     await self.defer(ephemeral=True, edit_origin=self.has_origin, suppress_error=True)
 
-    presence = await api.Presence.fetch(presence_id)
+    presence = await Presence.fetch(presence_id)
     if not presence:
       raise liberr.ObjectNotFound("Presence")
 
@@ -72,8 +73,8 @@ class SystemPresencesDelete(libcmd.WriterCommand):
     await self.check()
     await self.defer(ephemeral=True, edit_origin=self.has_origin, suppress_error=True)
 
-    async with new_session.begin() as session:
-      _ = await api.Presence.delete_id(session, presence_id)
+    async with begin_session() as session:
+      _ = await Presence.delete_id(session, presence_id)
 
-    await presencer.presencer().sync()
+    await get_presencer().sync()
     await commands.SystemPresences.create(self.ctx).run()

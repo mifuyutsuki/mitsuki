@@ -1,0 +1,98 @@
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+import interactions as ipy
+from typing import Optional
+
+from mitsuki import utils
+from mitsuki.lib.userdata import begin_session
+from mitsuki.lib.emoji import get_emoji, AppEmoji
+from mitsuki.lib.commands import ReaderCommand
+import mitsuki.lib.errors as errors
+import mitsuki.lib.checks as checks
+
+import mitsuki.core.gacha as core
+import mitsuki.modules.gacha.views as views
+
+
+class GachaPackSets(ReaderCommand):
+  async def run(self, user: Optional[ipy.BaseUser] = None, *, origin: bool = False):
+    await checks.assert_in_guild(self.ctx)
+    await self.reset_timeout()
+    await self.defer(ephemeral=False, edit_origin=origin)
+
+    cache = await core.CardCache.get_cache()
+    target_user = user or self.caller_user
+
+    if isinstance(target_user, int):
+      target_user = await self.ctx.guild.fetch_member(target_user) or await self.ctx.client.fetch_user(target_user)
+
+    if gacha_user := await core.GachaUser.fetch(target_user):
+      categories = await core.CardCollectionCategory.fetch_all()
+    else:
+      categories = []
+
+    view = views.GachaPackSetsView(
+      self.ctx, card_cache=cache, target_user=target_user, gacha_user=gacha_user, categories=categories
+    )
+    await view.send(timeout=45, hide_on_timeout=True)
+
+
+class GachaPacks(ReaderCommand):
+  async def run(self, category_id: str, user: Optional[ipy.BaseUser] = None):
+    await checks.assert_in_guild(self.ctx)
+    await self.reset_timeout()
+    await self.defer(ephemeral=False, edit_origin=True)
+
+    cache = await core.CardCache.get_cache()
+    category = await core.CardCollectionCategory.fetch(category_id)
+    target_user = user or self.caller_user
+
+    if isinstance(target_user, int):
+      target_user = await self.ctx.guild.fetch_member(target_user) or await self.ctx.client.fetch_user(target_user)
+
+    if gacha_user := await core.GachaUser.fetch(target_user):
+      collections = await core.CardCollection.fetch_all_user(target_user, category_id=category_id)
+    else:
+      collections = []
+
+    view = views.GachaPacksView(
+      self.ctx, card_cache=cache, target_user=target_user, gacha_user=gacha_user, collections=collections, category=category,
+    )
+    await view.send(timeout=45, hide_on_timeout=True)
+
+
+class GachaPackCards(ReaderCommand):
+  async def run(self, collection_id: str, source_category: str, user: Optional[ipy.BaseUser] = None, *, sort: Optional[str] = None):
+    await checks.assert_in_guild(self.ctx)
+    await self.reset_timeout()
+    await self.defer(ephemeral=False, edit_origin=True)
+
+    cache = await core.CardCache.get_cache()
+    target_user = user or self.caller_user
+
+    if isinstance(target_user, int):
+      target_user = await self.ctx.guild.fetch_member(target_user) or await self.ctx.client.fetch_user(target_user)
+
+    collection = await core.CardCollection.fetch_user(collection_id, target_user)
+    gacha_user = await core.GachaUser.fetch(target_user)
+
+    if collection:
+      cards = await core.UserCard.fetch_all(target_user, collection=collection, sort=sort)
+    else:
+      raise errors.ObjectNotFound("card pack")
+
+    view = views.GachaPackCardsView(
+      self.ctx, card_cache=cache, target_user=target_user, gacha_user=gacha_user, collection=collection, cards=cards,
+      source_category=source_category
+    )
+    await view.send(timeout=45, hide_on_timeout=True)

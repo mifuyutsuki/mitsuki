@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -16,7 +16,7 @@ from typing import Optional
 __all__ = (
   "MitsukiException",
   "ProviderError",
-  "MitsukiSoftException",
+  "RequestException",
   "UserDenied",
   "BotDenied",
   "InteractionDenied",
@@ -29,115 +29,143 @@ __all__ = (
 
 
 class MitsukiException(Exception):
-  """Base class for Mitsuki bot exceptions."""
+  """Base class for Mitsuki exceptions."""
 
-  TEMPLATE: str = "error"
-  data: dict[str, str] = {}
+  ephemeral: bool = False
+  """Whether the error message should be posted ephemerally."""
+  title: str = "Error"
+  """Title of error to show in the error message."""
+  desc: str = "An unexpected error occured, please contact application owner."
+  """Description of error to show in the error message."""
+  fields: dict[str, str] = {}
+  """Embed fields to show in the error message."""
+  show_traceback: bool = True
+  """Whether to show the error traceback. Defaults to False on derived instances."""
+
+  def __init__(self, *args):
+    super().__init__(*args)
+    self.fields = {}
+
+  def __init_subclass__(cls, *args, **kwargs):
+    cls.show_traceback = False
 
 
 class ProviderError(MitsukiException):
   """Could not connect to upstream provider, please try again later."""
 
-  TEMPLATE: str = "error_provider"
+  desc = "Could not connect to upstream provider, please try again later."
 
 
-class MitsukiSoftException(MitsukiException):
+class RequestException(MitsukiException):
   """
-  Base class for Mitsuki bot exceptions which do not need error logging, such as permission errors.
+  Base class for Mitsuki bot exceptions caused by user requests.
 
-  Exception messages under this class are ephemeral by default.
+  Exception messages under this class are not logged to Sentry and are ephemeral by default.
   """
 
-  EPHEMERAL: bool = True
+  ephemeral = True
 
 
-class UserDenied(MitsukiSoftException):
+class UnderConstruction(RequestException):
+  """Command is under construction and is currently unavailable."""
+
+  title = "Under Construction"
+  desc = "This command is under construction and is currently unavailable."
+
+
+class UserDenied(RequestException):
   """User lacks permissions to do an action, such as running an admin command."""
 
-  TEMPLATE: str = "error_denied_user"
+  title = "Permission Error"
+  desc = "You don't have permissions to run this command."
 
-  def __init__(self, requires: str) -> None:
-    self.requires = requires
-    self.data = {
-      "requires": requires,
-    }
+  def __init__(self, requires: Optional[str] = None) -> None:
+    if requires:
+      self.fields = {"Required Permissions": requires}
 
 
-class BotDenied(MitsukiSoftException):
+class BotDenied(RequestException):
   """Bot lacks permissions to do an action, such as changing bot's own nickname."""
 
-  TEMPLATE: str = "error_denied_bot"
+  title = "Permission Error"
+  desc = "The bot lacks permissions to run this command."
 
-  def __init__(self, requires: str) -> None:
-    self.requires = requires
-    self.data = {
-      "requires": requires,
-    }
-
-
-class InteractionDenied(MitsukiSoftException):
-  """User selected a component not meant for the user."""
-
-  TEMPLATE: str = "error_denied_interaction"
+  def __init__(self, requires: Optional[str] = None) -> None:
+    if requires:
+      self.fields = {"Required Permissions": requires}
 
 
-class ScopeDenied(MitsukiSoftException):
-  """Scope-restricted command was run outside of its scope."""
+class InteractionDenied(RequestException):
+  """User interacted with a component not meant for the user."""
 
-  TEMPLATE: str = "error_denied_scope"
-
-  def __init__(self, scope: str) -> None:
-    self.data = {"scope": scope}
+  title = "Permission Error"
+  desc = "This interaction is not for you."
 
 
-class OutOfGuild(MitsukiSoftException):
+class ScopeDenied(RequestException):
+  """Command was run outside of its scope."""
+
+  title = "Command Unavailable"
+  desc = "This command is not available in this channel."
+
+  def __init__(self, scope: Optional[str] = None) -> None:
+    if scope:
+      self.fields = {"Command Scope": scope}
+
+
+class OutOfGuild(RequestException):
   """Guild-only command was run outside of a guild."""
 
-  TEMPLATE: str = "error_out_of_guild"
+  title = "Command Unavailable"
+  desc = "This command is not available outside of a server."
 
 
-class ObjectNotFound(MitsukiSoftException):
+class ObjectNotFound(RequestException):
   """Could not find object (e.g. Schedule), which may already have been deleted."""
 
-  TEMPLATE: str = "error_object_not_found"
-
   def __init__(self, obj_name: str):
-    self.data = {"obj_name": obj_name}
+    self.desc = "Could not find {} with the specified ID or key.".format(obj_name)
 
 
-class BadInput(MitsukiSoftException):
+class BadFile(RequestException):
+  """Could not process file."""
+
+  desc = "Could not parse or process file."
+
+  def __init__(self, expect: Optional[str] = None):
+    if expect:
+      self.fields = {"Expected file type": expect}
+
+
+class BadFileSize(RequestException):
+  """File is too large for processing."""
+
+  desc = "File is too large."
+
+  def __init__(self, size_mb: Optional[float] = None, max_size_mb: Optional[float] = None):
+    if size_mb is not None and max_size_mb is not None:
+      self.desc = "File is too large ({.2f} > {.2f}).".format(size_mb, max_size_mb)
+
+
+class BadInput(RequestException):
   """Not a valid input for a field."""
 
-  TEMPLATE: str = "error_bad_input"
-
-  def __init__(self, field: str, message: Optional[str] = None):
-    if message:
-      self.TEMPLATE = "error_bad_input_message"
-    self.data = {"field": field, "message": message}
+  def __init__(self, field: str):
+    self.desc = "Not a valid input for '{}'.".format(field)
 
 
-class BadInputRange(MitsukiSoftException):
+class BadInputRange(RequestException):
   """Not a valid input range for a numeric field."""
 
-  TEMPLATE: str = "error_bad_input_range"
-
   def __init__(self, field: str):
-    self.data = {"field": field}
+    self.desc = "Not a valid input range for '{}'.".format(field)
 
 
-class BadLength(MitsukiSoftException):
+class BadLength(RequestException):
   """Input is too long."""
-
-  TEMPLATE: str = "error_bad_length_unspecified"
 
   def __init__(self, field: str, length: Optional[int] = None, max_length: Optional[int] = None):
     if length is not None and max_length is not None:
-      self.TEMPLATE = "error_bad_length"
+      self.desc = "Not a valid input length for '{}' ({} > {}).".format(field, length, max_length)
     else:
-      self.TEMPLATE = "error_bad_length_unspecified"
-
-    self.data = {
-      "field": field,
-      "length": length or "-",
-      "max_length": max_length or "-",
-    }
+      self.desc = "Not a valid input length for '{}'.".format(field)

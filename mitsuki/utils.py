@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -14,13 +14,15 @@ from interactions import (
   BaseContext,
   InteractionContext,
   Member,
+  BaseUser,
+  Snowflake,
 )
 from interactions.api.events import Component
 
 from rapidfuzz.utils import default_process
 from rapidfuzz import fuzz
 
-from typing import Optional
+from typing import Optional, Callable, Union
 import unicodedata
 import regex as re
 
@@ -34,6 +36,7 @@ __all__ = (
   "is_caller",
   "get_member_color",
   "get_member_color_value",
+  "option",
 )
 
 
@@ -54,6 +57,14 @@ def substring_ratio(s1: str, s2: str, processor=None):
   _s1 = processor(s1)
   _s2 = processor(s2)
   return 1.0 if (_s1 in _s2 or _s2 in _s1) else 0.0
+
+
+def user_mention(user: Optional[Union[BaseUser, Snowflake]]):
+  if user is None:
+    return ""
+  if not isinstance(user, int):
+    return user.mention
+  return f"<@{user}>"
 
 
 def escape_text(text: str):
@@ -161,3 +172,7 @@ def get_member_color_value(member: Member):
   if color := get_member_color(member):
     return color.value
   return None
+
+
+def option[T](fn: Callable[..., T]) -> Callable[..., Optional[T]]:
+  return lambda s: fn(s) if s else None

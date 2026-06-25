@@ -1,132 +1,445 @@
-# Example gacha roster with 16 cards. (6 r1, 5 r2, 5 r3)
-# Does not include images.
+# Example Mitsuki gacha roster.
+#
+# Example roster with 58 cards, consisting of a sample of Comfy Camp Club
+# event cards and a small selection of Mitsuki character cards created for
+# this example. Card images not included.
+# 
+# Entries below are processed using rosc2y, an internal csv-to-yaml converter
+# developed for Mitsuki gacha use.
+# 
+# This roster is used for tests.
+# 
+# Rarities:
+# - 1-star: 11 cards
+# - 2-star: 35 cards
+# - 3-star: 9 cards
+# - 4-star: 3 cards
+#
+# Types:
+# - Character: 9 cards
+#   - Mitsuki: 9 cards
+# - Event: 49 cards
+#   - Comfy Days: 17 cards
+#   - Moe Contest: 32 cards
 
 # Template
 # 
 # <id>:
 #   name   : 
 #   series : 
+#   type   : 
 #   rarity : 
 #   image  : 
 
 # ===============================================
 
-c1001:
-  name   : Ume
-  series : Shirasagi
-  type   : Character
-  rarity : 3
-  image  : 
-  
-c1002:
-  name   : Kasumi
-  series : Shirasagi
-  type   : Character
-  rarity : 2
-  image  : 
-  
-c1003:
-  name   : Ichigo
-  series : Shirasagi
-  type   : Character
-  rarity : 2
-  image  : 
-  
-c1004:
-  name   : Wakaba
-  series : Shirasagi
-  type   : Character
-  rarity : 1
-  image  : 
+c00.01.1:
+  image: 
+  name: Mitsuki-616
+  rarity: 1
+  series: Mitsuki
+  type: Character
 
-c1005:
-  name   : Ara
-  series : Shirasagi
-  type   : Character
-  rarity : 1
-  image  : 
-  
-c1006:
-  name   : Melati
-  series : Shirasagi
-  type   : Character
-  rarity : 1
-  image  : 
+c00.02.1:
+  image: 
+  name: Mitsuki-727
+  rarity: 1
+  series: Mitsuki
+  type: Character
 
-# ===============================================
+c00.03.1:
+  image: 
+  name: Mitsuki-196
+  rarity: 1
+  series: Mitsuki
+  type: Character
 
-c2001:
-  name   : Ayame
-  series : Magitech
-  type   : Character
-  rarity : 3
-  image  : 
-  
-c2002:
-  name   : Kusunoki
-  series : Magitech
-  type   : Character
-  rarity : 3
-  image  : 
-  
-c2003:
-  name   : Pratama
-  series : Magitech
-  type   : Character
-  rarity : 2
-  image  : 
-  
-c2004:
-  name   : Lily
-  series : Magitech
-  type   : Character
-  rarity : 1
-  image  : 
+c00.04.2:
+  image: 
+  name: Mitsuki-6502
+  rarity: 2
+  series: Mitsuki
+  type: Character
 
-# ===============================================
+c00.05.2:
+  image: 
+  name: Mitsuki-10032
+  rarity: 2
+  series: Mitsuki
+  type: Character
 
-c3001:
-  name   : Hiiragi
-  series : City of Rikka
-  type   : Character
-  rarity : 3
-  iamge  : 
+c00.06.2:
+  image: 
+  name: Mitsuki-68000
+  rarity: 2
+  series: Mitsuki
+  type: Character
 
-# ===============================================
+c00.07.3:
+  image: 
+  name: Mitsuki-240214
+  rarity: 3
+  series: Mitsuki
+  type: Character
 
-p1001:
-  name   : Shirasagi High
-  series : Rikka
-  type   : Location
-  rarity : 1
-  iamge  : 
-  
-p1002:
-  name   : Cafe Cahaya Purnama
-  series : Rikka
-  type   : Location
-  rarity : 1
-  iamge  : 
-  
-p1003:
-  name   : Murasaki Park
-  series : Rikka
-  type   : Location
-  rarity : 2
-  iamge  : 
+c00.08.3:
+  image: 
+  name: Mitsuki-1048576
+  rarity: 3
+  series: Mitsuki
+  type: Character
 
-p1005:
-  name   : Rikka Institute of Magical Technology 
-  series : Rikka
-  type   : Location
-  rarity : 2
-  iamge  : 
+c00.09.4:
+  image: 
+  name: Mitsuki-33550336
+  rarity: 4
+  series: Mitsuki
+  type: Character
 
-# ===============================================
+# -----------------------------------------------
 
-p2001:
-  name   : Sagaraputra Plains
-  series : West Edge
-  type   : Location
-  rarity : 3
-  iamge  : 
+e2308.02.3:
+  image: 
+  name: Comfy Days
+  rarity: 3
+  series: Comfy Days
+  type: Event
+
+e2308.21.2:
+  image: 
+  name: 'Entertainer: Mahjong Neko'
+  rarity: 2
+  series: Comfy Days
+  type: Event
+
+e2308.22.2:
+  image: 
+  name: 'Helper: Hero Notebook'
+  rarity: 2
+  series: Comfy Days
+  type: Event
+
+e2308.23.2:
+  image: 
+  name: 'Comfer: Sunshine Sketchbook'
+  rarity: 2
+  series: Comfy Days
+  type: Event
+
+e2308.24.2:
+  image: 
+  name: 'Wanderer: Encouragement of Summer'
+  rarity: 2
+  series: Comfy Days
+  type: Event
+
+e2308.25.2:
+  image: 
+  name: 'Deredere: Fantasizing Vision'
+  rarity: 2
+  series: Comfy Days
+  type: Event
+
+e2308.26.2:
+  image: 
+  name: 'Tsundere: Crisis Management'
+  rarity: 2
+  series: Comfy Days
+  type: Event
+
+e2308.27.2:
+  image: 
+  name: 'Aho: Candy Store Fortune'
+  rarity: 2
+  series: Comfy Days
+  type: Event
+
+e2308.28.2:
+  image: 
+  name: 'Moe: Golden English Breakfast'
+  rarity: 2
+  series: Comfy Days
+  type: Event
+
+e2308.31.1:
+  image: 
+  name: 'Forager: Happiness Graffiti'
+  rarity: 1
+  series: Comfy Days
+  type: Event
+
+e2308.32.1:
+  image: 
+  name: 'Stargazer: Stardust in Love'
+  rarity: 1
+  series: Comfy Days
+  type: Event
+
+e2308.33.1:
+  image: 
+  name: 'Board Gamer: Dice Club'
+  rarity: 1
+  series: Comfy Days
+  type: Event
+
+e2308.34.1:
+  image: 
+  name: 'Camper: Laid-Back Tent'
+  rarity: 1
+  series: Comfy Days
+  type: Event
+
+e2308.35.1:
+  image: 
+  name: 'Tea Timer: Tea Time'
+  rarity: 1
+  series: Comfy Days
+  type: Event
+
+e2308.36.1:
+  image: 
+  name: 'Barista: Kilimanjaro Coffee'
+  rarity: 1
+  series: Comfy Days
+  type: Event
+
+e2308.37.1:
+  image: 
+  name: 'Magician: Wicked Eye'
+  rarity: 1
+  series: Comfy Days
+  type: Event
+
+e2308.38.1:
+  image: 
+  name: 'Researcher: Data Processing'
+  rarity: 1
+  series: Comfy Days
+  type: Event
+
+# -----------------------------------------------
+
+e2407.01.4:
+  image: 
+  name: Aoba Kokona -2024-
+  rarity: 4
+  series: Moe Contest
+  type: Event
+
+e2407.02.3:
+  image: 
+  name: Akaza Akari -2024-
+  rarity: 3
+  series: Moe Contest
+  type: Event
+
+e2407.03.3:
+  image: 
+  name: Hiiragi Tsukasa -2024-
+  rarity: 3
+  series: Moe Contest
+  type: Event
+
+e2407.04.3:
+  image: 
+  name: Komichi Aya -2024-
+  rarity: 3
+  series: Moe Contest
+  type: Event
+
+e2407.05.2:
+  image: 
+  name: Takatsuki Yayoi -2024-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2407.06.2:
+  image: 
+  name: Alice Cartelet -2024-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2407.07.2:
+  image: 
+  name: Sekiya Naru -2024-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2407.08.2:
+  image: 
+  name: Ichihara Nina -2024-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2407.09.2:
+  image: 
+  name: Natsu Megumi -2024-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2407.10.2:
+  image: 
+  name: Komiya Kaho -2024-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2407.11.2:
+  image: 
+  name: Kafuu Chino -2024-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2407.12.2:
+  image: 
+  name: Honda Tamaki -2024-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2407.13.2:
+  image: 
+  name: Virginia Robertson -2024-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2407.14.2:
+  image: 
+  name: Takimoto Hifumi -2024-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2407.15.2:
+  image: 
+  name: Miyano -2024-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2407.16.2:
+  image: 
+  name: Ajitani Hifumi -2024-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+# -----------------------------------------------
+
+e2507.01.4:
+  image: 
+  name: Atri -2025-
+  rarity: 4
+  series: Moe Contest
+  type: Event
+
+e2507.02.3:
+  image: 
+  name: Tachibana Arisu -2025-
+  rarity: 3
+  series: Moe Contest
+  type: Event
+
+e2507.03.3:
+  image: 
+  name: Komichi Aya -2025-
+  rarity: 3
+  series: Moe Contest
+  type: Event
+
+e2507.04.3:
+  image: 
+  name: Minagi Koharu -2025-
+  rarity: 3
+  series: Moe Contest
+  type: Event
+
+e2507.05.2:
+  image: 
+  name: Kafuu Chino -2025-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2507.06.2:
+  image: 
+  name: Manaka Ao -2025-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2507.07.2:
+  image: 
+  name: Mie Ai -2025-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2507.08.2:
+  image: 
+  name: Tsutsukakushi Tsukiko -2025-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2507.09.2:
+  image: 
+  name: Amae Koromo -2025-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2507.10.2:
+  image: 
+  name: Hiiragi Tsukasa -2025-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2507.11.2:
+  image: 
+  name: Miyauchi Renge -2025-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+e2507.12.2:
+  image: 
+  name: Natsume Rin -2025-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2507.13.2:
+  image: 
+  name: Noel -2025-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2507.14.2:
+  image: 
+  name: Sengoku Kamuri -2025-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2507.15.2:
+  image: 
+  name: Shikishima Sakurako -2025-
+  rarity: 2
+  series: Moe Contest
+  type: Event
+
+e2507.16.2:
+  image: 
+  name: Takatsuki Yayoi -2025-
+  rarity: 2
+  series: Moe Contest
+  type: Event

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,7 +23,8 @@ from mitsuki.lib import errors as liberr
 from mitsuki.lib import checks as checks
 
 
-from .. import customids, api, presencer, commands
+from mitsuki.core.presences import Presence, get_presencer
+from mitsuki.modules.system import customids, commands
 
 
 class SystemPresencesAdd(libcmd.WriterCommand):
@@ -68,5 +69,5 @@ class SystemPresencesAdd(libcmd.WriterCommand):
 
 
   async def transaction(self, session: AsyncSession):
-    await api.Presence.create(self.presence_name).add(session)
-    await presencer.presencer().sync()
+    await Presence.create(self.presence_name).add(session)
+    await get_presencer().sync()

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -64,13 +64,13 @@ from mitsuki.lib.checks import (
   has_bot_channel_permissions,
 )
 from mitsuki.lib.errors import (
-  MitsukiSoftException,
+  RequestException,
   UserDenied,
   BadInput,
   BadInputRange,
   BadLength,
 )
-from mitsuki.lib.userdata import new_session
+from mitsuki.lib.userdata import begin_session
 
 from ..userdata import (
   Schedule,
@@ -255,7 +255,7 @@ class ConfigureSchedule(WriterCommand):
 
     schedule.title = title
 
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       await schedule.update_modify(session, self.ctx.author.id)
 
     return await self.send(self.Templates.TITLE_SUCCESS)
@@ -310,7 +310,7 @@ class ConfigureSchedule(WriterCommand):
 
     schedule.format = format
 
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       await schedule.update_modify(session, self.ctx.author.id)
 
     return await self.send(self.Templates.FORMAT_SUCCESS)
@@ -382,7 +382,7 @@ class ConfigureSchedule(WriterCommand):
       return await self.send(self.Templates.ROUTINE_SUCCESS, other_data={"next_fire_f": next_fire})
 
     schedule.post_routine = f"{minute} {hour} * * *"
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       await schedule.update_modify(session, self.ctx.author.id)
 
     next_fire = f"<t:{int(schedule.cron().next(float))}:f>"
@@ -400,16 +400,16 @@ class ConfigureSchedule(WriterCommand):
     schedule    = await check_fetch_schedule(self.ctx, f"@{schedule_id}")
 
     if schedule.active:
-      await daemon.deactivate(schedule)
+      await daemon().deactivate(schedule)
       schedule.deactivate()
     elif not await schedule.is_valid(self.bot):
       return await self.send(self.Templates.ERROR_NOT_READY, ephemeral=True)
     else:
-      await daemon.activate(schedule)
+      await daemon().activate(schedule)
       schedule.activate()
 
     # Activation toggles don't modify the schedule itself
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       await schedule.update(session)
     return await self.main()
 
@@ -434,7 +434,7 @@ class ConfigureSchedule(WriterCommand):
       self.ctx.bot,
       schedule.post_channel,
       [
-        Permissions.MANAGE_MESSAGES,
+        Permissions.PIN_MESSAGES,
         Permissions.VIEW_CHANNEL,
         Permissions.READ_MESSAGE_HISTORY,
         Permissions.SEND_MESSAGES
@@ -444,7 +444,7 @@ class ConfigureSchedule(WriterCommand):
 
     schedule.pin = not schedule.pin
 
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       await schedule.update_modify(session, self.ctx.author.id)
     return await self.main()
 
@@ -461,7 +461,7 @@ class ConfigureSchedule(WriterCommand):
 
     schedule.discoverable = not schedule.discoverable
 
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       await schedule.update_modify(session, self.ctx.author.id)
     return await self.main()
 
@@ -538,7 +538,7 @@ class ConfigureSchedule(WriterCommand):
     # Set post channel
     schedule.post_channel = channel.id
 
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       await schedule.update_modify(session, self.ctx.author.id)
     return await self.main()
 
@@ -617,6 +617,6 @@ class ConfigureSchedule(WriterCommand):
     else:
       schedule.manager_roles = None
 
-    async with new_session.begin() as session:
+    async with begin_session() as session:
       await schedule.update_modify(session, self.ctx.author.id)
     return await self.main()

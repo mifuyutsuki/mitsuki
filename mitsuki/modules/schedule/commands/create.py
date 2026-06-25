@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -42,7 +42,6 @@ from interactions import (
 from interactions.client.errors import Forbidden, NotFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mitsuki import bot
 from mitsuki.utils import escape_text, is_caller, get_member_color_value
 from mitsuki.lib.commands import (
   CustomID,
@@ -64,13 +63,13 @@ from mitsuki.lib.checks import (
   has_bot_channel_permissions,
 )
 from mitsuki.lib.errors import (
-  MitsukiSoftException,
+  RequestException,
   UserDenied,
   BadInput,
   BadInputRange,
   BadLength,
 )
-from mitsuki.lib.userdata import new_session
+from mitsuki.lib.userdata import begin_session
 
 from ..userdata import (
   Schedule,

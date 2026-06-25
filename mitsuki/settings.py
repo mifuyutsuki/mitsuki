@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -15,8 +15,6 @@ from typing import Optional, Dict, Any, List, Union, TypeAlias
 from attrs import frozen, field
 from os import environ, PathLike
 from interactions import PartialEmoji
-
-from mitsuki import logger
 
 __all__ = (
   "settings",

@@ -13,25 +13,26 @@ from mitsuki import settings
 from mitsuki.lib import userdata
 
 # Required to load in schema definitions
-from mitsuki.modules import gacha, schedule
+from mitsuki.modules import schedule, system
+from mitsuki.models import gacha
 
 
 async def test_db_empty_init():
   """For tests, an in-memory SQLite database is to be used."""
 
-  async with userdata.new_session.begin() as session:
+  async with userdata.begin_session() as session:
     assert await session.scalar(sa.text("SELECT COUNT(*) FROM sqlite_schema")) == 0
 
 
 async def test_db_fresh_init():
   """Tables can be initialized from scratch."""
 
-  async with userdata.new_session.begin() as session:
+  async with userdata.begin_session() as session:
     assert await session.scalar(sa.text("SELECT COUNT(*) FROM sqlite_schema")) == 0
 
-  await userdata.initialize()
+  await userdata.db_migrate()
 
-  async with userdata.new_session.begin() as session:
+  async with userdata.begin_session() as session:
     assert await session.scalar(sa.text("SELECT COUNT(*) FROM sqlite_schema")) > 0
 
 

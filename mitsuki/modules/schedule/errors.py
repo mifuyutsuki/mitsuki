@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -10,7 +10,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from mitsuki.lib.errors import MitsukiSoftException
+from mitsuki.lib.errors import RequestException
 from mitsuki.utils import escape_text
 
 from typing import Optional
@@ -24,7 +24,7 @@ __all__ = (
 )
 
 
-class ScheduleException(MitsukiSoftException):
+class ScheduleException(RequestException):
   """Base class for Schedule exceptions."""
 
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Mifuyu (mifuyutsuki@proton.me)
+# Copyright (c) 2024-2026 Mifuyu (mifuyutsuki@proton.me)
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -14,7 +14,9 @@ import interactions as ipy
 from typing import Optional
 
 from mitsuki import init_event
-from . import commands, customids, presencer
+from mitsuki.core.presences import set_presencer, get_presencer
+
+from . import commands, customids
 
 import os
 import logging
@@ -34,14 +36,6 @@ else:
 
 
 class SystemModule(ipy.Extension):
-  @ipy.listen(ipy.events.Ready)
-  async def on_ready(self, event: ipy.events.Ready):
-    await init_event.wait()
-
-    presencer.set_presencer(self.bot)
-    await presencer.presencer().init()
-
-
   # TODO: Make this module DM only (ContextType.BOT_DM)
   system_cmd = ipy.SlashCommand(
     name="system",
