@@ -753,8 +753,6 @@ class View:
       message = await self.ctx.send(**send_kwargs)
     elif getattr(self.ctx, "editing_origin", False):
       message = await self.ctx.edit_origin(**send_kwargs)
-    elif self.has_origin:
-      message = await self.ctx.edit_origin(**send_kwargs)
     else:
       message = await self.ctx.send(ephemeral=ephemeral, **send_kwargs)
 
