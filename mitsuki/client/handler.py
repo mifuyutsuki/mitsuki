@@ -141,7 +141,7 @@ class ErrorView(View):
         content = [
           ipy.TextDisplayComponent(
             "## In Cooldown\n" +
-            "Try again in {} seconds.".format(exc.cooldown.get_cooldown_time())
+            "Try again in {:.2f} seconds.".format(exc.cooldown.get_cooldown_time())
           )
         ]
 
