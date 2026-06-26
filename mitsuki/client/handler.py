@@ -265,18 +265,18 @@ class ClientHandlerMixin:
 
 
   async def error_handler(self, event: Union[events.CommandError, events.ComponentError, events.ModalError]) -> None:
-    # default ephemeral to true unless it's an unknown exception
     match exc := event.error:
       case RequestException():
-        pass
-      case (ipy.errors.CommandOnCooldown(), ipy.errors.MaxConcurrencyReached(), ipy.errors.CommandCheckFailure()):
-        pass
-      case (ipy.errors.DiscordError(), ipy.errors.HTTPException(), aiohttp.ClientError()):
+        ephemeral = exc.ephemeral
+      case ipy.errors.CommandOnCooldown() | ipy.errors.MaxConcurrencyReached() | ipy.errors.CommandCheckFailure():
+        ephemeral = True
+      case ipy.errors.DiscordError() | ipy.errors.HTTPException() | aiohttp.ClientError():
+        ephemeral = False
         self.logger.error("{}: {}".format(type(exc).__name__, str(exc)))
       case _:
+        ephemeral = False
         self.logger.exception(_format_traceback(exc), exc_info=(type(exc), exc, exc.__traceback__))
 
     if isinstance(event.ctx, ipy.InteractionContext):
       await clear_timeout(event.ctx.message_id)
-      ephemeral = getattr(event.error, "ephemeral", False)
       await ErrorView(event.ctx, event.error).send(ephemeral=ephemeral)
